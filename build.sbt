@@ -17,6 +17,7 @@ lazy val root = (project in file("."))
 		libraryDependencies += "com.github.tminglei" %% "slick-pg" % "0.14.3",
 		libraryDependencies += "com.github.tminglei" %% "slick-pg_date2" % "0.14.3",
 		libraryDependencies += "com.typesafe.play" %% "play-slick" % "2.0.2",
+		libraryDependencies += "com.typesafe.play" %% "play-slick-evolutions" % "2.0.2",
 		libraryDependencies += "jp.t2v" %% "play2-auth" % "0.14.2",
 		libraryDependencies += play.sbt.Play.autoImport.cache,
 		libraryDependencies += "com.github.t3hnar" %% "scala-bcrypt" % "2.6",

@@ -1,6 +1,6 @@
---
--- sudo -u postgres psql -p 55555 -d templatesite_db -f conf/database.sql
---
+#
+# --- !Ups
+
 DROP TABLE IF EXISTS message;
 DROP TABLE IF EXISTS account;
 DROP TYPE IF EXISTS account_role;
@@ -28,10 +28,17 @@ CREATE TABLE message (
     updated_at timestamp with time zone not null default now()
 );
 
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO templatesite_user;
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO templatesite_user;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO player;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO player;
 
 -- bcrypted password values are password in both users
-INSERT INTO account (name, email, role, password) values ('Admin User', 'admin@tetrao.eu', 'admin', '$2a$10$8K1p/a0dL1LXMIgoEDFrwOfMQbLgtnOoKsWc.6U6H0llP3puzeeEu');
-INSERT INTO account (name, email, role, password) values ('Bob Minion', 'bob@tetrao.eu', 'normal', '$2a$10$8K1p/a0dL1LXMIgoEDFrwOfMQbLgtnOoKsWc.6U6H0llP3puzeeEu');
+INSERT INTO account (name, email, role, password) values ('Admin User', 'admin@email.com', 'admin', '$2a$10$8K1p/a0dL1LXMIgoEDFrwOfMQbLgtnOoKsWc.6U6H0llP3puzeeEu');
+INSERT INTO account (name, email, role, password) values ('Bob Minion', 'bob@email.com', 'normal', '$2a$10$8K1p/a0dL1LXMIgoEDFrwOfMQbLgtnOoKsWc.6U6H0llP3puzeeEu');
 INSERT INTO message (content, tag_list) values ('Welcome to the templatesite!', '{"welcome", "first message", "english"}');
+
+
+# --- !Downs
+
+DROP TABLE message;
+DROP TABLE account;
+DROP TABLE account_role;
