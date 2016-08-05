@@ -1,4 +1,4 @@
-# TEMPLATE-SITE 0.1.1
+# TEMPLATE-SITE 0.1.2
 Originally forked from Tetrao (https://github.com/tetrao-eu/template-site)
 
 **Template Site** is an skeleton of a web application based on:
@@ -16,13 +16,13 @@ The application is a website where you have to login to enter in a restricted pa
 page, where you can see, add or delete messages that are shared beetween all the users. Also is possible to edit your
 own user and, if you are and admin user, you can add other non admin users.
 
-Default users are `admin@tetrao.eu`, the admin user, and `bob@tetrao.eu` a *normal* user. Both users have the same
+Default users are `admin@email.com`, the admin user, and `bob@email.com` a *normal* user. Both users have the same
 password and it is `password`.
 
 ## Getting the project
 As usual:
 
-    git clone https://github.com/tetrao-eu/template-site.git
+    git clone https://github.com/asciiu/template-site.git
 
 The following commands are written for a GNU/Linux environment (**Debian**, if you want to know). So please adapt it
 to your system if it is necessary. Also they are running supposing that you are locating inside the folder
