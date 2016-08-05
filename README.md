@@ -1,12 +1,5 @@
 # TEMPLATE-SITE 0.1.1
-The **Template Site** is a project created by [Tetrao](https://tetrao.eu/), a technology startup company specialized in
-Internet intelligent process automation. Our mission is enabling connections between people and businesses radically
-faster in an efficient and cost-effective way.
-
-This is an internal project and we decided to publish it to promote the use of a lot of open source projects we
-love and we use every day and make our job easier.
-
-You can see this project running here: [https://template-site.tetrao.eu/](https://template-site.tetrao.eu/).
+Originally forked from Tetrao (https://github.com/tetrao-eu/template-site)
 
 **Template Site** is an skeleton of a web application based on:
 
@@ -38,23 +31,16 @@ to your system if it is necessary. Also they are running supposing that you are 
 ## Database
 
 ### Database setup
-Check the [PostgreSQL website](http://www.postgresql.org/download/) to instalation instructions.
+Assuming you have already installed postgres create a user and the database. Substitute your own names where
+appropriate.
 
-Create a cluster, an user and a database:
-
-    sudo -u postgres pg_createcluster -p 55555 --start 9.5 templatesite_cluster
-    sudo -u postgres psql -p 55555 -c "CREATE USER templatesite_user PASSWORD '123';"
-    sudo -u postgres psql -p 55555 -c "CREATE DATABASE templatesite_db WITH TEMPLATE = template0 ENCODING = 'UTF8' LC_COLLATE = 'en_US.utf8' LC_CTYPE = 'en_US.utf8';"
-    sudo -u postgres psql -p 55555 -c "ALTER DATABASE templatesite_db OWNER TO templatesite_user;"
+    sudo -u postgres psql -c "CREATE USER player PASSWORD 'password';"
+    sudo -u postgres psql -c "CREATE DATABASE play_example_db;"
+    sudo -u postgres psql -c "ALTER DATABASE play_example_db OWNER TO player;"
 
 **IMPORTANT!** If you change any database config value, please remember to update the config file
 `conf/application.conf`
 
-Next create the tables and add some data to the database using the script `conf/database.sql`
-
-    sudo -u postgres psql -p 55555 -d templatesite_db -f conf/database.sql
-
-This script will create an account table with two users and a message table with one message.
 
 ### Database mapping code
 The file `models.db.Tables.scala` contains the database mapping code. It has been generated running the main class
