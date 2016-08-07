@@ -166,9 +166,10 @@ class Authentication @Inject()(val database: DBService,
     FormData.login.bindFromRequest.fold(
       formWithErrors => Future.successful(BadRequest(views.html.login(formWithErrors))),
       account => {
-        val q = for {
-          row <- Tables.Account.filter(_.email === account.email).take(1)
-        } yield (row.id, row.password)
+        val q = Tables.Account.filter { row =>
+          row.email === account.email && row.emailConfirmed
+        }        
+
         database.runAsync(q.result.headOption).flatMap {
           case None => {
             Logger.warn(s"Wrong user")
@@ -176,9 +177,9 @@ class Authentication @Inject()(val database: DBService,
             Future.successful(BadRequest(views.html.login(form)))
           }
           case Some(user) => {
-            if(account.password.isBcrypted(user._2)) {
-              Logger.info(s"Login by ${account.email}")
-              gotoLoginSucceeded(user._1)
+            if(account.password.isBcrypted(user.password)) {
+              Logger.info(s"Login by ${account.email} ${user}")
+              gotoLoginSucceeded(user.id)
             } else {
               Logger.warn(s"Wrong login credentials!")
               val form = FormData.login.fill(account).withError("password", "Invalid password")
