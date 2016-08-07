@@ -2,7 +2,7 @@ name := "template-site"
 
 //common settings for the project and subprojects
 lazy val commonSettings = Seq(
-	organization := "eu.tetrao",
+	organization := "com.flowmaster",
 	version := "0.1.2",
 	scalaVersion := "2.11.8",
 	scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-target:jvm-1.8")
@@ -22,7 +22,8 @@ lazy val root = (project in file("."))
 		libraryDependencies += play.sbt.Play.autoImport.cache,
 		libraryDependencies += "com.github.t3hnar" %% "scala-bcrypt" % "2.6",
 		libraryDependencies += "org.webjars" %% "webjars-play" % "2.5.0",
-		libraryDependencies += "org.webjars" % "foundation" % "6.2.3"
+		libraryDependencies += "org.webjars" % "foundation" % "6.2.3",
+		libraryDependencies += "com.typesafe.play" %% "play-mailer" % "5.0.0"
 	)
   .enablePlugins(PlayScala)
 

@@ -18,6 +18,7 @@ import play.api.data.validation.Constraints._
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.mvc.Results.Redirect
 import play.api.mvc.{Action, Controller, RequestHeader, Result}
+import services.MailService
 import services.db.DBService
 import utils.Mailer
 import utils.db.TetraoPostgresDriver.api._
@@ -148,7 +149,10 @@ private[controllers] trait AuthConfigTrait extends AuthConfig {
 @Singleton
 class Authentication @Inject()(val database: DBService,
                                val messagesApi: MessagesApi,
+                               val mailService: MailService,
                                implicit val webJarAssets: WebJarAssets) extends Controller with AuthConfigTrait with OptionalAuthElement with LoginLogout with I18nSupport {
+
+  implicit val ms = mailService
 
   def prepareLogin() = StackAction { implicit request =>
     if (loggedIn.isDefined) {
@@ -168,7 +172,7 @@ class Authentication @Inject()(val database: DBService,
       account => {
         val q = Tables.Account.filter { row =>
           row.email === account.email && row.emailConfirmed
-        }        
+        }
 
         database.runAsync(q.result.headOption).flatMap {
           case None => {
@@ -199,15 +203,14 @@ class Authentication @Inject()(val database: DBService,
   }
 
   /**
-    * Handles the form filled by the user. The user and its password are saved and it sends him an email with a link to confirm his email address.
+    * Handles the form filled by the user. The user and its password are saved and it sends him an email
+    * with a link to verify his email address.
     */
   def handleSignUp() = Action.async { implicit request =>
     FormData.addAccount.bindFromRequest.fold(
       formWithErrors => Future.successful(BadRequest(views.html.signup(formWithErrors))),
       accountFormData => {
         if(accountFormData.password.nonEmpty && accountFormData.password == accountFormData.passwordAgain) {
-          val token = MailTokenUser(accountFormData.email, isSignUp = true)
-
           val now = OffsetDateTime.now()
           val row = Tables.AccountRow(
             id = -1,
@@ -221,6 +224,9 @@ class Authentication @Inject()(val database: DBService,
           )
 
           database.runAsync((Tables.Account returning Tables.Account.map(_.id)) += row).map { id =>
+            val token = MailTokenUser(accountFormData.email, isSignUp = true)
+            val user = User(Some(id), accountFormData.name, accountFormData.email, false, accountFormData.password.bcrypt)
+            Mailer.welcome(user, link = "somelinkhere")
             Ok(views.html.auth.almostSignedUp(accountFormData))
           }
         } else {
