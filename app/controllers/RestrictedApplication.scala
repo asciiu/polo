@@ -9,7 +9,7 @@ import models.db.{AccountRole, Tables}
 import models.{FormData, FormDataAccount, Message}
 import play.api.Logger
 import play.api.mvc.Controller
-import services.db.DBService
+import services.DBService
 import utils.db.TetraoPostgresDriver.api._
 
 import scala.concurrent.ExecutionContext.Implicits.global
