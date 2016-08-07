@@ -16,7 +16,7 @@ import models.account.MailTokenUser
 import models.db.{AccountRole, Tables}
 import models.User
 import models.FormData
-import services.{DBService, MailService}
+import services.{DBService, MailService, MailTokenUserService}
 import utils.db.TetraoPostgresDriver.api._
 import utils.Mailer
 
@@ -27,6 +27,7 @@ class Authentication @Inject()(val database: DBService,
                                implicit val webJarAssets: WebJarAssets) extends Controller with AuthConfigTrait with OptionalAuthElement with LoginLogout with I18nSupport {
 
   implicit val ms = mailService
+  val tokenService = new MailTokenUserService()
 
   def prepareLogin() = StackAction { implicit request =>
     if (loggedIn.isDefined) {
@@ -97,10 +98,12 @@ class Authentication @Inject()(val database: DBService,
             createdAt = now
           )
 
-          database.runAsync((Tables.Account returning Tables.Account.map(_.id)) += row).map { id =>
-            val token = MailTokenUser(accountFormData.email, isSignUp = true)
+          for {
+            id <- database.runAsync((Tables.Account returning Tables.Account.map(_.id)) += row)
+            token <- tokenService.create(MailTokenUser(accountFormData.email, isSignUp = true))
+          } yield {
             val user = User(Some(id), accountFormData.name, accountFormData.email, false, accountFormData.password.bcrypt)
-            Mailer.welcome(user, link = "somelinkhere")
+            Mailer.welcome(user, link = routes.Authentication.verifySignUp(token.get.id).absoluteURL())
             Ok(views.html.auth.almostSignedUp(accountFormData))
           }
         } else {
@@ -109,5 +112,33 @@ class Authentication @Inject()(val database: DBService,
         }
       }
     )
+  }
+
+  /**
+    * Verifies the user's email address based on the token.
+    */
+  def verifySignUp(tokenId: String) = Action.async { implicit request =>
+    tokenService.retrieve(tokenId).flatMap {
+      case Some(token) if (token.isSignUp && !token.isExpired) => {
+        tokenService.consume(tokenId)
+        // set email confirmed to true for user
+        val query = for { u <- Tables.Account if u.email === token.email } yield u.emailConfirmed
+        val updateAction = query.update(true)
+        val queryId = Tables.Account.filter (_.email === token.email)
+
+        for {
+          update <- database.runAsync(updateAction)
+          user <- database.runAsync(queryId.result.headOption)
+          result <- gotoLoginSucceeded(user.get.id)
+        } yield {
+          result
+        }
+      }
+      case Some(token) =>
+        tokenService.consume(tokenId)
+        Future.successful(NotFound(views.html.errors.notFound(request)))
+      case _ =>
+        Future.successful(NotFound(views.html.errors.notFound(request)))
+    }
   }
 }
