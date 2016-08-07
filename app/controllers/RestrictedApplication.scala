@@ -95,6 +95,7 @@ class RestrictedApplication @Inject()(val database: DBService, implicit val webJ
             id = -1,
             name = accountFormData.name,
             email = accountFormData.email,
+            emailConfirmed = false,
             password = accountFormData.password.bcrypt,
             role = AccountRole.normal,
             updatedAt = now,

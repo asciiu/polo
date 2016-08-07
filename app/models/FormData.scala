@@ -1,7 +1,13 @@
 package models
 
-import play.api.data.{Mapping, Form}
+import dao.UserDao
+import play.api.data.{Form, Mapping}
 import play.api.data.Forms._
+import play.api.data.validation.Constraints._
+import play.api.data.validation.{Constraint, Invalid, Valid}
+
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 
 case class FormDataLogin(email: String, password: String)
 
@@ -23,10 +29,19 @@ object FormData {
     )(Message.formApply)(Message.formUnapply)
   )
 
+  val uniqueEmail = Constraint[String] { email: String =>
+    val userFuture = UserDao.findByEmail(email)
+
+    Await.result(userFuture, Duration.Inf) match {
+      case Some(user) => Invalid("email already taken")
+      case None => Valid
+    }
+  }
+
   private[this] def accountForm(passwordMapping:Mapping[String]) = Form(
     mapping(
       "name" -> nonEmptyText,
-      "email" -> email,
+      "email" -> email.verifying(maxLength(250), uniqueEmail),
       "password" -> passwordMapping,
       "passwordAgain" -> passwordMapping
     )(FormDataAccount.apply)(FormDataAccount.unapply)

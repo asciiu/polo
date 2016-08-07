@@ -1,0 +1,57 @@
+@(loginForm: Form[FormDataAccount])(implicit webJarAssets: WebJarAssets)
+@_template(None) {
+    <form method="post" action="@routes.Authentication.signup()">
+        <div class="row">
+            <div class="medium-4 medium-centered columns">
+                <label>Name
+                    <input type="text" placeholder="name" name="name" value="@loginForm("name").value" required/>
+                    @loginForm.error("name").map { formError =>
+                    <span class="form-error is-visible">@formError.message</span>
+                    }
+                </label>
+            </div>
+        </div>
+        <div class="row">
+            <div class="medium-4 medium-centered columns">
+                <label>Email
+                    <input type="email" placeholder="write@@your.email" name="email" value="@loginForm("email").value" required/>
+                    @loginForm.error("email").map { formError =>
+                        <span class="form-error is-visible">@formError.message</span>
+                    }
+                </label>
+            </div>
+        </div>
+        <div class="row">
+            <div class="medium-4 medium-centered columns">
+                <label>Password
+                    <input type="password" placeholder="password" name="password" value="@loginForm("password").value" required />
+                    @loginForm.error("password").map { formError =>
+                        <span class="form-error is-visible">@formError.message</span>
+                    }
+                </label>
+            </div>
+        </div>
+        <div class="row">
+            <div class="medium-4 medium-centered columns">
+                <label>Confirm Password
+                    <input type="password" placeholder="password" name="passwordAgain" value="@loginForm("passwordAgain").value" required />
+                    @loginForm.error("passwordAgain").map { formError =>
+                    <span class="form-error is-visible">@formError.message</span>
+                    }
+                </label>
+            </div>
+        </div>
+        <div class="row">
+            <div class="large-4 medium-7 small-12 large-centered medium-centered columns">
+                <div class="row">
+                    <div class="small-6 columns">
+                        <button type="submit" class="button expanded">Sign up</button>
+                    </div>
+                    <div class="small-6 columns">
+                        <a href="@routes.PublicApplication.index()" class="button expanded secondary">Cancel</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+}

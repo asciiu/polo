@@ -1,0 +1,7 @@
+@import models.User
+
+@(user: FormDataAccount)(implicit messages: Messages, webJarAssets: WebJarAssets)
+@_template(None) {
+	<p>@Messages("signup.thanks", user.name)</p>
+	<p>@Messages("signup.sent", user.email)</p>
+}

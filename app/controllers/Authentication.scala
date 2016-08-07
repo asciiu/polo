@@ -1,19 +1,30 @@
 package controllers
 
+import java.time.OffsetDateTime
 import javax.inject.{Inject, Singleton}
 
 import com.github.t3hnar.bcrypt.Password
+import dao.UserDao
 import jp.t2v.lab.play2.auth._
+import models.User
+import models.account.MailTokenUser
 import models.db.{AccountRole, Tables}
 import models.{Account, Entity, FormData}
 import play.api.Logger
+import play.api.data.Form
+import play.api.data.Forms._
+import play.api.data.validation.{Constraint, Invalid, Valid}
+import play.api.data.validation.Constraints._
+import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.mvc.Results.Redirect
 import play.api.mvc.{Action, Controller, RequestHeader, Result}
 import services.db.DBService
+import utils.Mailer
 import utils.db.TetraoPostgresDriver.api._
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.reflect.{ClassTag, classTag}
 
 private[controllers] trait AuthConfigTrait extends AuthConfig {
@@ -50,6 +61,29 @@ private[controllers] trait AuthConfigTrait extends AuthConfig {
     * The session timeout in seconds
     */
   val sessionTimeoutInSeconds: Int = 3600
+
+  val uniqueEmail = Constraint[String] { email: String =>
+    //val userFuture = UserDao.findByEmail(email)
+
+    //Await.result(userFuture, Duration.Inf) match {
+    //  case Some(user) => Invalid("auth.user.emailnotunique")
+    //  case None => Valid
+    //}
+    Valid
+  }
+
+
+//  def validate(password1: String, password2: Int) = {
+//    name match {
+//      case "bob" if age >= 18 =>
+//        Some(UserData(name, age))
+//      case "admin" =>
+//        Some(UserData(name, age))
+//      case _ =>
+//        None
+//    }
+//  }
+
 
   /**
     * A function that returns a `User` object from an `Id`.
@@ -112,7 +146,9 @@ private[controllers] trait AuthConfigTrait extends AuthConfig {
 }
 
 @Singleton
-class Authentication @Inject()(val database: DBService, implicit val webJarAssets: WebJarAssets) extends Controller with AuthConfigTrait with OptionalAuthElement with LoginLogout {
+class Authentication @Inject()(val database: DBService,
+                               val messagesApi: MessagesApi,
+                               implicit val webJarAssets: WebJarAssets) extends Controller with AuthConfigTrait with OptionalAuthElement with LoginLogout with I18nSupport {
 
   def prepareLogin() = StackAction { implicit request =>
     if (loggedIn.isDefined) {
@@ -149,6 +185,46 @@ class Authentication @Inject()(val database: DBService, implicit val webJarAsset
               Future.successful(BadRequest(views.html.login(form)))
             }
           }
+        }
+      }
+    )
+  }
+
+  /**
+    * Starts the sign up mechanism. It shows a form that the user have to fill in and submit.
+    */
+  def signup() = StackAction { implicit request =>
+    Ok(views.html.signup(FormData.addAccount))
+  }
+
+  /**
+    * Handles the form filled by the user. The user and its password are saved and it sends him an email with a link to confirm his email address.
+    */
+  def handleSignUp() = Action.async { implicit request =>
+    FormData.addAccount.bindFromRequest.fold(
+      formWithErrors => Future.successful(BadRequest(views.html.signup(formWithErrors))),
+      accountFormData => {
+        if(accountFormData.password.nonEmpty && accountFormData.password == accountFormData.passwordAgain) {
+          val token = MailTokenUser(accountFormData.email, isSignUp = true)
+
+          val now = OffsetDateTime.now()
+          val row = Tables.AccountRow(
+            id = -1,
+            name = accountFormData.name,
+            email = accountFormData.email,
+            emailConfirmed = false,
+            password = accountFormData.password.bcrypt,
+            role = AccountRole.normal,
+            updatedAt = now,
+            createdAt = now
+          )
+
+          database.runAsync((Tables.Account returning Tables.Account.map(_.id)) += row).map { id =>
+            Ok(views.html.auth.almostSignedUp(accountFormData))
+          }
+        } else {
+          val form = FormData.addAccount.fill(accountFormData).withError("passwordAgain", "Passwords don't match")
+          Future.successful(BadRequest(views.html.signup(form)))
         }
       }
     )
