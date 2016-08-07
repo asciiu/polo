@@ -9,7 +9,7 @@ li.menu-text a:hover {
 }
 
 #header {
-    border-bottom: #444444 solid 1px;
+    border-bottom: #bbb solid 1px;
 }
 
 /*
@@ -31,7 +31,7 @@ Copied from https://css-tricks.com/snippets/css/sticky-footer/
 }
 
 #footer {
-    border-top: #444444 solid 1px;
+    border-top: #bbb solid 1px;
     background-color: #e6e6e6;
     padding-top: 8px;
 }
