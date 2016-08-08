@@ -1,5 +1,5 @@
-@(request: RequestHeader)(implicit messages: Messages)
-_templates(None) {
+@(request: RequestHeader)(implicit messages: Messages, assets: WebJarAssets)
+@_template(None) {
   <h1>ADMIN @Messages("error.notfound.title")</h1>
   <p>@Messages("error.notfound.text", request.method + " " + request.uri)</p>
 }

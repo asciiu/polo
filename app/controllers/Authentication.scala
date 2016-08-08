@@ -4,10 +4,14 @@ package controllers
 import com.github.t3hnar.bcrypt.Password
 import java.time.OffsetDateTime
 import javax.inject.{Inject, Singleton}
+
 import jp.t2v.lab.play2.auth._
 import play.api.Logger
-import play.api.i18n.{I18nSupport, MessagesApi}
-import play.api.mvc.{Action, Controller}
+import play.api.data.Form
+import play.api.data.Forms._
+import play.api.i18n.{I18nSupport, Messages, MessagesApi}
+import play.api.mvc.{Action, Controller, RequestHeader}
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -28,6 +32,7 @@ class Authentication @Inject()(val database: DBService,
 
   implicit val ms = mailService
   val tokenService = new MailTokenUserService()
+  def notFoundDefault(implicit request: RequestHeader) = Future.successful(NotFound(views.html.errors.notFound(request)))
 
   def prepareLogin() = StackAction { implicit request =>
     if (loggedIn.isDefined) {
@@ -140,5 +145,93 @@ class Authentication @Inject()(val database: DBService,
       case _ =>
         Future.successful(NotFound(views.html.errors.notFound(request)))
     }
+  }
+
+  val emailForm = Form(single("email" -> email))
+  /**
+    * Starts the reset password mechanism if the user has forgot his password. It shows a form to insert his email address.
+    */
+  def forgotPassword = Action.async { implicit request =>
+    Future.successful(Ok(views.html.auth.forgotPassword(emailForm)))
+    //Future.successful(request.identity match {
+    //  case Some(_) => Redirect(routes.Application.index)
+    //  case None => Ok(views.html.auth.forgotPassword(emailForm))
+    //})
+  }
+
+  /**
+    * Sends an email to the user with a link to reset the password
+    */
+  def handleForgotPassword = Action.async { implicit request =>
+    emailForm.bindFromRequest.fold(
+      formWithErrors => Future.successful(BadRequest(views.html.auth.forgotPassword(formWithErrors))),
+      email => {
+        val query = Tables.Account.filter (_.email === email)
+        database.runAsync(query.result.headOption).flatMap {
+          case Some(user) =>
+            val token = MailTokenUser(email, isSignUp = false)
+            tokenService.create(token).map { _ =>
+              Mailer.forgotPassword(email, link = routes.Authentication.resetPassword(token.id).absoluteURL())
+              Ok(views.html.auth.forgotPasswordSent(email))
+            }
+          case None =>
+            Future.successful(BadRequest(views.html.auth.forgotPassword(emailForm.withError("email", Messages("auth.user.notexists")))))
+        }
+      }
+    )
+  }
+
+  val passwordValidation = nonEmptyText(minLength = 6)
+  val resetPasswordForm = Form(tuple(
+    "password1" -> passwordValidation,
+    "password2" -> nonEmptyText
+  ) verifying (Messages("auth.passwords.notequal"), passwords => passwords._2 == passwords._1))
+
+  /**
+    * Confirms the user's link based on the token and shows him a form to reset the password
+    */
+  def resetPassword(tokenId: String) = Action.async { implicit request =>
+    tokenService.retrieve(tokenId).flatMap {
+      case Some(token) if (!token.isSignUp && !token.isExpired) => {
+        Future.successful(Ok(views.html.auth.resetPassword(tokenId, resetPasswordForm)))
+      }
+      case Some(token) => {
+        tokenService.consume(tokenId)
+        Future.successful(NotFound(views.html.errors.notFound(request)))
+      }
+      case None =>
+        Future.successful(NotFound(views.html.errors.notFound(request)))
+    }
+  }
+
+  /**
+    * Saves the new password and authenticates the user
+    */
+  def handleResetPassword(tokenId: String) = Action.async { implicit request =>
+    resetPasswordForm.bindFromRequest.fold(
+      formWithErrors => Future.successful(BadRequest(views.html.auth.resetPassword(tokenId, formWithErrors))),
+      passwords => {
+        tokenService.retrieve(tokenId).flatMap {
+          case Some(token) if (!token.isSignUp && !token.isExpired) => {
+            val query = for { u <- Tables.Account if u.email === token.email } yield (u.emailConfirmed, u.password)
+            val updateAction = query.update(true, passwords._1.bcrypt)
+            val queryId = Tables.Account.filter (_.email === token.email)
+
+            for {
+              update <- database.runAsync(updateAction)
+              user <- database.runAsync(queryId.result.headOption)
+              result <- gotoLoginSucceeded(user.get.id)
+            } yield {
+              result
+            }
+          }
+          case Some(token) => {
+            tokenService.consume(tokenId)
+            notFoundDefault
+          }
+          case None => notFoundDefault
+        }
+      }
+    )
   }
 }

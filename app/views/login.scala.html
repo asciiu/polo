@@ -1,4 +1,4 @@
-@(loginForm: Form[FormDataLogin])(implicit webJarAssets: WebJarAssets)
+@(loginForm: Form[FormDataLogin])(implicit webJarAssets: WebJarAssets, messages: Messages)
 @_template(None) {
     <form method="post" action="@routes.Authentication.login()">
         <div class="row">
@@ -33,6 +33,9 @@
                     </div>
                 </div>
             </div>
+        </div>
+        <div class="post-form-opts">
+            <p>@Messages("signin.forgot.question") <a href="@routes.Authentication.forgotPassword">@Messages("signin.forgot")</a></p>
         </div>
         <div class="row column">
             <blockquote>
