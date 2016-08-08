@@ -222,6 +222,7 @@ class Authentication @Inject()(val database: DBService,
               user <- database.runAsync(queryId.result.headOption)
               result <- gotoLoginSucceeded(user.get.id)
             } yield {
+              tokenService.consume(tokenId)
               result
             }
           }

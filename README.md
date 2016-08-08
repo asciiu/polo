@@ -1,16 +1,13 @@
 # TEMPLATE-SITE 0.1.2
 Originally forked from Tetrao (https://github.com/tetrao-eu/template-site)
 
-**Template Site** is an skeleton of a web application based on:
+**Template Site** is an skeleton of a web application that features:
 
-* [Scala 2.11.8 as programming language](http://www.scala-lang.org/)
-* [SBT 0.13.11 as build tool](http://www.scala-sbt.org/)
-* [Play Framework 2.5.4 as web application framework](https://www.playframework.com/)
-* [Play2-auth 0.14.2 as authentication module for Play](https://github.com/t2v/play2-auth/)
-* [PostgreSQL 9.5 as database](http://www.postgresql.org)
-* [Slick 3.1.1 as database access layer](http://slick.lightbend.com)
-* [Slick-pg 0.14.1 extending slick for support PostgreSQL data types](https://github.com/tminglei/slick-pg)
-* [Foundation 6.2.3 as front-end framework](http://foundation.zurb.com)
+* Login
+* Logout
+* Sign up
+* Email verification
+* Password recovery
 
 The application is a website where you have to login to enter in a restricted page. The restricted page is a messages
 page, where you can see, add or delete messages that are shared beetween all the users. Also is possible to edit your
