@@ -1,4 +1,4 @@
-@(loginForm: Form[FormDataAccount])(implicit webJarAssets: WebJarAssets)
+@(loginForm: Form[FormDataAccount])(implicit webJarAssets: WebJarAssets, messages: Messages)
 @_template(None) {
     <form method="post" action="@routes.Authentication.signup()">
         <div class="row">
@@ -42,15 +42,8 @@
             </div>
         </div>
         <div class="row">
-            <div class="large-4 medium-7 small-12 large-centered medium-centered columns">
-                <div class="row">
-                    <div class="small-6 columns">
-                        <button type="submit" class="button expanded">Sign up</button>
-                    </div>
-                    <div class="small-6 columns">
-                        <a href="@routes.PublicApplication.index()" class="button expanded secondary">Cancel</a>
-                    </div>
-                </div>
+            <div class="medium-4 medium-centered columns">
+                <button type="submit" class="button expanded">Sign up</button>
             </div>
         </div>
     </form>

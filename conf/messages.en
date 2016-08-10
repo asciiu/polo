@@ -64,12 +64,12 @@ signin.title=Sign in with your credentials
 signin.rememberme=Remember me
 signin.signup.question=Don''t you have an account?
 signin.signup=Sign up now
-signin.forgot.question=Have you forgot your password?
+signin.forgot.question=Forget your password?
 signin.forgot=Reset it now
 
 signout=Sign out
 
-forgot.title=Have you forgot your password?
+forgot.title=Forget your password?
 forgot.sent=We''ve just sent an email to {0} with the instructions to reset your password
 forgot.reset.title=Reset your password
 forgot.reseted=Your password has been reseted

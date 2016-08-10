@@ -1,4 +1,5 @@
-@(account: Option[Entity[Account]])(implicit webJarAssets: WebJarAssets)
+@(account: Option[Entity[Account]])(implicit webJarAssets: WebJarAssets, messages: Messages)
+
 @_template(account) {
     <div class="row column">
         <h1>The Singularity</h1>

@@ -93,7 +93,7 @@ private[controllers] trait AuthConfigTrait extends AuthConfig {
     * Where to redirect the user after logging out
     */
   def logoutSucceeded(request: RequestHeader)(implicit ctx: ExecutionContext): Future[Result] = {
-    Future.successful(Redirect(routes.PublicApplication.index()))
+    Future.successful(Redirect(routes.Application.index()))
   }
 
   /**

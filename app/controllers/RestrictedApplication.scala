@@ -8,6 +8,7 @@ import jp.t2v.lab.play2.auth.AuthElement
 import models.db.{AccountRole, Tables}
 import models.{FormData, FormDataAccount, Message}
 import play.api.Logger
+import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.mvc.Controller
 import services.DBService
 import utils.db.TetraoPostgresDriver.api._
@@ -16,8 +17,10 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 @Singleton
-class RestrictedApplication @Inject()(val database: DBService, implicit val webJarAssets: WebJarAssets)
-  extends Controller with AuthConfigTrait with AuthElement {
+class RestrictedApplication @Inject()(val database: DBService,
+                                      val messagesApi: MessagesApi,
+                                      implicit val webJarAssets: WebJarAssets)
+  extends Controller with AuthConfigTrait with AuthElement with I18nSupport {
 
   def messages() = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
     database.runAsync(Tables.Message.sortBy(_.id).result).map { rowSeq =>

@@ -48,27 +48,24 @@ class Authentication @Inject()(val database: DBService,
 
   def login() = Action.async { implicit request =>
     FormData.login.bindFromRequest.fold(
-      formWithErrors => Future.successful(BadRequest(views.html.login(formWithErrors))),
+      formWithErrors => {
+        println(formWithErrors)
+        Future.successful(BadRequest(views.html.login(formWithErrors)))
+      },
       account => {
         val q = Tables.Account.filter { row =>
           row.email === account.email && row.emailConfirmed
         }
 
         database.runAsync(q.result.headOption).flatMap {
-          case None => {
-            Logger.warn(s"Wrong user")
-            val form = FormData.login.fill(account).withError("email", "Invalid user")
-            Future.successful(BadRequest(views.html.login(form)))
+          case Some(user) if (account.password.isBcrypted(user.password)) => {
+            Logger.info(s"Login by ${account.email} ${user}")
+            gotoLoginSucceeded(user.id)
           }
-          case Some(user) => {
-            if(account.password.isBcrypted(user.password)) {
-              Logger.info(s"Login by ${account.email} ${user}")
-              gotoLoginSucceeded(user.id)
-            } else {
-              Logger.warn(s"Wrong login credentials!")
-              val form = FormData.login.fill(account).withError("password", "Invalid password")
-              Future.successful(BadRequest(views.html.login(form)))
-            }
+          case _ => {
+            Logger.warn(s"Failed login by ${account.email}")
+            val form = FormData.login.fill(account).withGlobalError("Invalid email/password")
+            Future.successful(BadRequest(views.html.login(form)))
           }
         }
       }

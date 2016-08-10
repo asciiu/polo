@@ -1,4 +1,4 @@
-@(account: Entity[Account], accountForm:Form[FormDataAccount], insert:Boolean)(implicit webJarAssets: WebJarAssets)
+@(account: Entity[Account], accountForm:Form[FormDataAccount], insert:Boolean)(implicit webJarAssets: WebJarAssets, messages: Messages)
 @_template(Some(account)) {
     @defining(
         if(insert) ("Add Account", routes.RestrictedApplication.addAccount(), "Insert")

@@ -1,4 +1,4 @@
-@(account: Entity[Account], messageSeq:Seq[Entity[Message]], addMessageForm:Form[Message])(implicit webJarAssets: WebJarAssets)
+@(account: Entity[Account], messageSeq:Seq[Entity[Message]], addMessageForm:Form[Message])(implicit webJarAssets: WebJarAssets, messages: Messages)
 @_template(Some(account)) {
     <div class="row column">
         <h2>Messages</h2>

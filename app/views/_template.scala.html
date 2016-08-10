@@ -1,4 +1,5 @@
-@(account: Option[Entity[Account]])(content: Html)(implicit webJarAssets: WebJarAssets)
+@(account: Option[Entity[Account]], scripts: Html = Html(""))(content: Html)(implicit webJarAssets: WebJarAssets, messages: Messages)
+
 <!doctype html>
 <html class="no-js" lang="en" dir="ltr">
     <head>
@@ -9,13 +10,18 @@
         <link href="@routes.Assets.at("img/favicon.png")" rel="shortcut icon">
         <link rel='stylesheet' href="@routes.WebJarAssets.at(webJarAssets.locate("foundation.css"))">
         <link rel='stylesheet' href="@routes.Assets.at("css/templatesite.css")">
+
+        <script type="text/javascript" src="@routes.Application.javascriptRoutes"></script>
+        <script type='text/javascript' src='@routes.WebJarAssets.at(webJarAssets.locate("jquery.min.js"))'></script>
+        <script type='text/javascript' src='@routes.WebJarAssets.at(webJarAssets.locate("foundation.min.js"))'></script>
+        @scripts
     </head>
     <body>
         <div id="header" class="top-bar">
             <div class="row">
                 <div class="top-bar-left">
                     <ul class="dropdown menu" data-dropdown-menu>
-                        <li class="menu-text"><a href="@routes.PublicApplication.index()">Site!</a></li>
+                        <li class="menu-text"><a href="@routes.Application.index()">Site!</a></li>
                         <li class="has-submenu">
                             <a href="#">Languages</a>
                             <ul class="submenu menu vertical" data-submenu>
@@ -58,8 +64,6 @@
                 </ul>
             </div>
         </div>
-        <script src="@routes.WebJarAssets.at(webJarAssets.locate("jquery.js"))"></script>
-        <script src="@routes.WebJarAssets.at(webJarAssets.locate("foundation.js"))"></script>
         <script>$(document).foundation()</script>
     </body>
 </html>
