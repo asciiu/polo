@@ -38,7 +38,7 @@ class Authentication @Inject()(val database: DBService,
     if (loggedIn.isDefined) {
       Redirect(routes.RestrictedApplication.messages())
     } else {
-      Ok(views.html.login(FormData.login))
+      Ok(views.html.auth.login(FormData.login))
     }
   }
 
@@ -50,7 +50,7 @@ class Authentication @Inject()(val database: DBService,
     FormData.login.bindFromRequest.fold(
       formWithErrors => {
         println(formWithErrors)
-        Future.successful(BadRequest(views.html.login(formWithErrors)))
+        Future.successful(BadRequest(views.html.auth.login(formWithErrors)))
       },
       account => {
         val q = Tables.Account.filter { row =>
@@ -65,7 +65,7 @@ class Authentication @Inject()(val database: DBService,
           case _ => {
             Logger.warn(s"Failed login by ${account.email}")
             val form = FormData.login.fill(account).withGlobalError("Invalid email/password")
-            Future.successful(BadRequest(views.html.login(form)))
+            Future.successful(BadRequest(views.html.auth.login(form)))
           }
         }
       }
@@ -76,7 +76,7 @@ class Authentication @Inject()(val database: DBService,
     * Starts the sign up mechanism. It shows a form that the user have to fill in and submit.
     */
   def signup() = StackAction { implicit request =>
-    Ok(views.html.signup(FormData.addAccount))
+    Ok(views.html.auth.signup(FormData.addAccount))
   }
 
   /**
@@ -85,7 +85,7 @@ class Authentication @Inject()(val database: DBService,
     */
   def handleSignUp() = Action.async { implicit request =>
     FormData.addAccount.bindFromRequest.fold(
-      formWithErrors => Future.successful(BadRequest(views.html.signup(formWithErrors))),
+      formWithErrors => Future.successful(BadRequest(views.html.auth.signup(formWithErrors))),
       accountFormData => {
         if(accountFormData.password.nonEmpty && accountFormData.password == accountFormData.passwordAgain) {
           val now = OffsetDateTime.now()
@@ -110,7 +110,7 @@ class Authentication @Inject()(val database: DBService,
           }
         } else {
           val form = FormData.addAccount.fill(accountFormData).withError("passwordAgain", "Passwords don't match")
-          Future.successful(BadRequest(views.html.signup(form)))
+          Future.successful(BadRequest(views.html.auth.signup(form)))
         }
       }
     )
