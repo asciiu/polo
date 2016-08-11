@@ -1,5 +1,10 @@
 @(loginForm: Form[FormDataAccount])(implicit webJarAssets: WebJarAssets, messages: Messages)
 @_template(None) {
+    <div class="row">
+        <div class="medium-4 medium-centered columns">
+            <h3 class="text-center">@messages("signup")</h3>
+        </div>
+    </div>
     <form method="post" action="@routes.Authentication.signup()">
         <div class="row">
             <div class="medium-4 medium-centered columns">

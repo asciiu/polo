@@ -59,7 +59,7 @@ signup.thanks=Thank you, {0} for signing up!
 signup.sent=We''ve just sent an email to {0}. Please follow its instructions to complete your registration.
 signup.ready=You have now your account available
 
-signin=Sign in
+signin=Login
 signin.title=Sign in with your credentials
 signin.rememberme=Remember me
 signin.signup.question=Don''t you have an account?

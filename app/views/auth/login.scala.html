@@ -2,6 +2,11 @@
 
 @_template(None) {
     <div>
+        <div class="row">
+            <div class="medium-4 medium-centered columns">
+                <h3 class="text-center">@messages("signin")</h3>
+            </div>
+        </div>
         <form method="post" action="@routes.Authentication.login()">
             <div class="row">
                 <div class="medium-4 medium-centered columns">
