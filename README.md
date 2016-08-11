@@ -1,5 +1,4 @@
 # TEMPLATE-SITE 0.1.2
-Originally forked from Tetrao (https://github.com/tetrao-eu/template-site)
 
 **Template Site** is an skeleton of a web application that features:
 
@@ -38,9 +37,6 @@ appropriate.
 **IMPORTANT!** If you change any database config value, please remember to update the config file
 `conf/application.conf`
 
-## Mailer Setup
-Add your mail server settings to application.conf under play.mailer. Set 'mock' to false to send emails.
-
 
 ### Database mapping code
 The file `models.db.Tables.scala` contains the database mapping code. It has been generated running the main class
@@ -48,6 +44,9 @@ The file `models.db.Tables.scala` contains the database mapping code. It has bee
 config file `conf/application.conf` and run:
 
     sbt tables
+
+## Mailer Setup
+Add your mail server settings to application.conf under play.mailer. Set 'mock' to false to send emails.
 
 ## SBT
 
