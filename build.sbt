@@ -1,4 +1,4 @@
-name := "template-site"
+name := "poloniex"
 
 //common settings for the project and subprojects
 lazy val commonSettings = Seq(
@@ -12,6 +12,8 @@ lazy val root = (project in file("."))
 	.settings(commonSettings: _*)
 	.settings(routesGenerator := InjectedRoutesGenerator)
 	.settings(
+		libraryDependencies += ws,
+		libraryDependencies += "com.github.angiolep" % "akka-wamp_2.11" % "0.4.1",
 		libraryDependencies += "com.typesafe.slick" %% "slick" % "3.1.1",
 		libraryDependencies += "com.typesafe.slick" %% "slick-codegen" % "3.1.1",
 		libraryDependencies += "com.github.tminglei" %% "slick-pg" % "0.14.3",
@@ -26,6 +28,7 @@ lazy val root = (project in file("."))
 		libraryDependencies += "com.typesafe.play" %% "play-mailer" % "5.0.0"
 	)
   .enablePlugins(PlayScala)
+  .enablePlugins(SbtWeb)
 
 //to generate models/db/Tables.scala
 addCommandAlias("tables", "run-main utils.db.SourceCodeGenerator")

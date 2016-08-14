@@ -1,0 +1,28 @@
+@import models.poloniex.Market
+
+@(btc: Option[Market], tickers: List[Market])(implicit webJarAssets: WebJarAssets, messages: Messages)
+
+@_template(None) {
+
+    @btc.map{ tic =>
+        <h1>@tic.status.last</h1>
+    }
+
+    <table>
+        <tr>
+        <th>Market</th>
+        <th>Price</th>
+        <th>Volume</th>
+        <th>Change</th>
+        </tr>
+
+        @for(ticker <- tickers) {
+            <tr>
+            <td>@ticker.ticker</td>
+            <td>@ticker.status.last</td>
+            <td>@ticker.status.baseVolume</td>
+            <td>@(ticker.status.percentChange*100)</td>
+            </tr>
+        }
+    </table>
+}
