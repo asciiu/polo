@@ -23,7 +23,7 @@
         @for(ticker <- tickers) {
             <tr id="@ticker.ticker">
             <td>@ticker.ticker</td>
-            <td>@ticker.status.last</td>
+            <td>@("%1.8f".format(ticker.status.last))</td>
             <td>@ticker.status.baseVolume</td>
             <td>@ticker.status.percentChange</td>
             </tr>
