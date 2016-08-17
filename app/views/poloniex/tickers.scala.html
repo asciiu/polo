@@ -2,7 +2,11 @@
 
 @(btc: Option[Market], tickers: List[Market])(implicit webJarAssets: WebJarAssets, messages: Messages)
 
-@_template(None) {
+@scripts = {
+    <script type='text/javascript' src='@routes.Assets.at("javascripts/tickers.js")'></script>
+}
+
+@_template(None, scripts) {
 
     @btc.map{ tic =>
         <h1>@tic.status.last</h1>
