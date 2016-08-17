@@ -29,21 +29,50 @@ case class MarketStatus(id: Int,
 //                        high24hr: BigDecimal,
 //                        low24hr: BigDecimal)
 
-//case class MarketCandle(ticker: String,
-//                        time: DateTime,
-//                        var low: BigDecimal,
-//                        var high: BigDecimal,
-//                        open: BigDecimal,
-//                        var close: BigDecimal,
-//                        volumeTotal: BigDecimal) {
-//
-//  def updateInfo(update: PoloniexMarketUpdate): Unit = {
-//    // tickers must match
-//    if (update.ticker == ticker) {
-//      // is the last greater than high
-//      if (high < update.last) high = update.last
-//      if (low > update.last) low = update.last
-//    }
-//  }
-//}
+object MarketCandle {
+  def roundDateToMinute(dateTime: DateTime, minutes: Int): DateTime = {
+    if (minutes < 1 || 5 % minutes != 0) {
+      throw new IllegalArgumentException("minutes must be a factor of 5")
+    }
+
+    val m = dateTime.getMinuteOfHour() / minutes
+    new DateTime(dateTime.getYear(),
+      dateTime.getMonthOfYear(),
+      dateTime.getDayOfMonth,
+      dateTime.getHourOfDay(),
+      m * minutes
+    )
+  }
+}
+
+case class MarketCandle(time: DateTime,
+                        timeIntervalMinutes: Int,
+                        open: BigDecimal) {
+
+  var low: BigDecimal = 0
+  var high: BigDecimal = 0
+  var close: BigDecimal = 0
+  var volumeBtc24Hr: BigDecimal = 0
+
+  def isBuy(): Boolean = {
+    close-open > 0
+  }
+
+  def updateInfo(update: MarketStatus): Unit = {
+    if (update.last < low || low == 0) low = update.last
+    if (update.last > high || high == 0) high = update.last
+
+    // CryptoGuppy: troII, say you have the currency pair XMR_DASH,
+    // then the basevolume is vol. in XMR, quotevolume is vol. in DASH
+    volumeBtc24Hr = update.baseVolume
+
+    close = update.last
+  }
+
+  def isTimeInterval(t: DateTime): Boolean = {
+    val normalTime = MarketCandle.roundDateToMinute(t, timeIntervalMinutes)
+    if (time.isEqual(normalTime)) true
+    else false
+  }
+}
 

@@ -1,15 +1,21 @@
 package controllers
 
 // external
-import akka.actor.{ActorSystem, Props}
+import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.io.IO
 import akka.wamp.{Wamp, messages}
 import javax.inject.{Inject, Singleton}
+
+import akka.event.ActorEventBus
+import akka.stream.Materializer
 import jp.t2v.lab.play2.auth.AuthElement
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.ws.{WSClient, WSRequest, WSResponse}
-import play.api.mvc.Controller
+import play.api.mvc.{Controller, WebSocket}
 import play.api.libs.json._
+import play.api.libs.streams.ActorFlow
+import utils.poloniex.{PoloniexCandleCreatorActor, PoloniexEventBus, PoloniexWebSocketClient, PoloniexWebSocketSupervisor}
+
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.concurrent.Future
@@ -18,22 +24,38 @@ import scala.concurrent.Future
 import models.db.AccountRole
 import models.poloniex.{Market, MarketStatus}
 import services.DBService
-import utils.poloniex.PoloniexWebSocketClient
-
+import utils.poloniex.PoloniexWebSocketSupervisor
 
 @Singleton
 class PoloniexController @Inject()(val database: DBService,
                          val messagesApi: MessagesApi,
                          val ws: WSClient,
                          implicit val system: ActorSystem,
+                                   implicit val materializer: Materializer,
                          implicit val context: ExecutionContext,
                          implicit val webJarAssets: WebJarAssets)
   extends Controller with AuthConfigTrait with AuthElement with I18nSupport {
-  import Wamp._
-  import messages._
 
-  val client = system.actorOf(Props[PoloniexWebSocketClient])
-  IO(Wamp) ! Connect(client, url = "wss://api.poloniex.com")
+  // manages poloniex web socket
+  val websocketsuper = system.actorOf(PoloniexWebSocketSupervisor.props(), "poloniex-web-supervisor")
+  val candleCreator = system.actorOf(PoloniexCandleCreatorActor.props(), "Poloniex-candle-creator")
+
+  def socket() = WebSocket.accept[String, String] { request =>
+    class BrowserActor(out: ActorRef) extends Actor {
+      val eventBus = PoloniexEventBus()
+
+      override def preStart() = {
+        //eventBus.subscribe(self, "/market/update")
+      }
+
+      def receive = {
+        case update: Market =>
+          out ! update.toString
+      }
+    }
+
+    ActorFlow.actorRef(out => Props(new BrowserActor(out)))
+  }
 
   def tickers() = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
 

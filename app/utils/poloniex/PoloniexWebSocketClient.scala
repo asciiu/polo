@@ -2,17 +2,29 @@ package utils.poloniex
 
 // external
 import akka.actor._
+import akka.io.IO
 import akka.wamp._
 import akka.wamp.Wamp.Connected
 import akka.wamp.messages._
+import org.joda.time.DateTime
 
 // internal
 import models.poloniex.{MarketStatus, Market}
 
-class PoloniexWebSocketClient extends Actor with ActorLogging with Scope.Session {
+
+object PoloniexWebSocketClient {
+  def props()(implicit system: ActorSystem): Props = Props(new PoloniexWebSocketClient())
+}
+
+class PoloniexWebSocketClient(implicit system: ActorSystem) extends Actor with ActorLogging with Scope.Session {
   var transport: ActorRef = _
   var sessionId: Long = _
-  val tickers = scala.collection.mutable.Map[String, MarketStatus]()
+
+  override def preStart(): Unit = {
+    import Wamp._
+    import messages._
+    IO(Wamp) ! Connect(self, url = "wss://api.poloniex.com")
+  }
 
   override def postStop(): Unit = {
     log info "closing poloniex websocket"
@@ -40,7 +52,7 @@ class PoloniexWebSocketClient extends Actor with ActorLogging with Scope.Session
         case Some(payload) =>
           processPayload(payload.arguments) match {
             case Some(update) =>
-              recordUpdate(update)
+              context.parent ! update
             case None =>
               log info "received payload arguments not equal to 10"
           }
@@ -50,8 +62,9 @@ class PoloniexWebSocketClient extends Actor with ActorLogging with Scope.Session
     case Abort =>
       log debug s"poloniex websocket aborted"
       this.sessionId = 0
-    case x =>
-      log info x.toString
+    case x  =>
+      log debug x.toString
+      throw new Exception
   }
 
   def processPayload(list: List[Any]): Option[Market] = {
@@ -61,6 +74,7 @@ class PoloniexWebSocketClient extends Actor with ActorLogging with Scope.Session
     // currencyPair, last, lowestAsk, highestBid, percentChange, baseVolume, quoteVolume, isFrozen, 24hrHigh, 24hrLow
     if (list.length == 10) {
       val args = list.map(_.toString)
+      var now = new DateTime()
       val status = MarketStatus(
         0,
         BigDecimal(args(1)),
@@ -76,51 +90,6 @@ class PoloniexWebSocketClient extends Actor with ActorLogging with Scope.Session
       Some(Market(args(0),status))
     } else {
       None
-    }
-  }
-
-  def recordUpdate(update: Market) = {
-    import org.joda.time._
-
-    def roundDateDownToMinute(dateTime: DateTime, minutes: Int): DateTime = {
-      if (minutes < 1 || 5 % minutes != 0) {
-        throw new IllegalArgumentException("minutes must be a factor of 5")
-      }
-
-      val m = dateTime.getMinuteOfHour() / minutes
-      new DateTime(dateTime.getYear(),
-        dateTime.getMonthOfYear(),
-        dateTime.getDayOfMonth,
-        dateTime.getHourOfDay(),
-        m * minutes
-      )
-    }
-
-    val ticker = update.ticker
-    // only care about BTC markets
-    if (ticker.startsWith("BTC")) {
-      // get existing ticker from map
-      tickers.get(ticker) match {
-        case Some(previousUpdate) =>
-          // was there a change in the price?
-          val delta = update.status.last - previousUpdate.last
-          //val volume = update.baseVolume + previousUpdate.baseVolume
-
-          if (delta > 0) {
-            val now = new DateTime()
-            println(s"$now $ticker")
-            val timeperiod = roundDateDownToMinute(now, 5)
-            println(s"$timeperiod last ${update.status.last}")
-            println()
-            // two things you need to know very quickly about the update
-            // what market ticker is it, the current time interval
-            // if a new time interval we start a new candle
-            // if in a current time interval we have to update the current candle
-          }
-          tickers.put(ticker, update.status)
-        case None =>
-          tickers.put(ticker, update.status)
-      }
     }
   }
 }
