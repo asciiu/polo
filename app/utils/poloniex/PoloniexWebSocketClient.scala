@@ -7,23 +7,25 @@ import akka.wamp._
 import akka.wamp.Wamp.Connected
 import akka.wamp.messages._
 import org.joda.time.DateTime
+import play.Play
 
 // internal
 import models.poloniex.{MarketStatus, Market}
 
 
 object PoloniexWebSocketClient {
-  def props()(implicit system: ActorSystem): Props = Props(new PoloniexWebSocketClient())
+  def props(url: String)(implicit system: ActorSystem): Props = Props(new PoloniexWebSocketClient(url))
 }
 
-class PoloniexWebSocketClient(implicit system: ActorSystem) extends Actor with ActorLogging with Scope.Session {
+class PoloniexWebSocketClient(endpoint: String)(implicit system: ActorSystem) extends Actor with ActorLogging with Scope.Session {
   var transport: ActorRef = _
   var sessionId: Long = _
 
   override def preStart(): Unit = {
     import Wamp._
     import messages._
-    IO(Wamp) ! Connect(self, url = "wss://api.poloniex.com")
+    //val url = Play.application().configuration().getString("poloniex.websocket")
+    IO(Wamp) ! Connect(self, url = endpoint)
   }
 
   override def postStop(): Unit = {

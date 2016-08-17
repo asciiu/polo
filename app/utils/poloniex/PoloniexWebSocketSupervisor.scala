@@ -1,17 +1,16 @@
 package utils.poloniex
 
 import akka.actor.{Actor, ActorLogging, ActorSystem, Props}
-import models.poloniex.{Market, MarketCandle, MarketStatus}
+import models.poloniex.Market
+import play.api.Configuration
 
-import scala.collection.mutable.ListBuffer
 import scala.language.postfixOps
-import scala.math.BigDecimal.RoundingMode
 
 object PoloniexWebSocketSupervisor {
-  def props()(implicit system: ActorSystem): Props = Props(new PoloniexWebSocketSupervisor())
+  def props(url: String)(implicit system: ActorSystem): Props = Props(new PoloniexWebSocketSupervisor(url))
 }
 
-class PoloniexWebSocketSupervisor(implicit system: ActorSystem) extends Actor with ActorLogging {
+class PoloniexWebSocketSupervisor(url: String)(implicit system: ActorSystem) extends Actor with ActorLogging {
   import akka.actor.OneForOneStrategy
   import akka.actor.SupervisorStrategy._
   import scala.concurrent.duration._
@@ -20,7 +19,7 @@ class PoloniexWebSocketSupervisor(implicit system: ActorSystem) extends Actor wi
 
   override def preStart() = {
     log info "started the supervisor"
-    context.actorOf(PoloniexWebSocketClient.props())
+    context.actorOf(PoloniexWebSocketClient.props(url))
   }
 
   override val supervisorStrategy =
