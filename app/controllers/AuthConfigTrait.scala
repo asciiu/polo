@@ -49,29 +49,6 @@ private[controllers] trait AuthConfigTrait extends AuthConfig {
     */
   val sessionTimeoutInSeconds: Int = 3600
 
-  val uniqueEmail = Constraint[String] { email: String =>
-    //val userFuture = UserDao.findByEmail(email)
-
-    //Await.result(userFuture, Duration.Inf) match {
-    //  case Some(user) => Invalid("auth.user.emailnotunique")
-    //  case None => Valid
-    //}
-    Valid
-  }
-
-
-  //  def validate(password1: String, password2: Int) = {
-  //    name match {
-  //      case "bob" if age >= 18 =>
-  //        Some(UserData(name, age))
-  //      case "admin" =>
-  //        Some(UserData(name, age))
-  //      case _ =>
-  //        None
-  //    }
-  //  }
-
-
   /**
     * A function that returns a `User` object from an `Id`.
     * You can alter the procedure to suit your application.
@@ -86,7 +63,7 @@ private[controllers] trait AuthConfigTrait extends AuthConfig {
     * Where to redirect the user after a successful login.
     */
   def loginSucceeded(request: RequestHeader)(implicit ctx: ExecutionContext): Future[Result] = {
-    Future.successful(Redirect(routes.RestrictedApplication.messages()))
+    Future.successful(Redirect(routes.PoloniexController.tickers()))
   }
 
   /**
