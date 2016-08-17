@@ -17,15 +17,15 @@
         <th>Market</th>
         <th>Price</th>
         <th>Volume</th>
-        <th>Change</th>
+        <th>% Change</th>
         </tr>
 
         @for(ticker <- tickers) {
-            <tr>
+            <tr id="@ticker.ticker">
             <td>@ticker.ticker</td>
             <td>@ticker.status.last</td>
             <td>@ticker.status.baseVolume</td>
-            <td>@(ticker.status.percentChange*100)</td>
+            <td>@ticker.status.percentChange</td>
             </tr>
         }
     </table>

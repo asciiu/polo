@@ -4,6 +4,7 @@ package controllers
 import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.stream.Materializer
 import javax.inject.{Inject, Singleton}
+
 import jp.t2v.lab.play2.auth.AuthElement
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.inject.ApplicationLifecycle
@@ -12,9 +13,11 @@ import play.api.mvc.{Controller, WebSocket}
 import play.api.libs.json._
 import play.api.libs.streams.ActorFlow
 import play.api.Configuration
+
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.concurrent.Future
+import scala.math.BigDecimal.RoundingMode
 
 // internal
 import models.db.AccountRole
@@ -34,6 +37,13 @@ class PoloniexController @Inject()(val database: DBService,
                                    webJarAssets: WebJarAssets)
   extends Controller with AuthConfigTrait with AuthElement with I18nSupport {
 
+  implicit val marketStatus = Json.format[MarketStatus]
+  implicit val marketWrite = Json.writes[Market]
+  implicit val marketRead: Reads[List[Market]] = Reads( js =>
+    JsSuccess(js.as[JsObject].fieldSet.map { ticker =>
+      Market(ticker._1, ticker._2.as[MarketStatus])
+    }.toList))
+
   conf.getString("poloniex.websocket") match {
     case Some(url) =>
       system.actorOf(PoloniexWebSocketSupervisor.props(url), "poloniex-web-supervisor")
@@ -41,18 +51,17 @@ class PoloniexController @Inject()(val database: DBService,
     case None =>
   }
 
-
   def socket() = WebSocket.accept[String, String] { request =>
     class BrowserActor(out: ActorRef) extends Actor {
       val eventBus = PoloniexEventBus()
 
       override def preStart() = {
-        //eventBus.subscribe(self, "/market/update")
+        eventBus.subscribe(self, "/market/update")
       }
 
       def receive = {
-        case update: Market =>
-          out ! update.toString
+        case update: Market if update.ticker.startsWith("BTC") =>
+          out ! Json.toJson(update).toString
       }
     }
 
@@ -82,10 +91,9 @@ class PoloniexController @Inject()(val database: DBService,
           val bitcoin = tickers.find( _.ticker == "USDT_BTC")
 
           // only care about btc markets
-          val btcmarkets = tickers.filter(t =>  t.ticker.startsWith("BTC") && t.status.baseVolume >= 100)
-          val top10 = btcmarkets.sortBy( tick => tick.status.baseVolume).reverse
-          //val top10 = tickers.sortBy( tick => tick.status.baseVolume).reverse
-          Ok(views.html.poloniex.tickers(bitcoin, top10))
+          val btcmarkets = tickers.filter(t =>  t.ticker.startsWith("BTC"))
+            .sortBy( tick => tick.status.baseVolume).reverse.map(t => t.copy(status = t.status.copy(percentChange = t.status.percentChange.setScale(2, RoundingMode.CEILING))))
+          Ok(views.html.poloniex.tickers(bitcoin, btcmarkets))
         case _ =>
           Ok(response.json)
       }
