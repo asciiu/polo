@@ -96,7 +96,7 @@ denied.text=You have no privileges to be here.
 
 error.unknown.title=Oops, an error occurred
 error.unknown.text=This exception has been logged with id <strong>{0}</strong>.
-error.notfound.title=Handler Not Found
+error.notfound.title=Page Not Found
 error.notfound.text=For request ''{0}''
 
 ################################################################################################
