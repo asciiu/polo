@@ -1,7 +1,7 @@
 package controllers
 
 // external
-import akka.actor.{Actor, ActorRef, ActorSystem, Props}
+import akka.actor.{Actor, ActorRef, ActorSystem, Props, PoisonPill}
 import akka.stream.Materializer
 import javax.inject.{Inject, Singleton}
 
@@ -46,8 +46,15 @@ class PoloniexController @Inject()(val database: DBService,
 
   conf.getString("poloniex.websocket") match {
     case Some(url) =>
-      system.actorOf(PoloniexWebSocketSupervisor.props(url), "poloniex-web-supervisor")
-      system.actorOf(PoloniexCandleCreatorActor.props(), "Poloniex-candle-creator")
+      val websocket = system.actorOf(PoloniexWebSocketSupervisor.props(url), "poloniex-web-supervisor")
+      val candleCreator = system.actorOf(PoloniexCandleCreatorActor.props(), "Poloniex-candle-creator")
+
+      lifecycle.addStopHook{ () =>
+        // gracefully stop these actors
+        websocket ! PoisonPill
+        candleCreator ! PoisonPill
+        Future.successful()
+      }
     case None =>
   }
 

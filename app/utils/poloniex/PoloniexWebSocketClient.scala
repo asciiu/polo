@@ -24,7 +24,6 @@ class PoloniexWebSocketClient(endpoint: String)(implicit system: ActorSystem) ex
   override def preStart(): Unit = {
     import Wamp._
     import messages._
-    //val url = Play.application().configuration().getString("poloniex.websocket")
     IO(Wamp) ! Connect(self, url = endpoint)
   }
 

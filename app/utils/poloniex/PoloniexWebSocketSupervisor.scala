@@ -1,6 +1,6 @@
 package utils.poloniex
 
-import akka.actor.{Actor, ActorLogging, ActorSystem, Props}
+import akka.actor.{Actor, ActorLogging, ActorSystem, Props, PoisonPill}
 import models.poloniex.Market
 import play.api.Configuration
 
@@ -16,10 +16,11 @@ class PoloniexWebSocketSupervisor(url: String)(implicit system: ActorSystem) ext
   import scala.concurrent.duration._
 
   val eventBus = PoloniexEventBus()
+  val socketClient = context.actorOf(PoloniexWebSocketClient.props(url))
 
-  override def preStart() = {
-    log info "started the supervisor"
-    context.actorOf(PoloniexWebSocketClient.props(url))
+  override def postStop() = {
+    log info "shutting down"
+    socketClient ! PoisonPill
   }
 
   override val supervisorStrategy =
