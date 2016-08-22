@@ -67,7 +67,7 @@ class PoloniexController @Inject()(val database: DBService,
       }
 
       def receive = {
-        case update: Market if update.ticker.startsWith("BTC") =>
+        case update: Market if update.ticker.startsWith("BTC") || update.ticker == "USDT_BTC" =>
           out ! Json.toJson(update).toString
       }
     }
@@ -83,6 +83,7 @@ class PoloniexController @Inject()(val database: DBService,
         Market(ticker._1, ticker._2.as[MarketStatus])
       }.toList))
 
+    // poloniex tickers here
     val request: WSRequest = ws.url("https://poloniex.com/public?command=returnTicker")
     val complexRequest: WSRequest =
       request.withHeaders("Accept" -> "application/json")
@@ -99,7 +100,11 @@ class PoloniexController @Inject()(val database: DBService,
 
           // only care about btc markets
           val btcmarkets = tickers.filter(t =>  t.ticker.startsWith("BTC"))
-            .sortBy( tick => tick.status.baseVolume).reverse.map(t => t.copy(status = t.status.copy(percentChange = t.status.percentChange.setScale(2, RoundingMode.CEILING))))
+            .sortBy( tick => tick.status.baseVolume).reverse.map(t => {
+            val percentChange = t.status.percentChange * 100
+            t.copy(status = t.status.copy(percentChange =
+              percentChange.setScale(2, RoundingMode.CEILING)))
+          })
           Ok(views.html.poloniex.tickers(bitcoin, btcmarkets))
         case _ =>
           Ok(response.json)

@@ -9,7 +9,7 @@
 @_template(None, scripts) {
 
     @btc.map{ tic =>
-        <h1>@tic.status.last</h1>
+        <h1 id="@tic.ticker">@tic.status.last</h1>
     }
 
     <table>
