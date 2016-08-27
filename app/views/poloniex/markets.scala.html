@@ -1,12 +1,12 @@
 @import models.poloniex.Market
 
-@(btc: Option[Market], markets: List[Market])(implicit webJarAssets: WebJarAssets, messages: Messages)
+@(account: Entity[Account], btc: Option[Market], markets: List[Market])(implicit webJarAssets: WebJarAssets, messages: Messages)
 
 @scripts = {
     <script type='text/javascript' src='@routes.Assets.at("javascripts/tickers.js")'></script>
 }
 
-@_template(None, scripts) {
+@_template(Some(account), scripts) {
 
     @btc.map{ m =>
         <h1 id="@m.name">@m.status.last</h1>

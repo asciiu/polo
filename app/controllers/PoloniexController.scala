@@ -108,7 +108,7 @@ class PoloniexController @Inject()(val database: DBService,
             t.copy(status = t.status.copy(percentChange =
               percentChange.setScale(2, RoundingMode.CEILING)))
           })
-          Ok(views.html.poloniex.tickers(bitcoin, btcmarkets))
+          Ok(views.html.poloniex.markets(loggedIn, bitcoin, btcmarkets))
         case _ =>
           BadRequest("could not read poloniex market")
       }
@@ -168,7 +168,7 @@ class PoloniexController @Inject()(val database: DBService,
             polm.name
           }
 
-          Ok(views.html.poloniex.tickers(bitcoin, btcmarkets))
+          Ok(views.html.poloniex.markets(loggedIn, bitcoin, btcmarkets))
         case _ =>
           BadRequest("could not read polo and/or bittrex")
       }
