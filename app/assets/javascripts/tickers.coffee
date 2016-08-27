@@ -8,10 +8,10 @@ socket.onopen = (event) ->
 socket.onmessage = (event) ->
   market = JSON.parse(event.data)
 
-  if (market.ticker == "USDT_BTC")
-    h1 = $('#'+market.ticker).html(market.status.last)
+  if (market.name == "USDT_BTC")
+    h1 = $('#'+market.name).html(market.status.last)
   else
-    tr = $('#'+market.ticker).children('td')
+    tr = $('#'+market.name).children('td')
 
     $(tr[1]).html((market.status.last).toFixed(8))
     $(tr[2]).html(market.status.baseVolume)

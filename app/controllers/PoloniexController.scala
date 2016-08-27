@@ -1,11 +1,12 @@
 package controllers
 
 // external
-import akka.actor.{Actor, ActorRef, ActorSystem, Props, PoisonPill}
+import akka.actor.{Actor, ActorRef, ActorSystem, PoisonPill, Props}
 import akka.stream.Materializer
 import javax.inject.{Inject, Singleton}
 
 import jp.t2v.lab.play2.auth.AuthElement
+import models.bittrex.AllMarketSummary
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.inject.ApplicationLifecycle
 import play.api.libs.ws.{WSClient, WSRequest, WSResponse}
@@ -58,7 +59,12 @@ class PoloniexController @Inject()(val database: DBService,
     case None =>
   }
 
+  /**
+    * Websocket for clients that sends market updates.
+    */
   def socket() = WebSocket.accept[String, String] { request =>
+
+    // each client will be served by this actor
     class BrowserActor(out: ActorRef) extends Actor {
       val eventBus = PoloniexEventBus()
 
@@ -67,7 +73,8 @@ class PoloniexController @Inject()(val database: DBService,
       }
 
       def receive = {
-        case update: Market if update.ticker.startsWith("BTC") || update.ticker == "USDT_BTC" =>
+        // send updates from Bitcoin markets only
+        case update: Market if update.name.startsWith("BTC") || update.name == "USDT_BTC" =>
           out ! Json.toJson(update).toString
       }
     }
@@ -75,7 +82,41 @@ class PoloniexController @Inject()(val database: DBService,
     ActorFlow.actorRef(out => Props(new BrowserActor(out)))
   }
 
-  def tickers() = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
+  def markets() = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
+    implicit val marketStatus = Json.reads[MarketStatus]
+    implicit val marketRead: Reads[List[Market]] = Reads( js =>
+      JsSuccess(js.as[JsObject].fieldSet.map { ticker =>
+        Market(ticker._1, ticker._2.as[MarketStatus])
+      }.toList))
+
+    // poloniex markets
+    val poloniexRequest: WSRequest = ws.url("https://poloniex.com/public?command=returnTicker")
+        .withHeaders("Accept" -> "application/json")
+        .withRequestTimeout(10000.millis)
+
+    poloniexRequest.get().map { polo =>
+      polo.json.validate[List[Market]] match {
+        case JsSuccess(tickers, t) =>
+          // Bitcoin price
+          val bitcoin = tickers.find( _.name == "USDT_BTC")
+
+          // only care about btc markets
+          val btcmarkets = tickers.filter(t =>  t.name.startsWith("BTC"))
+            .sortBy( tick => tick.status.baseVolume).reverse.map(t => {
+
+            val percentChange = t.status.percentChange * 100
+            t.copy(status = t.status.copy(percentChange =
+              percentChange.setScale(2, RoundingMode.CEILING)))
+          })
+          Ok(views.html.poloniex.tickers(bitcoin, btcmarkets))
+        case _ =>
+          BadRequest("could not read poloniex market")
+      }
+    }
+  }
+
+  def arbiter() = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
+    import models.bittrex.Bittrex._
 
     implicit val marketStatus = Json.reads[MarketStatus]
     implicit val marketRead: Reads[List[Market]] = Reads( js =>
@@ -83,31 +124,53 @@ class PoloniexController @Inject()(val database: DBService,
         Market(ticker._1, ticker._2.as[MarketStatus])
       }.toList))
 
-    // poloniex tickers here
-    val request: WSRequest = ws.url("https://poloniex.com/public?command=returnTicker")
-    val complexRequest: WSRequest =
-      request.withHeaders("Accept" -> "application/json")
-        .withRequestTimeout(10000.millis)
+    // bittrex markets
+    val bittrexRequest: WSRequest = ws.url("https://bittrex.com/api/v1.1/public/getmarketsummaries")
+      .withHeaders("Accept" -> "application/json")
+      .withRequestTimeout(1000.millis)
 
-    val futureResponse: Future[WSResponse] = complexRequest.get()
+    // poloniex markets
+    val poloniexRequest: WSRequest = ws.url("https://poloniex.com/public?command=returnTicker")
+      .withHeaders("Accept" -> "application/json")
+      .withRequestTimeout(10000.millis)
 
-    futureResponse.map{ response =>
-      //Ok(response.json.validate[List[Market]].toString)
-      response.json.validate[List[Market]] match {
-        case JsSuccess(tickers, t) =>
+    for {
+      polo <- poloniexRequest.get()
+      btrx <- bittrexRequest.get()
+    } yield {
+
+      (btrx.json.validate[AllMarketSummary], polo.json.validate[List[Market]]) match {
+        case (JsSuccess(bitrxt, t1), JsSuccess(polot, t2)) =>
+          // bittrex markets
+          val btx = bitrxt.result.map{ b => b.copy(name = b.name.replace("-", "_"))}.filter( b => b.name.startsWith("BTC"))
+
           // Bitcoin price
-          val bitcoin = tickers.find( _.ticker == "USDT_BTC")
+          val bitcoin = polot.find( _.name == "USDT_BTC")
 
           // only care about btc markets
-          val btcmarkets = tickers.filter(t =>  t.ticker.startsWith("BTC"))
+          val btcmarkets = polot.filter(t =>  t.name.startsWith("BTC"))
             .sortBy( tick => tick.status.baseVolume).reverse.map(t => {
             val percentChange = t.status.percentChange * 100
             t.copy(status = t.status.copy(percentChange =
               percentChange.setScale(2, RoundingMode.CEILING)))
           })
+
+          // find last differences here
+          val markets = for {
+            btxm <- btx
+            polm <- btcmarkets
+            if (btxm.name == polm.name)
+          } yield {
+            val diff = (polm.status.last - btxm.last).abs
+            val f = "%1.8f".format(diff)
+
+            println( s"${polm.name} bittrex last: ${btxm.last} poloniex last: ${polm.status.last} diff: $f")
+            polm.name
+          }
+
           Ok(views.html.poloniex.tickers(bitcoin, btcmarkets))
         case _ =>
-          Ok(response.json)
+          BadRequest("could not read polo and/or bittrex")
       }
     }
   }

@@ -16,7 +16,16 @@ object PoloniexCandleCreatorActor {
 
 class PoloniexCandleCreatorActor(implicit system: ActorSystem) extends Actor with ActorLogging {
   val eventBus = PoloniexEventBus()
-  val tickers = scala.collection.mutable.Map[String, ListBuffer[MarketCandle]]()
+  val marketCandles = scala.collection.mutable.Map[String, ListBuffer[MarketCandle]]()
+
+  // try 15 and 7 as configurable periods
+  // interval can be configured as 5, 15, 30, 1hr, 2hr
+  var interval = 30
+  var p1 = 15
+  var p2 = 7
+
+  var ema1: BigDecimal = 0
+  var ema2: BigDecimal = 0
 
   override def preStart() = {
     log info "subscribed to market updates"
@@ -24,7 +33,18 @@ class PoloniexCandleCreatorActor(implicit system: ActorSystem) extends Actor wit
   }
 
   def receive: Receive = {
-    case update: Market => recordUpdate(update)
+    case update: Market =>
+      recordUpdate(update)
+      updateEMA()
+  }
+
+  def multiplier(period: Int) : BigDecimal = {
+    2 / (period + 1 )
+  }
+
+  def updateEMA() = {
+    //if ()
+
   }
 
   def recordUpdate(update: Market) = {
@@ -44,11 +64,12 @@ class PoloniexCandleCreatorActor(implicit system: ActorSystem) extends Actor wit
       )
     }
 
-    val ticker = update.ticker
+    val name = update.name
     // only care about BTC markets
-    if (ticker.startsWith("BTC")) {
-      // get existing ticker from map
-      tickers.get(ticker) match {
+    if (name.startsWith("BTC")) {
+
+      // do we have candles for this market?
+      marketCandles.get(name) match {
         case Some(candles) =>
           val c = candles.head
           val now = new DateTime()
@@ -57,13 +78,13 @@ class PoloniexCandleCreatorActor(implicit system: ActorSystem) extends Actor wit
             c.updateInfo(update.status)
           } else {
             // basevolume must be greater than 70
-            if (c.volumeBtc24Hr > 70.0 && c.isBuy) {
-              val percentChange = (c.close - c.open) / c.open * 100
-              val stem = (c.close - c.low) / c.open * 100
-              //println(s"${c.time} $ticker HIGH: ${c.high} LOW: ${c.low} CLOSE: ${c.close} BTC24VOLUME: ${c.volumeBtc24Hr}")
-              // if percenChange is < 0.05% and the lowest is lower than the close don't buy
-              println(s"${c.time} $ticker ${percentChange.setScale(2, RoundingMode.CEILING)}% CLOSE: ${c.close} BTC24VOLUME: ${c.volumeBtc24Hr}")
-            }
+            //if (c.volumeBtc24Hr > 70.0 && c.isBuy) {
+            //  val percentChange = (c.close - c.open) / c.open * 100
+            //  val stem = (c.close - c.low) / c.open * 100
+            //  //println(s"${c.time} $ticker HIGH: ${c.high} LOW: ${c.low} CLOSE: ${c.close} BTC24VOLUME: ${c.volumeBtc24Hr}")
+            //  // if percenChange is < 0.05% and the lowest is lower than the close don't buy
+            //  //println(s"${c.time} $ticker ${percentChange.setScale(2, RoundingMode.CEILING)}% CLOSE: ${c.close} BTC24VOLUME: ${c.volumeBtc24Hr}")
+            //}
             // start a new candle
             val candle = MarketCandle(MarketCandle.roundDateToMinute(now, 5), 5, update.status.last)
             candle.updateInfo(update.status)
@@ -97,7 +118,7 @@ class PoloniexCandleCreatorActor(implicit system: ActorSystem) extends Actor wit
           candle.updateInfo(update.status)
           val buffer = scala.collection.mutable.ListBuffer.empty[MarketCandle]
           buffer.append(candle)
-          tickers.put(ticker, buffer)
+          marketCandles.put(name, buffer)
       }
     }
   }

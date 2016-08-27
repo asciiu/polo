@@ -1,6 +1,6 @@
 @import models.poloniex.Market
 
-@(btc: Option[Market], tickers: List[Market])(implicit webJarAssets: WebJarAssets, messages: Messages)
+@(btc: Option[Market], markets: List[Market])(implicit webJarAssets: WebJarAssets, messages: Messages)
 
 @scripts = {
     <script type='text/javascript' src='@routes.Assets.at("javascripts/tickers.js")'></script>
@@ -8,8 +8,8 @@
 
 @_template(None, scripts) {
 
-    @btc.map{ tic =>
-        <h1 id="@tic.ticker">@tic.status.last</h1>
+    @btc.map{ m =>
+        <h1 id="@m.name">@m.status.last</h1>
     }
 
     <table>
@@ -20,12 +20,12 @@
         <th>% Change</th>
         </tr>
 
-        @for(ticker <- tickers) {
-            <tr id="@ticker.ticker">
-            <td>@ticker.ticker</td>
-            <td>@("%1.8f".format(ticker.status.last))</td>
-            <td>@ticker.status.baseVolume</td>
-            <td>@ticker.status.percentChange</td>
+        @for(market <- markets) {
+            <tr id="@market.name">
+            <td>@market.name</td>
+            <td>@("%1.8f".format(market.status.last))</td>
+            <td>@market.status.baseVolume</td>
+            <td>@market.status.percentChange</td>
             </tr>
         }
     </table>

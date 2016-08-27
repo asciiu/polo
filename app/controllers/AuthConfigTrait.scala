@@ -63,7 +63,7 @@ private[controllers] trait AuthConfigTrait extends AuthConfig {
     * Where to redirect the user after a successful login.
     */
   def loginSucceeded(request: RequestHeader)(implicit ctx: ExecutionContext): Future[Result] = {
-    Future.successful(Redirect(routes.PoloniexController.tickers()))
+    Future.successful(Redirect(routes.PoloniexController.markets()))
   }
 
   /**
