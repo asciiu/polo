@@ -16,6 +16,7 @@ object PoloniexCandleCreatorActor {
 
   trait CandleCreatorMessage
   case class GetCandles(marketName: String) extends CandleCreatorMessage
+  case class GetLastestCandle(marketName: String) extends CandleCreatorMessage
 }
 
 class PoloniexCandleCreatorActor(implicit system: ActorSystem) extends Actor with ActorLogging {
@@ -50,6 +51,14 @@ class PoloniexCandleCreatorActor(implicit system: ActorSystem) extends Actor wit
           sender ! list.toList.reverse
         case None =>
           sender ! List[MarketCandle]()
+      }
+
+    case GetLastestCandle(name) =>
+      marketCandles.get(name) match {
+        case Some(list) =>
+          sender ! Some(list(0))
+        case None =>
+          sender ! None
       }
   }
 

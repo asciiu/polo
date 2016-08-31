@@ -138,6 +138,23 @@ class PoloniexController @Inject()(val database: DBService,
    }
   }
 
+  // returns latest candle
+  def latestCandle(marketName: String) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
+    import PoloniexCandleCreatorActor._
+    implicit val timeout = Timeout(5 seconds)
+
+    (candleActorRef ? GetLastestCandle(s"BTC_$marketName")).mapTo[Option[MarketCandle]].map { candle =>
+      candle match {
+        case Some(c) =>
+          val df = DateTimeFormat.forPattern("MMM dd HH:mm")
+          val info = Json.arr(df.print(c.time), c.open, c.high, c.low, c.close)
+          Ok(Json.toJson(info))
+        case None =>
+          Ok("[]")
+      }
+    }
+  }
+
   // Prototyping an arbitrage scenario between Polo and bittrex
   // needs to be implemented.
   def arbiter() = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>

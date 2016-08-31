@@ -28,6 +28,7 @@ GET     /webjars/*file              controllers.WebJarAssets.at(file)
 
 # Poloneix
 GET     /candles/:marketName        controllers.PoloniexController.candles(marketName)
+GET     /last/:marketName           controllers.PoloniexController.latestCandle(marketName)
 GET     /socket                     controllers.PoloniexController.socket()
 GET     /markets                    controllers.PoloniexController.markets()
 GET     /arbiter                    controllers.PoloniexController.arbiter()
