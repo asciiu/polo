@@ -1,4 +1,4 @@
-socket = new WebSocket('ws://localhost:9001/socket')
+socket = new WebSocket('ws://localhost:9001' + jsRoutes.controllers.PoloniexController.socket().url)
 
 socket.onopen = (event) ->
   console.log('open')
@@ -24,34 +24,12 @@ $ ->
         title: text: 'Test'
         series: [ {
           type: 'candlestick'
-          name: 'Title'
-          data: [
-              [0, 7, 2, 0, 4]
-              [1, 1, 4, 2, 8]
-              [2, 3, 3, 9, 3]
-              [3, 7, 2, 0, 4]
-              [4, 1, 4, 2, 8]
-              [5, 3, 3, 9, 3]
-              [6, 7, 2, 0, 4]
-              [7, 1, 4, 2, 8]
-              [8, 3, 3, 9, 3]
-              [8, 7, 2, 0, 4]
-              [9, 1, 4, 2, 8]
-              [10, 3, 3, 9, 3]
-          ]
+          data: []
           dataGrouping: units: [
             [
               'minute'
-              [ 5 ]
-            ]
-            [
-              'minute'
               [
-                1
-                2
-                3
-                4
-                6
+                5
               ]
             ]
           ]
@@ -62,34 +40,44 @@ $ ->
   $('table > tbody > tr').click (event) ->
     name = $(this).attr('id')
     chart.setTitle({text: name})
+    route = jsRoutes.controllers.PoloniexController.candles(name)
+
+    $.ajax
+      method: route.method
+      url: route.url
+      success: (result) ->
+        #chart.addSeries({type: "candlestick", data: result}, true)
+        chart.series[0].setData(result, true)
+        return
+
 
 # $ ->
-   $.getJSON 'https://www.highcharts.com/samples/data/jsonp.php?a=e&filename=aapl-ohlc.json&callback=?', (data) ->
-     console.log(data)
-     # create the chart
-     $('#container').highcharts 'StockChart',
-       rangeSelector: selected: 1
-       title: text: 'AAPL Stock Price'
-       series: [ {
-         type: 'candlestick'
-         name: 'AAPL Stock Price'
-         data: data
-         dataGrouping: units: [
-           [
-             'week'
-             [ 1 ]
-           ]
-           [
-             'month'
-             [
-               1
-               2
-               3
-               4
-               6
-             ]
-           ]
-         ]
-       } ]
-     return
-   return
+#   $.getJSON 'https://www.highcharts.com/samples/data/jsonp.php?a=e&filename=aapl-ohlc.json&callback=?', (data) ->
+#     console.log(data)
+#     # create the chart
+#     $('#container').highcharts 'StockChart',
+#       rangeSelector: selected: 1
+#       title: text: 'AAPL Stock Price'
+#       series: [ {
+#         type: 'candlestick'
+#         name: 'AAPL Stock Price'
+#         data: data
+#         dataGrouping: units: [
+#           [
+#             'week'
+#             [ 1 ]
+#           ]
+#           [
+#             'month'
+#             [
+#               1
+#               2
+#               3
+#               4
+#               6
+#             ]
+#           ]
+#         ]
+#       } ]
+#     return
+#   return

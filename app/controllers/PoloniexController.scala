@@ -2,11 +2,15 @@ package controllers
 
 // external
 import akka.actor.{Actor, ActorRef, ActorSystem, PoisonPill, Props}
+import akka.pattern.ask
+import akka.util.Timeout
 import akka.stream.Materializer
 import javax.inject.{Inject, Singleton}
 
 import jp.t2v.lab.play2.auth.AuthElement
 import models.bittrex.AllMarketSummary
+import models.poloniex.MarketCandle
+import org.joda.time.format.DateTimeFormat
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.inject.ApplicationLifecycle
 import play.api.libs.ws.{WSClient, WSRequest, WSResponse}
@@ -45,18 +49,15 @@ class PoloniexController @Inject()(val database: DBService,
       Market(ticker._1, ticker._2.as[MarketStatus])
     }.toList))
 
-  conf.getString("poloniex.websocket") match {
-    case Some(url) =>
-      val websocket = system.actorOf(PoloniexWebSocketSupervisor.props(url), "poloniex-web-supervisor")
-      val candleCreator = system.actorOf(PoloniexCandleCreatorActor.props(), "Poloniex-candle-creator")
+  val poloniexUrl = conf.getString("poloniex.websocket").getOrElse("wss://api.poloniex.com")
+  val websocketSupervisor = system.actorOf(PoloniexWebSocketSupervisor.props(poloniexUrl), "poloniex-web-supervisor")
+  val candleActorRef = system.actorOf(PoloniexCandleCreatorActor.props(), "Poloniex-candle-creator")
 
-      lifecycle.addStopHook{ () =>
-        // gracefully stop these actors
-        websocket ! PoisonPill
-        candleCreator ! PoisonPill
-        Future.successful()
-      }
-    case None =>
+  lifecycle.addStopHook{ () =>
+    // gracefully stop these actors
+    websocketSupervisor ! PoisonPill
+    candleActorRef ! PoisonPill
+    Future.successful()
   }
 
   /**
@@ -124,6 +125,21 @@ class PoloniexController @Inject()(val database: DBService,
     }
   }
 
+  // returns locally stored candles
+  def candles(marketName: String) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
+    import PoloniexCandleCreatorActor._
+    implicit val timeout = Timeout(5 seconds)
+
+   (candleActorRef ? GetCandles(s"BTC_$marketName")).mapTo[List[MarketCandle]].map { candles =>
+     val df = DateTimeFormat.forPattern("MMM dd HH:mm")
+     val l = candles.map { c => Json.arr(df.print(c.time), c.open, c.high, c.low, c.close) }
+
+     Ok(Json.toJson(l))
+   }
+  }
+
+  // Prototyping an arbitrage scenario between Polo and bittrex
+  // needs to be implemented.
   def arbiter() = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
     import models.bittrex.Bittrex._
 

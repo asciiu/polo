@@ -13,18 +13,27 @@ import scala.math.BigDecimal.RoundingMode
 
 object PoloniexCandleCreatorActor {
   def props()(implicit system: ActorSystem): Props = Props(new PoloniexCandleCreatorActor())
+
+  trait CandleCreatorMessage
+  case class GetCandles(marketName: String) extends CandleCreatorMessage
 }
 
 class PoloniexCandleCreatorActor(implicit system: ActorSystem) extends Actor with ActorLogging {
+  import PoloniexCandleCreatorActor._
+
   val eventBus = PoloniexEventBus()
   val marketCandles = scala.collection.mutable.Map[String, ListBuffer[MarketCandle]]()
   val movingAverages = scala.collection.mutable.Map[String, (BigDecimal, BigDecimal)]()
 
+  // TODO moving averages needs to be implemented probably in another class
   // try 15 and 7 as configurable periods
   // interval can be configured as 5, 15, 30, 1hr, 2hr
   var interval = 30
   var p1 = 15
   var p2 = 7
+  def multiplier(period: Int) : BigDecimal = {
+    2 / (period + 1 )
+  }
 
   override def preStart() = {
     log info "subscribed to market updates"
@@ -32,12 +41,16 @@ class PoloniexCandleCreatorActor(implicit system: ActorSystem) extends Actor wit
   }
 
   def receive: Receive = {
-    case update: Market =>
-      recordUpdate(update)
-  }
 
-  def multiplier(period: Int) : BigDecimal = {
-    2 / (period + 1 )
+    case update: Market => recordUpdate(update)
+
+    case GetCandles(name) =>
+      marketCandles.get(name) match {
+        case Some(list) =>
+          sender ! list.toList.reverse
+        case None =>
+          sender ! List[MarketCandle]()
+      }
   }
 
   def updateEMA(name: String, candles: List[MarketCandle]) = {

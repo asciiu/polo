@@ -27,6 +27,7 @@ GET     /assets/*file               controllers.Assets.at(path="/public", file)
 GET     /webjars/*file              controllers.WebJarAssets.at(file)
 
 # Poloneix
+GET     /candles/:marketName        controllers.PoloniexController.candles(marketName)
 GET     /socket                     controllers.PoloniexController.socket()
 GET     /markets                    controllers.PoloniexController.markets()
 GET     /arbiter                    controllers.PoloniexController.arbiter()
