@@ -36,3 +36,6 @@ Copied from https://css-tricks.com/snippets/css/sticky-footer/
     padding-top: 8px;
 }
 
+div.markets {
+    font-size: 70%;
+}

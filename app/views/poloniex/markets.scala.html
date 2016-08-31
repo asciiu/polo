@@ -7,26 +7,33 @@
 }
 
 @_template(Some(account), scripts) {
+    <div class="row markets">
+        <div class="columns small-8" id="container"></div>
+        <div class="columns small-4">
+            @btc.map{ m =>
+            <h4 id="@m.name">@m.status.last</h4>
+            }
+            <table>
+                <thead>
+                <tr>
+                <th>Market</th>
+                <th>Price</th>
+                <th>Volume</th>
+                <th>% Change</th>
+                </tr>
+                </thead>
 
-    @btc.map{ m =>
-        <h1 id="@m.name">@m.status.last</h1>
-    }
-
-    <table>
-        <tr>
-        <th>Market</th>
-        <th>Price</th>
-        <th>Volume</th>
-        <th>% Change</th>
-        </tr>
-
-        @for(market <- markets) {
-            <tr id="@market.name">
-            <td>@market.name</td>
-            <td>@("%1.8f".format(market.status.last))</td>
-            <td>@market.status.baseVolume</td>
-            <td>@market.status.percentChange</td>
-            </tr>
-        }
-    </table>
+                <tbody>
+                @for(market <- markets) {
+                    <tr id="@market.name">
+                    <td>@market.name</td>
+                    <td>@("%1.8f".format(market.status.last))</td>
+                    <td>@market.status.baseVolume</td>
+                    <td>@market.status.percentChange</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
 }

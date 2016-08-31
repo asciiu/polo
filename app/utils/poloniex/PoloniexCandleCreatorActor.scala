@@ -5,6 +5,7 @@ package utils.poloniex
   */
 import akka.actor.{Actor, ActorLogging, ActorSystem, Props}
 import models.poloniex.{Market, MarketCandle, MarketStatus}
+import org.joda.time._
 
 import scala.collection.mutable.ListBuffer
 import scala.language.postfixOps
@@ -17,15 +18,13 @@ object PoloniexCandleCreatorActor {
 class PoloniexCandleCreatorActor(implicit system: ActorSystem) extends Actor with ActorLogging {
   val eventBus = PoloniexEventBus()
   val marketCandles = scala.collection.mutable.Map[String, ListBuffer[MarketCandle]]()
+  val movingAverages = scala.collection.mutable.Map[String, (BigDecimal, BigDecimal)]()
 
   // try 15 and 7 as configurable periods
   // interval can be configured as 5, 15, 30, 1hr, 2hr
   var interval = 30
   var p1 = 15
   var p2 = 7
-
-  var ema1: BigDecimal = 0
-  var ema2: BigDecimal = 0
 
   override def preStart() = {
     log info "subscribed to market updates"
@@ -35,35 +34,30 @@ class PoloniexCandleCreatorActor(implicit system: ActorSystem) extends Actor wit
   def receive: Receive = {
     case update: Market =>
       recordUpdate(update)
-      updateEMA()
   }
 
   def multiplier(period: Int) : BigDecimal = {
     2 / (period + 1 )
   }
 
-  def updateEMA() = {
-    //if ()
+  def updateEMA(name: String, candles: List[MarketCandle]) = {
+    val candle = candles.head
+    val currentTimePeriod = candle.time
+    val period1 = currentTimePeriod.getMillis() - (candle.timeIntervalMinutes * 60000) * p1
+    val period2 = currentTimePeriod.getMillis() - (candle.timeIntervalMinutes * 60000) * p2
 
+    // has enough time elapsed yet
+    if (candles.last.time.getMillis() <= period1) {
+      val sum1 = candles.filter(c => c.time.getMillis() >= period1).map(_.close).sum
+      val sum2 = candles.filter(c => c.time.getMillis() >= period2).map(_.close).sum
+      println(name)
+      println(s" ${sum1 / p1}")
+      println(s" ${sum2 / p2}")
+      println()
+    }
   }
 
   def recordUpdate(update: Market) = {
-    import org.joda.time._
-
-    def roundDateDownToMinute(dateTime: DateTime, minutes: Int): DateTime = {
-      if (minutes < 1 || 5 % minutes != 0) {
-        throw new IllegalArgumentException("minutes must be a factor of 5")
-      }
-
-      val m = dateTime.getMinuteOfHour() / minutes
-      new DateTime(dateTime.getYear(),
-        dateTime.getMonthOfYear(),
-        dateTime.getDayOfMonth,
-        dateTime.getHourOfDay(),
-        m * minutes
-      )
-    }
-
     val name = update.name
     // only care about BTC markets
     if (name.startsWith("BTC")) {
@@ -71,54 +65,37 @@ class PoloniexCandleCreatorActor(implicit system: ActorSystem) extends Actor wit
       // do we have candles for this market?
       marketCandles.get(name) match {
         case Some(candles) =>
-          val c = candles.head
+          // examine candle at head
+          val lastCandle = candles.head
           val now = new DateTime()
 
-          if (c.isTimeInterval(now)) {
-            c.updateInfo(update.status)
+          // are we still in the time period of the last candle that we created
+          if (lastCandle.isTimeInterval(now)) {
+            // if so we need to update the info for the last candle
+            lastCandle.updateInfo(update.status)
           } else {
-            // basevolume must be greater than 70
-            //if (c.volumeBtc24Hr > 70.0 && c.isBuy) {
-            //  val percentChange = (c.close - c.open) / c.open * 100
-            //  val stem = (c.close - c.low) / c.open * 100
-            //  //println(s"${c.time} $ticker HIGH: ${c.high} LOW: ${c.low} CLOSE: ${c.close} BTC24VOLUME: ${c.volumeBtc24Hr}")
-            //  // if percenChange is < 0.05% and the lowest is lower than the close don't buy
-            //  //println(s"${c.time} $ticker ${percentChange.setScale(2, RoundingMode.CEILING)}% CLOSE: ${c.close} BTC24VOLUME: ${c.volumeBtc24Hr}")
-            //}
+
             // start a new candle
-            val candle = MarketCandle(MarketCandle.roundDateToMinute(now, 5), 5, update.status.last)
+            val timePeriod = MarketCandle.roundDateToMinute(now, 5)
+            val candle = MarketCandle(timePeriod, 5, update.status.last)
             candle.updateInfo(update.status)
+            // most recent candles at front list
             candles.insert(0, candle)
 
             // limit candle buffer length to 24 hours
-            if (candles.length > 288) {
-              candles.remove(288)
-            }
-          }
-        // was there a change in the price?
-        //val delta = update.status.last - previousUpdate.last
-        //val volume = update.baseVolume + previousUpdate.baseVolume
+            if (candles.length > 288) candles.remove(288)
 
-        //if (delta > 0) {
-        //  val now = new DateTime()
-        //  println(s"$now $ticker")
-        //  val timeperiod = roundDateDownToMinute(now, 5)
-        //  println(s"$timeperiod last ${update.status.last}")
-        //  println()
-        //  // two things you need to know very quickly about the update
-        //  // what market ticker is it, the current time interval
-        //  // if a new time interval we start a new candle
-        //  // if in a current time interval we have to update the current candle
-        //}
-        //tickers.put(ticker, update.status)
+            // compute the expo moving averages
+            updateEMA(name, candles.toList)
+          }
         case None =>
           // init first 5 minute candle for this market
-          val time = MarketCandle.roundDateToMinute(new DateTime(), 5)
-          val candle = MarketCandle(time, 5, update.status.last)
+          val timePeriod = MarketCandle.roundDateToMinute(new DateTime(), 5)
+          val candle = MarketCandle(timePeriod, 5, update.status.last)
           candle.updateInfo(update.status)
-          val buffer = scala.collection.mutable.ListBuffer.empty[MarketCandle]
-          buffer.append(candle)
-          marketCandles.put(name, buffer)
+          val candles =  scala.collection.mutable.ListBuffer.empty[MarketCandle]
+          candles.append(candle)
+          marketCandles.put(name, candles)
       }
     }
   }

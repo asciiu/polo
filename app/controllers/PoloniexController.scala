@@ -74,7 +74,13 @@ class PoloniexController @Inject()(val database: DBService,
 
       def receive = {
         // send updates from Bitcoin markets only
-        case update: Market if update.name.startsWith("BTC") || update.name == "USDT_BTC" =>
+        case update: Market if update.name.startsWith("BTC") =>
+          val percentChange = update.status.percentChange * 100
+          val name = update.name.replace("BTC_", "")
+          val ud = update.copy(name = name, status = update.status.copy(percentChange =
+            percentChange.setScale(2, RoundingMode.CEILING)))
+          out ! Json.toJson(ud).toString
+        case update: Market if update.name == "USDT_BTC" =>
           out ! Json.toJson(update).toString
       }
     }
@@ -101,11 +107,14 @@ class PoloniexController @Inject()(val database: DBService,
           val bitcoin = tickers.find( _.name == "USDT_BTC")
 
           // only care about btc markets
+          // order by base volume - btc vol
           val btcmarkets = tickers.filter(t =>  t.name.startsWith("BTC"))
             .sortBy( tick => tick.status.baseVolume).reverse.map(t => {
 
+            // change percent format from decimal
             val percentChange = t.status.percentChange * 100
-            t.copy(status = t.status.copy(percentChange =
+            val name = t.name.replace("BTC_", "")
+            t.copy(name = name, status = t.status.copy(percentChange =
               percentChange.setScale(2, RoundingMode.CEILING)))
           })
           Ok(views.html.poloniex.markets(loggedIn, bitcoin, btcmarkets))
