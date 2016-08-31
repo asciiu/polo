@@ -1,30 +1,7 @@
-# TEMPLATE-SITE 0.1.2
-
-**Template Site** is an skeleton of a web application that features:
-
-* Login
-* Logout
-* Sign up
-* Email verification
-* Password recovery
-
-The application is a website where you have to login to enter in a restricted page. The restricted page is a messages
-page, where you can see, add or delete messages that are shared beetween all the users. Also is possible to edit your
-own user and, if you are and admin user, you can add other non admin users.
+# Poloniex Bot 0.0.0a
 
 Default users are `admin@email.com`, the admin user, and `bob@email.com` a *normal* user. Both users have the same
 password and it is `password`.
-
-## Getting the project
-As usual:
-
-    git clone https://github.com/asciiu/template-site.git
-
-The following commands are written for a GNU/Linux environment (**Debian**, if you want to know). So please adapt it
-to your system if it is necessary. Also they are running supposing that you are locating inside the folder
-`template-site`, the root of this project.
-
-## Database
 
 ### Database setup
 Assuming you have already installed postgres create a user and the database. Substitute your own names where
@@ -60,6 +37,3 @@ The plugin [sbt-updates](https://github.com/rtimush/sbt-updates) is installed (s
 if all the dependencies are up to date, it is necessary to execute:
 
     sbt dependencyUpdates
-
-## License
-Licensing conditions (MIT) can be found in `LICENSE` file.
