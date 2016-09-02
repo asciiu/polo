@@ -4,8 +4,8 @@ $ ->
         title: text: 'Test'
         plotOptions: {
           candlestick: {
-            color: 'red'
-            upColor: 'green'
+            color: 'rgba(255, 102, 102, 0.3)'
+            upColor: 'rgba(112, 219, 112, 0.3)'
           }
         }
         series: [ {
