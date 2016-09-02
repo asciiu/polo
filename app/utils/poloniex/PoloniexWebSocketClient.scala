@@ -5,9 +5,11 @@ import akka.actor._
 import akka.io.IO
 import akka.wamp._
 import akka.wamp.Wamp.Connected
+import akka.wamp.client._
 import akka.wamp.messages._
 import org.joda.time.DateTime
 import play.Play
+import scala.concurrent.ExecutionContext.Implicits.global
 
 // internal
 import models.poloniex.{MarketStatus, Market}
@@ -22,50 +24,22 @@ class PoloniexWebSocketClient(endpoint: String)(implicit system: ActorSystem) ex
   var sessionId: Long = _
 
   override def preStart(): Unit = {
-    import Wamp._
-    import messages._
-    IO(Wamp) ! Connect(self, url = endpoint)
-  }
-
-  override def postStop(): Unit = {
-    log info "closing poloniex websocket"
-    transport ! Goodbye()
-  }
-
-  def receive: Receive = {
-    case Connected(transport) =>
-      log info "connected to poloniex websocket"
-      this.transport = transport
-      this.transport ! Hello("realm1")
-
-    case Welcome(sessionId, _) =>
-      log info "subscribing to poloniex ticker"
-      transport ! Subscribe(nextId(), topic = "ticker")
-      context become opened
-  }
-
-  def opened: Receive = {
-    case Subscribed(_, _) =>
-      log info "subscribed to poloniex 'ticker'"
-
-    case Event(subscriptionId, publicationId, payload, details) =>
-      details match {
-        case Some(payload) =>
-          processPayload(payload.arguments) match {
+    for {
+      session <- Client().connectAndOpen(url = endpoint, realm = "realm1")
+      subscription <- session.subscribe("ticker") { event =>
+        event.payload.map{ p =>
+          processPayload(p.arguments) match {
             case Some(update) =>
               context.parent ! update
             case None =>
               log info "received payload arguments not equal to 10"
-          }
-        case None =>
-          log debug s"Event received for subscription $subscriptionId"
-      }
-    case Abort =>
-      log debug s"poloniex websocket aborted"
-      this.sessionId = 0
-    case x  =>
-      log debug x.toString
-      throw new Exception
+          }}
+        }
+    } yield ()
+  }
+
+  def receive: Receive = {
+    case x => log.warning(x.toString)
   }
 
   def processPayload(list: List[Any]): Option[Market] = {
