@@ -1,5 +1,5 @@
 $ ->
-  $('#container').highcharts 'StockChart',
+  $('#candle-chart').highcharts 'StockChart',
         rangeSelector: selected: 1
         title: text: 'Test'
         plotOptions: {
@@ -21,10 +21,22 @@ $ ->
           ]
         } ]
 
-  chart = $('#container').highcharts()
+  chart = $('#candle-chart').highcharts()
 
   $('table > tbody > tr').click (event) ->
     name = $(this).attr('id')
+    # update header stats
+    td = $('#'+name).children('td')
+
+    # percent change
+    $('#td-change').html($(td[3]).html())
+    # 24 hour high
+    $('#td-high').html($(td[4]).html())
+    # 24 hour low
+    $('#td-low').html($(td[5]).html())
+    # last
+    $('#td-last').html($(td[1]).html())
+
     chart.setTitle({text: name})
     route = jsRoutes.controllers.PoloniexController.candles(name)
 
@@ -57,6 +69,12 @@ $ ->
 
     # update chart
     if (market.name == chart.title.textStr)
+      # update the header stats
+      $('#td-change').html(market.status.percentChange)
+      $('#td-high').html(market.status.last.toFixed(8))
+      $('#td-low').html(market.status.high24hr.toFixed(8))
+      $('#td-last').html(market.status.low24hr.toFixed(8))
+
       # get latest candle from server
       route = jsRoutes.controllers.PoloniexController.latestCandle(market.name)
       $.ajax
