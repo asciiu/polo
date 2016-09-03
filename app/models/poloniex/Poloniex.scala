@@ -49,10 +49,12 @@ case class MarketCandle(time: DateTime,
                         timeIntervalMinutes: Int,
                         open: BigDecimal) {
 
-  var low: BigDecimal = 0
-  var high: BigDecimal = 0
-  var close: BigDecimal = 0
+  var low: BigDecimal = open
+  var high: BigDecimal = open
+  var close: BigDecimal = open
   var volumeBtc24Hr: BigDecimal = 0
+  var ema1: BigDecimal = 0
+  var ema2: BigDecimal = 0
 
   def isBuy(): Boolean = {
     close-open > 0
@@ -73,6 +75,11 @@ case class MarketCandle(time: DateTime,
     val normalTime = MarketCandle.roundDateToMinute(t, timeIntervalMinutes)
     if (time.isEqual(normalTime)) true
     else false
+  }
+
+  def periodDif(t: DateTime): Int = {
+    val normalTime = MarketCandle.roundDateToMinute(t, timeIntervalMinutes)
+    ((normalTime.getMillis() - time.getMillis()) / (timeIntervalMinutes * 60000)).toInt
   }
 }
 

@@ -28,10 +28,13 @@ class PoloniexCandleCreatorActor(implicit system: ActorSystem) extends Actor wit
 
   // TODO moving averages needs to be implemented probably in another class
   // try 15 and 7 as configurable periods
-  // interval can be configured as 5, 15, 30, 1hr, 2hr
-  var interval = 30
-  var p1 = 15
-  var p2 = 7
+  // interval can be configured as 5 min, 15 min, 30 min, 1 hr, 2 hr
+
+  // 30 minutes should really be 6
+  // start with 5 minute interval or 1 candle period
+  var interval = 1
+  var emaPeriod1 = 15
+  var emaPeriod2 = 7
   def multiplier(period: Int) : BigDecimal = {
     2 / (period + 1 )
   }
@@ -63,19 +66,43 @@ class PoloniexCandleCreatorActor(implicit system: ActorSystem) extends Actor wit
   }
 
   def updateEMA(name: String, candles: List[MarketCandle]) = {
+    // get latest candle from head
     val candle = candles.head
-    val currentTimePeriod = candle.time
-    val period1 = currentTimePeriod.getMillis() - (candle.timeIntervalMinutes * 60000) * p1
-    val period2 = currentTimePeriod.getMillis() - (candle.timeIntervalMinutes * 60000) * p2
+    val minutes = candle.timeIntervalMinutes
+    // latest period
+    val time = candle.time
+
+    // minutes * 60000 ms per minute
+    val time1 = time.getMillis() - (minutes * 60000) * emaPeriod1
+    val time2 = time.getMillis() - (minutes * 60000) * emaPeriod2
 
     // has enough time elapsed yet
-    if (candles.last.time.getMillis() <= period1) {
-      val sum1 = candles.filter(c => c.time.getMillis() >= period1).map(_.close).sum
-      val sum2 = candles.filter(c => c.time.getMillis() >= period2).map(_.close).sum
-      println(name)
-      println(s" ${sum1 / p1}")
-      println(s" ${sum2 / p2}")
-      println()
+    if (candles.last.time.getMillis() == time1) {
+      // get all candles with time greater than equeal to time and sum the close price
+      val sum1 = candles.filter(c => c.time.getMillis() >= time1).map(_.close).sum
+      // set ema1 for latest candle
+      candle.ema1 = sum1 / emaPeriod1
+    }
+    // if the next candle in our list has an ema1 use it to calc this ema1
+    // number of candles we have should be more than the emaPeriod1 in order for this
+    // condition to hold. This means that
+    else if (candles.last.time.getMillis() < time1) {
+      val nextCandle = candles(1)
+      //{Close - EMA(previous day)} x multiplier + EMA(previous day)
+      val ema1 = (candle.close - nextCandle.ema1) * multiplier(emaPeriod1) + nextCandle.ema1
+      candle.ema1 = ema1
+      log.info(s"$name EMA1 - $ema1")
+    }
+
+    if (candles.last.time.getMillis() == time2) {
+      val sum2 = candles.filter(c => c.time.getMillis() >= time2).map(_.close).sum
+      candle.ema2 = sum2 / emaPeriod2
+    }
+    else if (candles.last.time.getMillis() < time2) {
+      val nextCandle = candles(1)
+      val ema2 = (candle.close - nextCandle.ema2) * multiplier(emaPeriod2) + nextCandle.ema2
+      candle.ema2 = ema2
+      log.info(s"$name EMA2 - $ema2")
     }
   }
 
@@ -96,6 +123,18 @@ class PoloniexCandleCreatorActor(implicit system: ActorSystem) extends Actor wit
             // if so we need to update the info for the last candle
             lastCandle.updateInfo(update.status)
           } else {
+
+            // if we've skipped some candle periods due to no trade activity
+            // we need to fill in those missed periods so we can calc the
+            // simple moving average
+            val missedCandlesNum = lastCandle.periodDif(now) - 1
+            if (missedCandlesNum > 0) {
+              for (i <- 1 to missedCandlesNum) {
+                val time = new DateTime(lastCandle.time.getMillis + (60000 * i))
+                val candle = MarketCandle(time, 5, lastCandle.close)
+                candles.insert(0, candle)
+              }
+            }
 
             // start a new candle
             val timePeriod = MarketCandle.roundDateToMinute(now, 5)
