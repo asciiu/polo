@@ -58,7 +58,7 @@ $ ->
           return
 
         candles = result.map (obj) ->
-          obj.splice(0, 5)
+          obj.slice(0, 5)
 
         # retrieve the candles and set chart data for candles series
         chart.series[0].setData(candles, true)
@@ -69,13 +69,13 @@ $ ->
         # we don't care about non zero values
         ema1 = ema1.filter (obj) ->
           obj.y > 0
+        # set data for ema1 series
+        chart.series[1].setData( ema1, true )
 
         ema2 = result.map (obj, index) ->
           {x: index, y: obj[6]}
         ema2 = ema2.filter (obj) ->
           obj.y > 0
-
-        chart.series[1].setData( ema1, true )
         chart.series[2].setData( ema2, true )
 
         return

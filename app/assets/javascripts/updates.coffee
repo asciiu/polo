@@ -54,7 +54,7 @@ $ ->
 
           # is the last.name (the candle period) the same as the result candle period?
           if (last != undefined && result[0] == last.name)
-            candles.data[data.length-1].update({high: result[2], low: result[3], close: result[4]})
+            last.update({high: result[2], low: result[3], close: result[4]})
 
             # ema1
             if (result[5] != 0)
@@ -72,11 +72,9 @@ $ ->
             candles.addPoint(result, true)
 
             if (result[5] != 0)
-              console.log(result[5])
               ema1.addPoint({x: data.length-1, y:result[5]})
 
             if (result[6] != 0)
-              console.log(result[6])
               ema2.addPoint({x: data.length-1, y:result[6]})
 
           return

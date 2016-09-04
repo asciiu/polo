@@ -133,6 +133,7 @@ class PoloniexCandleCreatorActor(implicit system: ActorSystem) extends Actor wit
               for (i <- 1 to skipped) {
                 val time = new DateTime(currentCandle.time.getMillis + (5 * 60000 * i))
                 val candle = MarketCandle(time, 5, currentCandle.close)
+                // TODO you need to also calc ema1 and ema2
                 candles.insert(0, candle)
               }
             }
