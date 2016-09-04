@@ -3,8 +3,8 @@
 @(account: Entity[Account], btc: Option[Market], markets: List[Market])(implicit webJarAssets: WebJarAssets, messages: Messages)
 
 @scripts = {
-    <script type='text/javascript' src='@routes.Assets.at("javascripts/tickers.js")'></script>
-    <script type='text/javascript' src='@routes.Assets.at("javascripts/marketUpdates.js")'></script>
+    <script type='text/javascript' src='@routes.Assets.at("javascripts/init.js")'></script>
+    <script type='text/javascript' src='@routes.Assets.at("javascripts/updates.js")'></script>
 }
 
 

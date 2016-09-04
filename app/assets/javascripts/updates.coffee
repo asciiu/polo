@@ -18,6 +18,7 @@ $ ->
     if (market.name == "USDT_BTC")
       h1 = $('#'+market.name).html(market.status.last)
     else
+      # update market status
       tr = $('#'+market.name).children('td')
 
       $(tr[1]).html((market.status.last).toFixed(8))
@@ -57,20 +58,15 @@ $ ->
 
             # ema1
             if (result[5] != 0)
-              # if empty we need to add
-              if (ema1.data.length == undefined)
-                ema1.addPoint({x: data.length-1, y: result[5]})
-              else
-                # update the very latest ema1
-                ema1.data[ema1.length-1].update({y:result[5]})
+              # update the very latest ema1
+              ema1.data[ema1.data.length-1].update({y:result[5]})
 
             # ema2
             if (result[6] != 0)
-              # undefined we add new point
-              if (ema2.data.length == undefined)
-                ema2.addPoint({x: data.length-1, y: result[6]})
+              if (ema2.data.length == 0)
+                ema2.addPoint({x: data.length-1, y:result[6]})
               else
-                ema2.data[ema2.length-1].update({y:result[6]})
+                ema2.data[ema2.data.length-1].update({y:result[6]})
 
           else if (data.length == 0 || result[0] != last.name)
             candles.addPoint(result, true)

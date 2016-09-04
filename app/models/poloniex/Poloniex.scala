@@ -18,16 +18,6 @@ case class MarketStatus(id: Int,
                         high24hr: BigDecimal,
                         low24hr: BigDecimal)
 
-//case class PoloniexMarketUpdate(ticker: String,
-//                        last: BigDecimal,
-//                        lowestAsk: BigDecimal,
-//                        highestBid: BigDecimal,
-//                        percentChange: BigDecimal,
-//                        baseVolume: BigDecimal,
-//                        quoteVolume: BigDecimal,
-//                        isFrozen: Boolean,
-//                        high24hr: BigDecimal,
-//                        low24hr: BigDecimal)
 
 object MarketCandle {
   def roundDateToMinute(dateTime: DateTime, minutes: Int): DateTime = {
@@ -57,29 +47,16 @@ case class MarketCandle(time: DateTime,
   var ema2: BigDecimal = 0
 
   def isBuy(): Boolean = {
-    close-open > 0
+    (close - open) > 0
   }
 
-  def updateInfo(update: MarketStatus): Unit = {
+  def updateStatus(update: MarketStatus): Unit = {
     if (update.last < low || low == 0) low = update.last
     if (update.last > high || high == 0) high = update.last
 
-    // CryptoGuppy: troII, say you have the currency pair XMR_DASH,
-    // then the basevolume is vol. in XMR, quotevolume is vol. in DASH
     volumeBtc24Hr = update.baseVolume
 
     close = update.last
-  }
-
-  def isTimeInterval(t: DateTime): Boolean = {
-    val normalTime = MarketCandle.roundDateToMinute(t, timeIntervalMinutes)
-    if (time.isEqual(normalTime)) true
-    else false
-  }
-
-  def periodDif(t: DateTime): Int = {
-    val normalTime = MarketCandle.roundDateToMinute(t, timeIntervalMinutes)
-    ((normalTime.getMillis() - time.getMillis()) / (timeIntervalMinutes * 60000)).toInt
   }
 }
 

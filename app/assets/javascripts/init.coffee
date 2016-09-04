@@ -30,8 +30,11 @@ $ ->
 
   chart = $('#candle-chart').highcharts()
 
+  # market selection from table
   $('table > tbody > tr').click (event) ->
+    # market name
     name = $(this).attr('id')
+
     # update header stats
     td = $('#'+name).children('td')
 
@@ -44,13 +47,35 @@ $ ->
     # last
     $('#td-last').html($(td[1]).html())
 
+    # update chart
     chart.setTitle({text: name})
     route = jsRoutes.controllers.PoloniexController.candles(name)
-
     $.ajax
       method: route.method
       url: route.url
       success: (result) ->
-        #chart.addSeries({type: "candlestick", data: result}, true)
-        chart.series[0].setData(result, true)
+        if (result.length == 0)
+          return
+
+        candles = result.map (obj) ->
+          obj.splice(0, 5)
+
+        # retrieve the candles and set chart data for candles series
+        chart.series[0].setData(candles, true)
+
+        # obtain array of ema1 values from result
+        ema1 = result.map (obj, index) ->
+          {x: index, y: obj[5]}
+        # we don't care about non zero values
+        ema1 = ema1.filter (obj) ->
+          obj.y > 0
+
+        ema2 = result.map (obj, index) ->
+          {x: index, y: obj[6]}
+        ema2 = ema2.filter (obj) ->
+          obj.y > 0
+
+        chart.series[1].setData( ema1, true )
+        chart.series[2].setData( ema2, true )
+
         return
