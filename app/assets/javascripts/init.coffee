@@ -22,9 +22,13 @@ $ ->
           ]
         }, {
           name: 'EMA - 15'
+          color: 'rgba(255, 102, 102, 0.7)',
+          lineWidth: 1,
           data: []
         }, {
           name: 'EMA - 7'
+          color: 'rgba(112, 219, 112, 0.7)',
+          lineWidth: 1,
           data: []
         }]
 

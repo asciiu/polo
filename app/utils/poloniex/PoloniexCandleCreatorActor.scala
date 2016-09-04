@@ -89,7 +89,7 @@ class PoloniexCandleCreatorActor(implicit system: ActorSystem) extends Actor wit
           //{Close - EMA(previous day)} x multiplier + EMA(previous day)
           val ema1 = (candle.close - previousCandle.ema1) * multiplier(emaPeriod1) + previousCandle.ema1
           candle.ema1 = ema1.setScale(8, RoundingMode.CEILING)
-          log.info(s"$name EMA1 - $ema1")
+          //log.info(s"$name EMA1 - $ema1")
         }
 
         if (candles.length == emaPeriod2) {
@@ -97,10 +97,10 @@ class PoloniexCandleCreatorActor(implicit system: ActorSystem) extends Actor wit
           candle.ema2 = (sum2 / emaPeriod2).setScale(8, RoundingMode.CEILING)
         }
         else if (candles.length > emaPeriod2) {
-          val periousCandle = candles(1)
-          val ema2 = (candle.close - periousCandle.ema2) * multiplier(emaPeriod2) + periousCandle.ema2
+          val previousCandle = candles(1)
+          val ema2 = (candle.close - previousCandle.ema2) * multiplier(emaPeriod2) + previousCandle.ema2
           candle.ema2 = ema2.setScale(8, RoundingMode.CEILING)
-          log.info(s"$name EMA2 - $ema2")
+          //log.info(s"$name EMA2 - $ema2")
         }
       case None =>
     }
@@ -131,9 +131,13 @@ class PoloniexCandleCreatorActor(implicit system: ActorSystem) extends Actor wit
             val skipped = ((currentPeriod.getMillis() - currentCandle.time.getMillis()) / (5 * 60000)).toInt - 1
             if (skipped > 0) {
               for (i <- 1 to skipped) {
+                val previousCandle = candles(1)
                 val time = new DateTime(currentCandle.time.getMillis + (5 * 60000 * i))
                 val candle = MarketCandle(time, 5, currentCandle.close)
-                // TODO you need to also calc ema1 and ema2
+                val ema1 = (candle.close - previousCandle.ema1) * multiplier(emaPeriod1) + previousCandle.ema1
+                val ema2 = (candle.close - previousCandle.ema2) * multiplier(emaPeriod2) + previousCandle.ema2
+                candle.ema1 = ema1.setScale(8, RoundingMode.CEILING)
+                candle.ema2 = ema2.setScale(8, RoundingMode.CEILING)
                 candles.insert(0, candle)
               }
             }
