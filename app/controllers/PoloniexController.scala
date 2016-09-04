@@ -132,7 +132,7 @@ class PoloniexController @Inject()(val database: DBService,
 
    (candleActorRef ? GetCandles(s"BTC_$marketName")).mapTo[List[MarketCandle]].map { candles =>
      val df = DateTimeFormat.forPattern("MMM dd HH:mm")
-     val l = candles.map { c => Json.arr(df.print(c.time), c.open, c.high, c.low, c.close) }
+     val l = candles.map { c => Json.arr(df.print(c.time), c.open, c.high, c.low, c.close, c.ema1, c.ema2) }
 
      Ok(Json.toJson(l))
    }
@@ -147,7 +147,7 @@ class PoloniexController @Inject()(val database: DBService,
       candle match {
         case Some(c) =>
           val df = DateTimeFormat.forPattern("MMM dd HH:mm")
-          val info = Json.arr(df.print(c.time), c.open, c.high, c.low, c.close)
+          val info = Json.arr(df.print(c.time), c.open, c.high, c.low, c.close, c.ema1, c.ema2)
           Ok(Json.toJson(info))
         case None =>
           Ok("[]")
