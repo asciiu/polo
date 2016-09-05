@@ -3,8 +3,8 @@ $ ->
         title: text: 'Test'
         plotOptions: {
           candlestick: {
-            color: 'rgba(255, 102, 102, 0.6)'
-            upColor: 'rgba(112, 219, 112, 0.6)'
+            color: 'rgba(255, 102, 102, 0.7)'
+            upColor: 'rgba(112, 219, 112, 0.7)'
           }
         }
         series: [ {
@@ -26,7 +26,7 @@ $ ->
           data: []
         }, {
           name: 'EMA - 7'
-          color: 'rgba(112, 219, 112, 1)',
+          color: 'rgba(36, 143, 36, 1)',
           lineWidth: 1,
           data: []
         }]

@@ -41,7 +41,7 @@ class PoloniexCandleRetrieverActor(ws: WSClient)(implicit system: ActorSystem) e
       schedule = Some(system.scheduler.schedule(1 seconds, 3 seconds, self, DequeueMarket))
     }
   }
-  private def cancelScheduler() = {
+  private def stopScheduler() = {
     if (schedule.isDefined) {
       log.info("scheduler stopped")
       schedule.get.cancel()
@@ -50,7 +50,7 @@ class PoloniexCandleRetrieverActor(ws: WSClient)(implicit system: ActorSystem) e
 
   override def preStart() = {}
   override def postStop() = {
-    cancelScheduler()
+    stopScheduler()
   }
 
 
@@ -89,28 +89,31 @@ class PoloniexCandleRetrieverActor(ws: WSClient)(implicit system: ActorSystem) e
       marketQueue.enqueue(marketName)
       startScheduler()
     case DequeueMarket =>
-      val marketName = marketQueue.dequeue()
-      // TODO remove this
-      if (marketName == "BTC_XMR") {
-        if (marketQueue.isEmpty) cancelScheduler()
-        // timeStart is 24 hours from now
-        val nowUTC = new DateTime(DateTimeZone.UTC)
-        val timeStartSeconds = nowUTC.getMillis() / 1000L - 86400L
-        val periodLength = 300
-        val url = s"https://poloniex.com/public?command=returnChartData&currencyPair=$marketName&start=$timeStartSeconds&end=9999999999&period=$periodLength"
-        val poloniexRequest: WSRequest = ws.url(url)
-          .withHeaders("Accept" -> "application/json")
-          .withRequestTimeout(10000.millis)
+      if (marketQueue.nonEmpty) {
+        val marketName = marketQueue.dequeue()
+        // TODO remove this condition
+        if (marketName == "BTC_XMR") {
+          // timeStart is 24 hours from now
+          val nowUTC = new DateTime(DateTimeZone.UTC)
+          val timeStartSeconds = nowUTC.getMillis() / 1000L - 86400L
+          val periodLength = 300
+          val url = s"https://poloniex.com/public?command=returnChartData&currencyPair=$marketName&start=$timeStartSeconds&end=9999999999&period=$periodLength"
+          val poloniexRequest: WSRequest = ws.url(url)
+            .withHeaders("Accept" -> "application/json")
+            .withRequestTimeout(10000.millis)
 
-        poloniexRequest.get().map { polo =>
-          polo.json.validate[List[PoloMarketCandle]] match {
-            case JsSuccess(candles, t) =>
-              val last24HrCandles = candles.map { pc => MarketCandle(pc) }.sortBy(_.time).reverse
-              context.parent ! SetCandles(marketName, last24HrCandles)
-            case x =>
-              log.warning(s"could not retrieve candles for $marketName: ${x.toString}")
+          poloniexRequest.get().map { polo =>
+            polo.json.validate[List[PoloMarketCandle]] match {
+              case JsSuccess(candles, t) =>
+                val last24HrCandles = candles.map { pc => MarketCandle(pc) }.sortBy(_.time).reverse
+                context.parent ! SetCandles(marketName, last24HrCandles)
+              case x =>
+                log.warning(s"could not retrieve candles for $marketName: ${x.toString}")
+            }
           }
         }
+      } else {
+        stopScheduler()
       }
   }
 }
