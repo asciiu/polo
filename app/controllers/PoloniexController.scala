@@ -18,6 +18,7 @@ import play.api.mvc.{Controller, WebSocket}
 import play.api.libs.json._
 import play.api.libs.streams.ActorFlow
 import play.api.Configuration
+import scala.language.postfixOps
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
@@ -51,13 +52,13 @@ class PoloniexController @Inject()(val database: DBService,
 
   val poloniexUrl = conf.getString("poloniex.websocket").getOrElse("wss://api.poloniex.com")
   val websocketSupervisor = system.actorOf(PoloniexWebSocketSupervisor.props(poloniexUrl), "poloniex-web-supervisor")
-  val candleActorRef = system.actorOf(PoloniexCandleCreatorActor.props(), "Poloniex-candle-creator")
+  val candleActorRef = system.actorOf(PoloniexCandleCreatorActor.props(ws), "Poloniex-candle-creator")
 
   lifecycle.addStopHook{ () =>
     // gracefully stop these actors
     websocketSupervisor ! PoisonPill
     candleActorRef ! PoisonPill
-    Future.successful()
+    Future.successful(true)
   }
 
   /**

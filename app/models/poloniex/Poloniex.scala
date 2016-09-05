@@ -18,6 +18,17 @@ case class MarketStatus(id: Int,
                         high24hr: BigDecimal,
                         low24hr: BigDecimal)
 
+//[{"date":1405699200,"high":0.0045388,"low":0.00403001,"open":0.00404545,"close":0.00427592,"volume":44.11655644,
+//"quoteVolume":10259.29079097,"weightedAverage":0.00430015}, ...]
+case class PoloMarketCandle(date: DateTime,
+                         high: BigDecimal,
+                         low: BigDecimal,
+                         open: BigDecimal,
+                         close: BigDecimal,
+                         volume: BigDecimal,
+                         quoteVolume: BigDecimal,
+                         weightedAverage: BigDecimal)
+
 
 object MarketCandle {
   def roundDateToMinute(dateTime: DateTime, minutes: Int): DateTime = {
@@ -33,16 +44,24 @@ object MarketCandle {
       m * minutes
     )
   }
+
+  def apply (poloCandle: PoloMarketCandle): MarketCandle = {
+    val candle = MarketCandle(poloCandle.date, 5, poloCandle.open)
+    candle.low = poloCandle.low
+    candle.high = poloCandle.high
+    candle.volumeBtc = poloCandle.volume
+    candle.close = poloCandle.close
+    candle
+  }
 }
 
 case class MarketCandle(time: DateTime,
                         timeIntervalMinutes: Int,
-                        open: BigDecimal) {
-
-  var low: BigDecimal = open
-  var high: BigDecimal = open
-  var close: BigDecimal = open
-  var volumeBtc24Hr: BigDecimal = 0
+                        var open: BigDecimal) {
+  var low: BigDecimal = 0
+  var high: BigDecimal = 0
+  var close: BigDecimal = 0
+  var volumeBtc: BigDecimal = 0
   var ema1: BigDecimal = 0
   var ema2: BigDecimal = 0
 
@@ -50,12 +69,16 @@ case class MarketCandle(time: DateTime,
     (close - open) > 0
   }
 
+  def addCandle(candle: MarketCandle): Unit = {
+    // TODO this needs to know if the open time is less
+    open = candle.open
+    if (candle.low < low) low = candle.low
+    if (candle.high > high) high = candle.high
+  }
+
   def updateStatus(update: MarketStatus): Unit = {
     if (update.last < low || low == 0) low = update.last
     if (update.last > high || high == 0) high = update.last
-
-    volumeBtc24Hr = update.baseVolume
-
     close = update.last
   }
 }

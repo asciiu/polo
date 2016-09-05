@@ -6,25 +6,34 @@ package utils.poloniex
 import akka.actor.{Actor, ActorLogging, ActorSystem, Props}
 import models.poloniex.{Market, MarketCandle, MarketStatus}
 import org.joda.time._
+import play.api.libs.ws.WSClient
 
 import scala.collection.mutable.ListBuffer
 import scala.language.postfixOps
 import scala.math.BigDecimal.RoundingMode
 
 object PoloniexCandleCreatorActor {
-  def props()(implicit system: ActorSystem): Props = Props(new PoloniexCandleCreatorActor())
+  def props(ws: WSClient)(implicit system: ActorSystem): Props = Props(new PoloniexCandleCreatorActor(ws))
 
   trait CandleCreatorMessage
   case class GetCandles(marketName: String) extends CandleCreatorMessage
   case class GetLastestCandle(marketName: String) extends CandleCreatorMessage
+  case class SetCandles(marketName: String, candles: List[MarketCandle]) extends CandleCreatorMessage
 }
 
-class PoloniexCandleCreatorActor(implicit system: ActorSystem) extends Actor with ActorLogging {
+class PoloniexCandleCreatorActor(ws: WSClient)(implicit system: ActorSystem) extends Actor with ActorLogging {
   import PoloniexCandleCreatorActor._
+  import PoloniexCandleRetrieverActor._
 
   val eventBus = PoloniexEventBus()
   val marketCandles = scala.collection.mutable.Map[String, ListBuffer[MarketCandle]]()
   val movingAverages = scala.collection.mutable.Map[String, (BigDecimal, BigDecimal)]()
+  object Joda {
+    implicit def dateTimeOrdering: Ordering[DateTime] = Ordering.fromLessThan(_ isBefore _)
+  }
+  import Joda._
+  // Needed to retrieve candle data from Poloniex on start up
+  val candleDataRetriever = context.actorOf(PoloniexCandleRetrieverActor.props(ws), "Poloniex-candle-retriever")
 
   // TODO moving averages needs to be implemented probably in another class
   // try 15 and 7 as configurable periods
@@ -49,12 +58,12 @@ class PoloniexCandleCreatorActor(implicit system: ActorSystem) extends Actor wit
 
     case update: Market =>
       recordUpdate(update)
-      updateEMA(update.name)
+      //updateEMA(update.name)
 
     case GetCandles(name) =>
       marketCandles.get(name) match {
         case Some(list) =>
-          sender ! list.toList.reverse
+          sender ! list.toList.take(70).reverse
         case None =>
           sender ! List[MarketCandle]()
       }
@@ -66,6 +75,23 @@ class PoloniexCandleCreatorActor(implicit system: ActorSystem) extends Actor wit
         case None =>
           sender ! None
       }
+    case SetCandles(name, last24hrCandles) =>
+      marketCandles.get(name) match {
+        case Some(candles) =>
+          log.info(s"Retrieved candle data for $name")
+          val lastCandle = last24hrCandles.head
+          val currentCandle = candles.last
+          if (currentCandle.time.equals(lastCandle.time)) {
+            currentCandle.addCandle(lastCandle)
+            candles.appendAll(last24hrCandles.takeRight(last24hrCandles.length - 1))
+          } else {
+            candles.appendAll(last24hrCandles)
+          }
+        case None =>
+          log.error(s"received $name ${last24hrCandles.length} but nowhere to add them??")
+
+      }
+
   }
 
   def updateEMA(name: String) = {
@@ -160,6 +186,9 @@ class PoloniexCandleCreatorActor(implicit system: ActorSystem) extends Actor wit
           val candles =  scala.collection.mutable.ListBuffer.empty[MarketCandle]
           candles.append(candle)
           marketCandles.put(name, candles)
+          // send a message to the retriever to get the candle data from Poloniex
+          candleDataRetriever ! QueueMarket(name)
+
       }
     }
   }
