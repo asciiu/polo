@@ -58,7 +58,7 @@ class PoloniexCandleCreatorActor(ws: WSClient)(implicit system: ActorSystem) ext
 
     case update: Market =>
       recordUpdate(update)
-      //updateEMA(update.name)
+      updateEMA(update.name)
 
     case GetCandles(name) =>
       marketCandles.get(name) match {
@@ -84,45 +84,77 @@ class PoloniexCandleCreatorActor(ws: WSClient)(implicit system: ActorSystem) ext
           if (currentCandle.time.equals(lastCandle.time)) {
             currentCandle.addCandle(lastCandle)
             candles.appendAll(last24hrCandles.takeRight(last24hrCandles.length - 1))
+            updateAllEMA(name)
           } else {
             candles.appendAll(last24hrCandles)
+            updateAllEMA(name)
           }
         case None =>
           log.error(s"received $name ${last24hrCandles.length} but nowhere to add them??")
 
       }
-
   }
 
+  def updateAllEMA(name: String) = {
+    marketCandles.get(name) match {
+      case Some(candles) =>
+        val sum1 = candles.takeRight(emaPeriod1).map(_.close).sum
+        val sma1 = sum1 / emaPeriod1
+        candles(candles.length-emaPeriod1).ema1 = sma1
+        val sum2 = candles.takeRight(emaPeriod2).map(_.close).sum
+        val sma2 = sum2 / emaPeriod2
+        candles(candles.length-emaPeriod2).ema2 = sma2
+
+        // update the ema1 and ema2
+        for (i <- emaPeriod1 until candles.length-1) {
+          val previousCandle = candles(candles.length - i)
+          val candle = candles(candles.length - (i+1))
+          val ema1 = (candle.close - previousCandle.ema1) * multiplier(emaPeriod1) + previousCandle.ema1
+          candle.ema1 = ema1.setScale(8, RoundingMode.CEILING)
+        }
+
+        for (i <- emaPeriod2+1 until candles.length-1) {
+          val previousCandle = candles(candles.length - i)
+          val candle = candles(candles.length - (i+1))
+          val ema2 = (candle.close - previousCandle.ema2) * multiplier(emaPeriod2) + previousCandle.ema2
+          candle.ema2 = ema2.setScale(8, RoundingMode.CEILING)
+        }
+      case None =>
+    }
+  }
   def updateEMA(name: String) = {
     marketCandles.get(name) match {
       case Some(candles) =>
-        // get latest candle from head
         val candle = candles.head
+        if (candles.length > emaPeriod1) {
+        // get latest candle from head
 
         // has enough time elapsed yet
-        if (candles.length == emaPeriod1) {
-          // get all candles with time greater than equeal to time and sum the close price
-          val sum1 = candles.map(_.close).sum
-          // first ema1 will be the simple moving average
-          candle.ema1 = (sum1 / emaPeriod1).setScale(8, RoundingMode.CEILING)
-        }
+        //if (candles.length == emaPeriod1) {
+        //  // get all candles with time greater than equeal to time and sum the close price
+        //  val sum1 = candles.map(_.close).sum
+        //  // first ema1 will be the simple moving average
+        //  candle.ema1 = (sum1 / emaPeriod1).setScale(8, RoundingMode.CEILING)
+        //}
         // if the next candle in our list has an ema1 use it to calc this ema1
         // number of candles we have should be more than the emaPeriod1 in order for this
         // condition to hold. This means that
-        else if (candles.length > emaPeriod1) {
+        //if (candles.length > emaPeriod1) {
           val previousCandle = candles(1)
           //{Close - EMA(previous day)} x multiplier + EMA(previous day)
           val ema1 = (candle.close - previousCandle.ema1) * multiplier(emaPeriod1) + previousCandle.ema1
           candle.ema1 = ema1.setScale(8, RoundingMode.CEILING)
-          //log.info(s"$name EMA1 - $ema1")
         }
 
-        if (candles.length == emaPeriod2) {
-          val sum2 = candles.map(_.close).sum
-          candle.ema2 = (sum2 / emaPeriod2).setScale(8, RoundingMode.CEILING)
-        }
-        else if (candles.length > emaPeriod2) {
+        if (candles.length > emaPeriod2) {
+          //log.info(s"$name EMA1 - $ema1")
+        //}
+
+        //if (candles.length == emaPeriod2) {
+        //  val sum2 = candles.map(_.close).sum
+        //  candle.ema2 = (sum2 / emaPeriod2).setScale(8, RoundingMode.CEILING)
+        //}
+        //else if (candles.length > emaPeriod2) {
           val previousCandle = candles(1)
           val ema2 = (candle.close - previousCandle.ema2) * multiplier(emaPeriod2) + previousCandle.ema2
           candle.ema2 = ema2.setScale(8, RoundingMode.CEILING)

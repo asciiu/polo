@@ -1,11 +1,10 @@
 $ ->
   $('#candle-chart').highcharts 'StockChart',
-        rangeSelector: selected: 1
         title: text: 'Test'
         plotOptions: {
           candlestick: {
-            color: 'rgba(255, 102, 102, 0.3)'
-            upColor: 'rgba(112, 219, 112, 0.3)'
+            color: 'rgba(255, 102, 102, 0.6)'
+            upColor: 'rgba(112, 219, 112, 0.6)'
           }
         }
         series: [ {
@@ -22,12 +21,12 @@ $ ->
           ]
         }, {
           name: 'EMA - 15'
-          color: 'rgba(255, 102, 102, 0.7)',
+          color: 'rgba(255, 102, 102, 1)',
           lineWidth: 1,
           data: []
         }, {
           name: 'EMA - 7'
-          color: 'rgba(112, 219, 112, 0.7)',
+          color: 'rgba(112, 219, 112, 1)',
           lineWidth: 1,
           data: []
         }]
