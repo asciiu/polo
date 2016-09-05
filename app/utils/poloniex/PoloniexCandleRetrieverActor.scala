@@ -1,21 +1,19 @@
 package utils.poloniex
 
+// external
 import akka.actor.{Actor, ActorLogging, ActorSystem, Cancellable, Props}
-import models.poloniex.{MarketCandle, PoloMarketCandle}
 import org.joda.time.{DateTime, DateTimeZone}
-import play.api.libs.ws.{WSClient, WSRequest}
+import play.api.libs.ws.WSClient
 import play.api.libs.json._
 import play.api.libs.json.Reads._
 import play.api.libs.functional.syntax._
-import utils.poloniex.PoloniexCandleCreatorActor.SetCandles
-
-import scala.language.postfixOps
 import scala.concurrent.ExecutionContext.Implicits.global
 
+// internal
+import models.poloniex.{MarketCandle, PoloMarketCandle}
+import utils.poloniex.PoloniexCandleCreatorActor.SetCandles
 
-/**
-  * Created by bishop on 9/4/16.
-  */
+
 object PoloniexCandleRetrieverActor {
   def props(ws: WSClient)(implicit system: ActorSystem): Props = Props(new PoloniexCandleRetrieverActor(ws))
 
@@ -24,38 +22,24 @@ object PoloniexCandleRetrieverActor {
   case object DequeueMarket extends CandleRetrieverMessage
 }
 
+/**
+  * Created by bishop on 9/4/16
+  * Retrieves candles for markets within the last 24 hours. All candles
+  * are of 5 minute periods.
+  */
 class PoloniexCandleRetrieverActor(ws: WSClient)(implicit system: ActorSystem) extends Actor with ActorLogging {
   import PoloniexCandleRetrieverActor._
   import scala.concurrent.duration._
+  import scala.language.postfixOps
 
+  // TODO read this from config
+  val url = "https://poloniex.com/public"
   val marketQueue = scala.collection.mutable.Queue[String]()
-  var schedule: Option[Cancellable] = None
-  object Joda {
-    implicit def dateTimeOrdering: Ordering[DateTime] = Ordering.fromLessThan(_ isBefore _)
-  }
-  import Joda._
+  // 300 seconds = 5 minutes
+  val candleLength = 300
+  private var schedule: Option[Cancellable] = None
 
-  private def startScheduler() = {
-    if (!schedule.isDefined) {
-      log.info("scheduler started")
-      schedule = Some(system.scheduler.schedule(1 seconds, 3 seconds, self, DequeueMarket))
-    }
-  }
-  private def stopScheduler() = {
-    if (schedule.isDefined) {
-      log.info("scheduler stopped")
-      schedule.get.cancel()
-    }
-  }
-
-  override def preStart() = {}
-  override def postStop() = {
-    stopScheduler()
-  }
-
-
-  //[{"date":1405699200,"high":0.0045388,"low":0.00403001,"open":0.00404545,"close":0.00427592,"volume":44.11655644,
-  //"quoteVolume":10259.29079097,"weightedAverage":0.00430015}, ...]
+  // needed to convert poloniex long time (seconds) into DateTime
   val jodaDateReads = Reads[DateTime](js =>
     js.validate[Long].map[DateTime] { seconds =>
       new DateTime(seconds * 1000L)
@@ -70,19 +54,38 @@ class PoloniexCandleRetrieverActor(ws: WSClient)(implicit system: ActorSystem) e
       (JsPath \ "volume").read[BigDecimal] and
       (JsPath \ "quoteVolume").read[BigDecimal] and
       (JsPath \ "weightedAverage").read[BigDecimal]
-  )(PoloMarketCandle.apply _)
+    )(PoloMarketCandle.apply _)
 
   implicit val listReads: Reads[List[PoloMarketCandle]] = Reads { js =>
     JsSuccess(js.as[JsArray].value.map(j => j.validate[PoloMarketCandle](poloMarketReads).get).toList)
   }
 
-  //val jodaDateReads = Reads[DateTime](js =>
-  //  js.validate[Long].map[DateTime](dtSeconds =>
-  //    new DateTime((dtSeconds * 1000L))
-  //  )
-  //)
+  object Joda {
+    implicit def dateTimeOrdering: Ordering[DateTime] = Ordering.fromLessThan(_ isBefore _)
+  }
+  import Joda._
 
-  implicit val marketStatus = Json.reads[PoloMarketCandle]
+  private def startScheduler() = {
+    if (!schedule.isDefined) {
+      log.info("scheduler started")
+      // periodically retrieve market data from poloniex
+      // retrieving all candles for all markets is not possible with poloniex at the moment
+      // therefore, we need to retrieve the candles for each market separately. Poloniex
+      // will ban my IP if I make more than 6 calls per second. To be safe space the calls out
+      // to 3 seconds.
+      schedule = Some(system.scheduler.schedule(1 seconds, 3 seconds, self, DequeueMarket))
+    }
+  }
+
+  private def stopScheduler() = {
+    if (schedule.isDefined) {
+      log.info("scheduler stopped")
+      schedule.get.cancel()
+      schedule = None
+    }
+  }
+
+  override def postStop() = stopScheduler()
 
   def receive: Receive = {
     case QueueMarket(marketName) =>
@@ -93,26 +96,31 @@ class PoloniexCandleRetrieverActor(ws: WSClient)(implicit system: ActorSystem) e
         val marketName = marketQueue.dequeue()
         // TODO remove this condition
         if (marketName == "BTC_XMR") {
-          // timeStart is 24 hours from now
-          val nowUTC = new DateTime(DateTimeZone.UTC)
-          val timeStartSeconds = nowUTC.getMillis() / 1000L - 86400L
-          val periodLength = 300
-          val url = s"https://poloniex.com/public?command=returnChartData&currencyPair=$marketName&start=$timeStartSeconds&end=9999999999&period=$periodLength"
-          val poloniexRequest: WSRequest = ws.url(url)
+          // 24 hours ago in seconds
+          // poloniex timestamps should be in UTC
+          val timeStartSeconds = (new DateTime(DateTimeZone.UTC)).getMillis() / 1000L - 86400L
+          ws.url(url)
             .withHeaders("Accept" -> "application/json")
-            .withRequestTimeout(10000.millis)
-
-          poloniexRequest.get().map { polo =>
-            polo.json.validate[List[PoloMarketCandle]] match {
-              case JsSuccess(candles, t) =>
-                val last24HrCandles = candles.map { pc => MarketCandle(pc) }.sortBy(_.time).reverse
-                context.parent ! SetCandles(marketName, last24HrCandles)
-              case x =>
-                log.warning(s"could not retrieve candles for $marketName: ${x.toString}")
+            .withQueryString("command" -> "returnChartData")
+            .withQueryString("currencyPair" -> marketName)
+            .withQueryString("start" -> timeStartSeconds.toString)
+            .withQueryString("end" -> "9999999999")
+            .withQueryString("period" -> candleLength.toString)
+            .withRequestTimeout(10000 milliseconds)
+            .get().map { polo => {
+              polo.json.validate[List[PoloMarketCandle]] match {
+                case JsSuccess(candles, t) =>
+                  // sorted by time with most recent first
+                  val last24HrCandles = candles.map( cand => MarketCandle(cand) ).sortBy(_.time).reverse
+                  context.parent ! SetCandles(marketName, last24HrCandles)
+                case x =>
+                  log.error(s"could not retrieve candles for $marketName: ${x.toString}")
+              }
             }
           }
         }
       } else {
+        // there's noting to retrieve anymore no need to schedule further
         stopScheduler()
       }
   }
