@@ -1,10 +1,8 @@
 package utils.poloniex
 
 import akka.event.{ActorEventBus, LookupClassification}
-import models.poloniex.{Market, MarketCandle}
 
-
-case class MarketEvent(topic: String, market: Market)
+case class MarketEvent(topic: String, payload: Any)
 
 /**
   * Created by bishop on 8/16/16.
@@ -20,7 +18,7 @@ class PoloniexEventBus extends ActorEventBus with LookupClassification {
   }
 
   protected def publish(event: Event, subscriber: Subscriber): Unit = {
-    subscriber ! event.market
+    subscriber ! event.payload
   }
 }
 

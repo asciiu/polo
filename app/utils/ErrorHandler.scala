@@ -1,13 +1,15 @@
-import play.api.http.HttpErrorHandler
-import play.api.mvc._
-import play.api.mvc.Results._
+package utils
 
-import scala.concurrent._
 import javax.inject.Singleton
 
 import com.google.inject.Inject
 import controllers.WebJarAssets
+import play.api.http.HttpErrorHandler
 import play.api.i18n.{I18nSupport, MessagesApi}
+import play.api.mvc.Results._
+import play.api.mvc._
+
+import scala.concurrent._
 
 @Singleton
 class ErrorHandler @Inject() (val messagesApi: MessagesApi)(implicit assets: WebJarAssets) extends HttpErrorHandler with I18nSupport {

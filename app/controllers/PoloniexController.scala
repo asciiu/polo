@@ -5,7 +5,7 @@ import akka.actor.{Actor, ActorRef, ActorSystem, PoisonPill, Props}
 import akka.pattern.ask
 import akka.util.Timeout
 import akka.stream.Materializer
-import javax.inject.{Inject, Singleton}
+import javax.inject.{Inject, Named, Singleton}
 
 import jp.t2v.lab.play2.auth.AuthElement
 import models.bittrex.AllMarketSummary
@@ -18,8 +18,10 @@ import play.api.mvc.{Controller, WebSocket}
 import play.api.libs.json._
 import play.api.libs.streams.ActorFlow
 import play.api.Configuration
-import scala.language.postfixOps
+import services.EMA
+import services.ExponentialMovingAverageActor.{GetMovingAverage, GetMovingAverages}
 
+import scala.language.postfixOps
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.concurrent.Future
@@ -29,14 +31,15 @@ import scala.math.BigDecimal.RoundingMode
 import models.db.AccountRole
 import models.poloniex.{Market, MarketStatus}
 import services.DBService
-import utils.poloniex.{PoloniexCandleCreatorActor, PoloniexEventBus, PoloniexWebSocketSupervisor}
+import utils.poloniex.{PoloniexCandleManagerActor, PoloniexEventBus, PoloniexWebSocketSupervisor}
 
 @Singleton
 class PoloniexController @Inject()(val database: DBService,
                                    val messagesApi: MessagesApi,
                                    ws: WSClient,
                                    conf: Configuration,
-                                   lifecycle: ApplicationLifecycle)
+                                   lifecycle: ApplicationLifecycle,
+                                   @Named("ema-actor") movingAveragesActor: ActorRef)
                                   (implicit system: ActorSystem,
                                    materializer: Materializer,
                                    context: ExecutionContext,
@@ -52,7 +55,7 @@ class PoloniexController @Inject()(val database: DBService,
 
   val poloniexUrl = conf.getString("poloniex.websocket").getOrElse("wss://api.poloniex.com")
   val websocketSupervisor = system.actorOf(PoloniexWebSocketSupervisor.props(poloniexUrl), "poloniex-web-supervisor")
-  val candleActorRef = system.actorOf(PoloniexCandleCreatorActor.props(ws), "Poloniex-candle-creator")
+  val candleActorRef = system.actorOf(PoloniexCandleManagerActor.props(ws), "Poloniex-candle-creator")
 
   lifecycle.addStopHook{ () =>
     // gracefully stop these actors
@@ -127,34 +130,65 @@ class PoloniexController @Inject()(val database: DBService,
   }
 
   // returns locally stored candles
-  def candles(marketName: String) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
-    import PoloniexCandleCreatorActor._
+  def candles(simpleName: String) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
+    import PoloniexCandleManagerActor._
     implicit val timeout = Timeout(5 seconds)
 
-   (candleActorRef ? GetCandles(s"BTC_$marketName")).mapTo[List[MarketCandle]].map { candles =>
-     val df = DateTimeFormat.forPattern("MMM dd HH:mm")
-     val l = candles.map { c => Json.arr(df.print(c.time), c.open, c.high, c.low, c.close, c.ema1, c.ema2) }
+    val marketName = s"BTC_$simpleName"
+    for {
+      candles <- (candleActorRef ? GetCandles(marketName)).mapTo[List[MarketCandle]]
+      movingAverages <- (movingAveragesActor ? GetMovingAverages(marketName)).mapTo[List[(Int, List[EMA])]]
+    } yield {
+      // TODO this will fail if there are not 2 moving averages
+      val df = DateTimeFormat.forPattern("MMM dd HH:mm")
+      val l = candles.map { c =>
+        Json.arr(
+          df.print(c.time),
+          c.open,
+          c.high,
+          c.low,
+          c.close,
+          movingAverages(0)._2.find( avg => c.time.equals(avg.time)).getOrElse(EMA(c.time, 0)).ema,
+          movingAverages(1)._2.find( avg => c.time.equals(avg.time)).getOrElse(EMA(c.time, 0)).ema
+        )
+      }
 
-     Ok(Json.toJson(l))
-   }
+      Ok(Json.toJson(l))
+    }
   }
 
   // returns latest candle
-  def latestCandle(marketName: String) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
-    import PoloniexCandleCreatorActor._
+  def latestCandle(simpleName: String) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
+    import PoloniexCandleManagerActor._
     implicit val timeout = Timeout(5 seconds)
 
-    (candleActorRef ? GetLastestCandle(s"BTC_$marketName")).mapTo[Option[MarketCandle]].map { candle =>
-      candle match {
-        case Some(c) =>
-          val df = DateTimeFormat.forPattern("MMM dd HH:mm")
-          val info = Json.arr(df.print(c.time), c.open, c.high, c.low, c.close, c.ema1, c.ema2)
-          Ok(Json.toJson(info))
-        case None =>
-          Ok("[]")
+    val marketName = s"BTC_$simpleName"
+    // TODO this will fail if the first future returns a None
+    for {
+      candle <- (candleActorRef ? GetLastestCandle(marketName)).mapTo[Option[MarketCandle]]
+      averages <- (movingAveragesActor ? GetMovingAverage(marketName, candle.get.time)).mapTo[List[(Int, BigDecimal)]]
+    } yield {
+      val df = DateTimeFormat.forPattern("MMM dd HH:mm")
+
+      val info = candle match {
+        case Some(c) if averages.length == 2 =>
+            Json.arr(
+              df.print(c.time),
+              c.open,
+              c.high,
+              c.low,
+              c.close,
+              averages(0)._2,
+              averages(1)._2
+            )
+        case _ =>
+          Json.arr()
       }
+
+      Ok(Json.toJson(info))
     }
   }
+
 
   // Prototyping an arbitrage scenario between Polo and bittrex
   // needs to be implemented.

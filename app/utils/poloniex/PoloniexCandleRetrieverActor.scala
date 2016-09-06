@@ -7,11 +7,14 @@ import play.api.libs.ws.WSClient
 import play.api.libs.json._
 import play.api.libs.json.Reads._
 import play.api.libs.functional.syntax._
+import services.ClosePrice
+
 import scala.concurrent.ExecutionContext.Implicits.global
 
 // internal
 import models.poloniex.{MarketCandle, PoloMarketCandle}
-import utils.poloniex.PoloniexCandleCreatorActor.SetCandles
+import utils.poloniex.PoloniexCandleManagerActor.SetCandles
+import services.ExponentialMovingAverageActor._
 
 
 object PoloniexCandleRetrieverActor {
@@ -32,6 +35,7 @@ class PoloniexCandleRetrieverActor(ws: WSClient)(implicit system: ActorSystem) e
   import scala.concurrent.duration._
   import scala.language.postfixOps
 
+  val eventBus = PoloniexEventBus()
   // TODO read this from config
   val url = "https://poloniex.com/public"
   val marketQueue = scala.collection.mutable.Queue[String]()
@@ -113,6 +117,10 @@ class PoloniexCandleRetrieverActor(ws: WSClient)(implicit system: ActorSystem) e
                   // sorted by time with most recent first
                   val last24HrCandles = candles.map( cand => MarketCandle(cand) ).sortBy(_.time).reverse
                   context.parent ! SetCandles(marketName, last24HrCandles)
+
+                  // publish closing prices for this market
+                  val closingPrices = MarketCandleClosePrices(marketName, last24HrCandles.map( c => ClosePrice(c.time, c.close)))
+                  eventBus.publish(MarketEvent("/market/prices", closingPrices))
                 case x =>
                   log.error(s"could not retrieve candles for $marketName: ${x.toString}")
               }
