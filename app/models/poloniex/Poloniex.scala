@@ -62,8 +62,6 @@ case class MarketCandle(time: DateTime,
   var high: BigDecimal = 0
   var close: BigDecimal = 0
   var volumeBtc: BigDecimal = 0
-  var ema1: BigDecimal = 0
-  var ema2: BigDecimal = 0
 
   def isBuy(): Boolean = {
     (close - open) > 0

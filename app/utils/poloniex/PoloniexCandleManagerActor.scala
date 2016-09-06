@@ -29,26 +29,14 @@ class PoloniexCandleManagerActor(ws: WSClient)(implicit system: ActorSystem) ext
 
   val eventBus = PoloniexEventBus()
   val marketCandles = scala.collection.mutable.Map[String, ListBuffer[MarketCandle]]()
-  val movingAverages = scala.collection.mutable.Map[String, (BigDecimal, BigDecimal)]()
+
   object Joda {
     implicit def dateTimeOrdering: Ordering[DateTime] = Ordering.fromLessThan(_ isBefore _)
   }
   import Joda._
-  // Needed to retrieve candle data from Poloniex on start up
+
   val candleDataRetriever = context.actorOf(PoloniexCandleRetrieverActor.props(ws), "Poloniex-candle-retriever")
 
-  // TODO moving averages needs to be implemented probably in another class
-  // try 15 and 7 as configurable periods
-  // interval can be configured as 5 min, 15 min, 30 min, 1 hr, 2 hr
-
-  // 30 minutes should really be 6
-  // start with 5 minute interval or 1 candle period
-  var emaPeriod1 = 15
-  var emaPeriod2 = 7
-
-  def multiplier(period: Int) : BigDecimal = {
-    BigDecimal(2.0 / (period + 1))
-  }
 
   override def preStart() = {
     log info "subscribed to market updates"
@@ -59,7 +47,6 @@ class PoloniexCandleManagerActor(ws: WSClient)(implicit system: ActorSystem) ext
 
     case update: Market =>
       recordUpdate(update)
-      updateEMA(update.name)
 
     case GetCandles(name) =>
       marketCandles.get(name) match {
@@ -76,6 +63,7 @@ class PoloniexCandleManagerActor(ws: WSClient)(implicit system: ActorSystem) ext
         case None =>
           sender ! None
       }
+
     case SetCandles(name, last24hrCandles) =>
       marketCandles.get(name) match {
         case Some(candles) =>
@@ -85,63 +73,12 @@ class PoloniexCandleManagerActor(ws: WSClient)(implicit system: ActorSystem) ext
           if (currentCandle.time.equals(lastCandle.time)) {
             currentCandle.addCandle(lastCandle)
             candles.appendAll(last24hrCandles.takeRight(last24hrCandles.length - 1))
-            updateAllEMA(name)
           } else {
             candles.appendAll(last24hrCandles)
-            updateAllEMA(name)
           }
         case None =>
           log.error(s"received $name ${last24hrCandles.length} but nowhere to add them??")
-
       }
-  }
-
-  def updateAllEMA(name: String) = {
-    marketCandles.get(name) match {
-      case Some(candles) =>
-        val sum1 = candles.takeRight(emaPeriod1).map(_.close).sum
-        val sma1 = sum1 / emaPeriod1
-        candles(candles.length-emaPeriod1).ema1 = sma1
-        val sum2 = candles.takeRight(emaPeriod2).map(_.close).sum
-        val sma2 = sum2 / emaPeriod2
-        candles(candles.length-emaPeriod2).ema2 = sma2
-
-        // update the ema1 and ema2
-        for (i <- emaPeriod1 until candles.length-1) {
-          val previousCandle = candles(candles.length - i)
-          val candle = candles(candles.length - (i+1))
-          val ema1 = (candle.close - previousCandle.ema1) * multiplier(emaPeriod1) + previousCandle.ema1
-          candle.ema1 = ema1.setScale(8, RoundingMode.CEILING)
-        }
-
-        for (i <- emaPeriod2+1 until candles.length-1) {
-          val previousCandle = candles(candles.length - i)
-          val candle = candles(candles.length - (i+1))
-          val ema2 = (candle.close - previousCandle.ema2) * multiplier(emaPeriod2) + previousCandle.ema2
-          candle.ema2 = ema2.setScale(8, RoundingMode.CEILING)
-        }
-      case None =>
-    }
-  }
-  def updateEMA(name: String) = {
-    marketCandles.get(name) match {
-      case Some(candles) =>
-        val candle = candles.head
-        if (candles.length > emaPeriod1) {
-          val previousCandle = candles(1)
-          // formula = {Close - EMA(previous day)} x multiplier + EMA(previous day)
-          // http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:moving_averages
-          val ema1 = (candle.close - previousCandle.ema1) * multiplier(emaPeriod1) + previousCandle.ema1
-          candle.ema1 = ema1.setScale(8, RoundingMode.CEILING)
-        }
-
-        if (candles.length > emaPeriod2) {
-          val previousCandle = candles(1)
-          val ema2 = (candle.close - previousCandle.ema2) * multiplier(emaPeriod2) + previousCandle.ema2
-          candle.ema2 = ema2.setScale(8, RoundingMode.CEILING)
-        }
-      case None =>
-    }
   }
 
   def recordUpdate(update: Market) = {
@@ -152,7 +89,6 @@ class PoloniexCandleManagerActor(ws: WSClient)(implicit system: ActorSystem) ext
       // todo maybe this publish should be elsewhere?
       val time = MarketCandle.roundDateToMinute(new DateTime(), 5)
       val newCandleClose = MarketCandleClose(name, ClosePrice(time, update.status.last))
-      eventBus.publish(MarketEvent("/market/candle/close", newCandleClose))
 
       // do we have candles for this market?
       marketCandles.get(name) match {
@@ -175,12 +111,11 @@ class PoloniexCandleManagerActor(ws: WSClient)(implicit system: ActorSystem) ext
             if (skipped > 0) {
               for (i <- 1 to skipped) {
                 val previousCandle = candles(1)
-                val time = new DateTime(currentCandle.time.getMillis + (5 * 60000 * i))
+                val t = new DateTime(currentCandle.time.getMillis + (5 * 60000 * i))
                 val candle = MarketCandle(time, 5, currentCandle.close)
-                val ema1 = (candle.close - previousCandle.ema1) * multiplier(emaPeriod1) + previousCandle.ema1
-                val ema2 = (candle.close - previousCandle.ema2) * multiplier(emaPeriod2) + previousCandle.ema2
-                candle.ema1 = ema1.setScale(8, RoundingMode.CEILING)
-                candle.ema2 = ema2.setScale(8, RoundingMode.CEILING)
+
+                // TODO this should work idk yet
+                eventBus.publish(MarketEvent("/market/candle/close", MarketCandleClose(name, ClosePrice(t, currentCandle.close))))
                 candles.insert(0, candle)
               }
             }
@@ -205,8 +140,9 @@ class PoloniexCandleManagerActor(ws: WSClient)(implicit system: ActorSystem) ext
           marketCandles.put(name, candles)
           // send a message to the retriever to get the candle data from Poloniex
           candleDataRetriever ! QueueMarket(name)
-
       }
+
+      eventBus.publish(MarketEvent("/market/candle/close", newCandleClose))
     }
   }
 }
