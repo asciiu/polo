@@ -5,11 +5,14 @@ package utils
   */
 import com.google.inject.AbstractModule
 import play.api.libs.concurrent.AkkaGuiceSupport
-
-import services.ExponentialMovingAverageActor
+import services.{CandleManagerActor, ExponentialMovingAverageActor}
+import utils.poloniex.{PoloniexCandleRetrieverActor, PoloniexWebSocketClient}
 
 class CustomModule extends AbstractModule with AkkaGuiceSupport {
   def configure = {
+    bindActor[CandleManagerActor]("candle-actor")
     bindActor[ExponentialMovingAverageActor]("ema-actor")
+    bindActor[PoloniexCandleRetrieverActor]("polo-candle-retriever")
+    bindActor[PoloniexWebSocketClient]("polo-websocket-client")
   }
 }

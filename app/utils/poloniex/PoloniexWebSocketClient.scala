@@ -2,35 +2,30 @@ package utils.poloniex
 
 // external
 import akka.actor._
-import akka.io.IO
 import akka.wamp._
-import akka.wamp.Wamp.Connected
 import akka.wamp.client._
-import akka.wamp.messages._
+import javax.inject.Inject
+import play.api.Configuration
 import org.joda.time.DateTime
-import play.Play
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.ExecutionContext
 
 // internal
 import models.poloniex.{MarketStatus, Market}
 
-
-object PoloniexWebSocketClient {
-  def props(url: String)(implicit system: ActorSystem): Props = Props(new PoloniexWebSocketClient(url))
-}
-
-class PoloniexWebSocketClient(endpoint: String)(implicit system: ActorSystem) extends Actor with ActorLogging with Scope.Session {
-  var transport: ActorRef = _
-  var sessionId: Long = _
+class PoloniexWebSocketClient @Inject() (conf: Configuration)(implicit context: ExecutionContext, system: ActorSystem) extends Actor with ActorLogging with Scope.Session {
+  val endpoint = conf.getString("poloniex.websocket").getOrElse("wss://api.poloniex.com")
+  val eventBus = PoloniexEventBus()
 
   override def preStart(): Unit = {
     for {
       session <- Client().connectAndOpen(url = endpoint, realm = "realm1")
       subscription <- session.subscribe("ticker") { event =>
+        log.debug(s"received $event")
         event.payload.map{ p =>
           processPayload(p.arguments) match {
             case Some(update) =>
-              context.parent ! update
+              eventBus.publish(MarketEvent("/market/update", update))
+              //context.parent ! update
             case None =>
               log info "received payload arguments not equal to 10"
           }}

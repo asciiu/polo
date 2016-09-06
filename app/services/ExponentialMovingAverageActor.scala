@@ -2,18 +2,15 @@ package services
 
 import javax.inject.Inject
 
-import akka.actor.{Actor, ActorLogging, ActorSystem, Props}
-import models.poloniex.{Market, MarketCandle}
+import akka.actor.{Actor, ActorLogging}
 import org.joda.time.DateTime
 import play.api.Configuration
-import play.api.libs.ws.WSClient
-import utils.poloniex.{PoloniexCandleRetrieverActor, PoloniexEventBus}
-
 import scala.collection.mutable.ListBuffer
 import scala.math.BigDecimal.RoundingMode
 
-case class ClosePrice(time: DateTime, price: BigDecimal)
-case class EMA(time: DateTime, ema: BigDecimal)
+// internals
+import models.market.{ClosePrice, EMA}
+import utils.poloniex.{PoloniexEventBus}
 
 
 object ExponentialMovingAverageActor {
@@ -49,6 +46,11 @@ class ExponentialMovingAverageActor @Inject() (configuration: Configuration) ext
 
     // default tracking periods are 7 and 15 candles
     trackingPeriods ++= List(7, 15)
+  }
+
+  override def postStop() = {
+    eventBus.unsubscribe(self, "/makert/candle/close")
+    eventBus.unsubscribe(self, "/market/prices")
   }
 
   def receive = {
@@ -160,6 +162,13 @@ class ExponentialMovingAverageActor @Inject() (configuration: Configuration) ext
           // replace the head with new
           averages.insert(0, EMA(closePrice.time, ema.setScale(8, RoundingMode.CEILING)))
         }
+
+        // limit averages to 24 hours
+        if (averages.length > 288) {
+          val removeNum = averages.length - 288
+          averages.remove(288, removeNum)
+        }
+
       case None =>
         log.debug(s"can't update moving average for $marketName because I haven't received initial averages for this market")
     }

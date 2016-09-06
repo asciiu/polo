@@ -2,24 +2,25 @@ package utils.poloniex
 
 // external
 import akka.actor.{Actor, ActorLogging, ActorSystem, Cancellable, Props}
+import javax.inject.Inject
+
+import models.market.ClosePrice
 import org.joda.time.{DateTime, DateTimeZone}
+import play.api.Configuration
 import play.api.libs.ws.WSClient
 import play.api.libs.json._
 import play.api.libs.json.Reads._
 import play.api.libs.functional.syntax._
-import services.ClosePrice
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
 // internal
 import models.poloniex.{MarketCandle, PoloMarketCandle}
-import utils.poloniex.PoloniexCandleManagerActor.SetCandles
+import services.CandleManagerActor.SetCandles
 import services.ExponentialMovingAverageActor._
 
 
 object PoloniexCandleRetrieverActor {
-  def props(ws: WSClient)(implicit system: ActorSystem): Props = Props(new PoloniexCandleRetrieverActor(ws))
-
   trait CandleRetrieverMessage
   case class QueueMarket(marketName: String) extends CandleRetrieverMessage
   case object DequeueMarket extends CandleRetrieverMessage
@@ -30,7 +31,7 @@ object PoloniexCandleRetrieverActor {
   * Retrieves candles for markets within the last 24 hours. All candles
   * are of 5 minute periods.
   */
-class PoloniexCandleRetrieverActor(ws: WSClient)(implicit system: ActorSystem) extends Actor with ActorLogging {
+class PoloniexCandleRetrieverActor @Inject()(ws: WSClient, conf: Configuration) extends Actor with ActorLogging {
   import PoloniexCandleRetrieverActor._
   import scala.concurrent.duration._
   import scala.language.postfixOps
@@ -71,25 +72,30 @@ class PoloniexCandleRetrieverActor(ws: WSClient)(implicit system: ActorSystem) e
 
   private def startScheduler() = {
     if (!schedule.isDefined) {
-      log.info("scheduler started")
       // periodically retrieve market data from poloniex
       // retrieving all candles for all markets is not possible with poloniex at the moment
       // therefore, we need to retrieve the candles for each market separately. Poloniex
       // will ban my IP if I make more than 6 calls per second. To be safe space the calls out
       // to 3 seconds.
-      schedule = Some(system.scheduler.schedule(1 seconds, 3 seconds, self, DequeueMarket))
+      schedule = Some(context.system.scheduler.schedule(1 seconds, 3 seconds, self, DequeueMarket))
     }
   }
 
   private def stopScheduler() = {
     if (schedule.isDefined) {
-      log.info("scheduler stopped")
       schedule.get.cancel()
       schedule = None
     }
   }
 
-  override def postStop() = stopScheduler()
+  override def preStart() = {
+    eventBus.subscribe(self, "/market/added")
+  }
+
+  override def postStop() = {
+    stopScheduler()
+    eventBus.unsubscribe(self, "/market/added")
+  }
 
   def receive: Receive = {
     case QueueMarket(marketName) =>
@@ -116,7 +122,7 @@ class PoloniexCandleRetrieverActor(ws: WSClient)(implicit system: ActorSystem) e
                 case JsSuccess(candles, t) =>
                   // sorted by time with most recent first
                   val last24HrCandles = candles.map( cand => MarketCandle(cand) ).sortBy(_.time).reverse
-                  context.parent ! SetCandles(marketName, last24HrCandles)
+                  eventBus.publish(MarketEvent("/market/candles", SetCandles(marketName, last24HrCandles)))
 
                   // publish closing prices for this market
                   val closingPrices = MarketCandleClosePrices(marketName, last24HrCandles.map( c => ClosePrice(c.time, c.close)))

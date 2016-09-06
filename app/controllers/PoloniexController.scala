@@ -1,37 +1,35 @@
 package controllers
 
 // external
-import akka.actor.{Actor, ActorRef, ActorSystem, PoisonPill, Props}
+import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.pattern.ask
 import akka.util.Timeout
 import akka.stream.Materializer
 import javax.inject.{Inject, Named, Singleton}
-
 import jp.t2v.lab.play2.auth.AuthElement
-import models.bittrex.AllMarketSummary
-import models.poloniex.MarketCandle
-import org.joda.time.format.DateTimeFormat
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.inject.ApplicationLifecycle
-import play.api.libs.ws.{WSClient, WSRequest, WSResponse}
+import play.api.libs.ws.{WSClient, WSRequest}
 import play.api.mvc.{Controller, WebSocket}
 import play.api.libs.json._
 import play.api.libs.streams.ActorFlow
 import play.api.Configuration
-import services.EMA
+import org.joda.time.format.DateTimeFormat
 import services.ExponentialMovingAverageActor.{GetMovingAverage, GetMovingAverages}
-
+import services.CandleManagerActor
 import scala.language.postfixOps
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
-import scala.concurrent.Future
 import scala.math.BigDecimal.RoundingMode
 
 // internal
 import models.db.AccountRole
 import models.poloniex.{Market, MarketStatus}
 import services.DBService
-import utils.poloniex.{PoloniexCandleManagerActor, PoloniexEventBus, PoloniexWebSocketSupervisor}
+import utils.poloniex.PoloniexEventBus
+import models.bittrex.AllMarketSummary
+import models.market.EMA
+import models.poloniex.MarketCandle
 
 @Singleton
 class PoloniexController @Inject()(val database: DBService,
@@ -39,7 +37,10 @@ class PoloniexController @Inject()(val database: DBService,
                                    ws: WSClient,
                                    conf: Configuration,
                                    lifecycle: ApplicationLifecycle,
-                                   @Named("ema-actor") movingAveragesActor: ActorRef)
+                                   @Named("candle-actor") candleActorRef: ActorRef,
+                                   @Named("ema-actor") movingAveragesActor: ActorRef,
+                                   @Named("polo-candle-retriever") candleRetrieverActor: ActorRef,
+                                   @Named("polo-websocket-client") websocketClient: ActorRef)
                                   (implicit system: ActorSystem,
                                    materializer: Materializer,
                                    context: ExecutionContext,
@@ -52,17 +53,6 @@ class PoloniexController @Inject()(val database: DBService,
     JsSuccess(js.as[JsObject].fieldSet.map { ticker =>
       Market(ticker._1, ticker._2.as[MarketStatus])
     }.toList))
-
-  val poloniexUrl = conf.getString("poloniex.websocket").getOrElse("wss://api.poloniex.com")
-  val websocketSupervisor = system.actorOf(PoloniexWebSocketSupervisor.props(poloniexUrl), "poloniex-web-supervisor")
-  val candleActorRef = system.actorOf(PoloniexCandleManagerActor.props(ws), "Poloniex-candle-creator")
-
-  lifecycle.addStopHook{ () =>
-    // gracefully stop these actors
-    websocketSupervisor ! PoisonPill
-    candleActorRef ! PoisonPill
-    Future.successful(true)
-  }
 
   /**
     * Websocket for clients that sends market updates.
@@ -131,7 +121,7 @@ class PoloniexController @Inject()(val database: DBService,
 
   // returns locally stored candles
   def candles(simpleName: String) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
-    import PoloniexCandleManagerActor._
+    import CandleManagerActor._
     implicit val timeout = Timeout(5 seconds)
 
     val marketName = s"BTC_$simpleName"
@@ -159,7 +149,7 @@ class PoloniexController @Inject()(val database: DBService,
 
   // returns latest candle
   def latestCandle(simpleName: String) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
-    import PoloniexCandleManagerActor._
+    import CandleManagerActor._
     implicit val timeout = Timeout(5 seconds)
 
     val marketName = s"BTC_$simpleName"
