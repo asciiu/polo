@@ -37,8 +37,7 @@ class PoloniexCandleRetrieverActor @Inject()(ws: WSClient, conf: Configuration) 
   import scala.language.postfixOps
 
   val eventBus = PoloniexEventBus()
-  // TODO read this from config
-  val url = "https://poloniex.com/public"
+  val url = conf.getString("poloniex.endpoint.public").getOrElse("https://poloniex.com/public")
   val marketQueue = scala.collection.mutable.Queue[String]()
   // 300 seconds = 5 minutes
   val candleLength = 300
