@@ -1,6 +1,7 @@
 package utils.poloniex
 
-import models.poloniex.CurrencyBalance
+import models.poloniex._
+import org.joda.time.DateTime
 import play.api.Configuration
 import play.api.libs.json._
 import play.api.libs.ws.WSClient
@@ -32,8 +33,7 @@ class PoloniexTradeClient (apiKey: String,
 
     setAuthenticationHeaders(wsClient.url(url), params(command, n))
       .post(Map("command" -> Seq(command), "nonce" -> Seq(n)))
-      .map{ response =>
-        println(s"HERE ${response.json.toString()}")
+      .map{ response => ???
     }
   }
 
@@ -69,10 +69,33 @@ class PoloniexTradeClient (apiKey: String,
       }
   }
 
+  val strToLong = Reads[Long](js =>
+    js.validate[String].map[Long] { num =>
+      num.toLong
+    })
+
+  private val openOrderRead: Reads[Order] = (
+      (JsPath \ "orderNumber").read[Long](strToLong) and
+      (JsPath \ "type").read[String] and
+      (JsPath \ "rate").read[BigDecimal] and
+      (JsPath \ "startingAmount").read[BigDecimal] and
+      (JsPath \ "amount").read[BigDecimal] and
+      (JsPath \ "total").read[BigDecimal]
+    ) (Order.apply _)
+
+  private implicit val openOrderListRead: Reads[List[OrdersOpened]] = Reads( js =>
+    JsSuccess(js.as[JsObject].fieldSet.map { market =>
+      val deets = market._2.as[JsArray].value.map(j => j.validate[Order](openOrderRead).get).toList
+      OrdersOpened(market._1, deets)
+    }.toList))
+
+
   /**
     * Returns your open orders for a given market
+    * {"BTC_1CR":[],"BTC_AC":[{"orderNumber":"120466","type":"sell","rate":"0.025","amount":"100","total":"2.5"},
+    * {"orderNumber":"120467","type":"sell","rate":"0.04","amount":"100","total":"4"}], ... }
     */
-  def openOrders(): Unit = {
+  def openOrders(): Future[List[OrdersOpened]] = {
     val n = nonce
     val command = "returnOpenOrders"
     val postParams = params(command, n) + "&currencyPair=all"
@@ -80,7 +103,13 @@ class PoloniexTradeClient (apiKey: String,
     setAuthenticationHeaders(wsClient.url(url), postParams)
       .post(Map("command" -> Seq(command), "nonce" -> Seq(n), "currencyPair" -> Seq("all")))
       .map{ response =>
-        println(s"HERE ${response.json.toString()}")
+
+        response.json.validate[List[OrdersOpened]] match {
+          case s: JsSuccess[List[OrdersOpened]] =>
+            s.get.filter( o => !o.orders.isEmpty)
+          case e: JsError =>
+            List[OrdersOpened]()
+        }
       }
   }
 
@@ -103,56 +132,73 @@ class PoloniexTradeClient (apiKey: String,
       }
   }
 
+  implicit val tradeRead = Json.format[Trade]
+  private implicit val buyOrderRead: Reads[OrderNumber] = (
+    (JsPath \ "orderNumber").read[Long](strToLong) and
+      (JsPath \ "resultingTrades").read[List[Trade]]
+    )(OrderNumber.apply _)
+
   /**
     * Places a limit buy order in a given market. If successful, the method will return the order number
     *
+    * @param side - buy or sell
     * @param currencyPair
     * @param rate
     * @param amount
     */
-  def buy(currencyPair: String, rate: BigDecimal, amount: BigDecimal): Unit = {
+  def placeOrder(side: String, currencyPair: String, rate: BigDecimal, amount: BigDecimal): Future[Option[OrderNumber]] = {
     val n = nonce
-    val command = "buy"
-    val postParams = params(command, n) +
-      s"&currencyPair=$currencyPair&rate=$rate&amount=$amount"
+    val command = side
+    val rt = rate.setScale(8)
+    val am = amount.setScale(8)
+    val postParams = s"rate=$rt&currencyPair=$currencyPair&nonce=$n&command=$command&amount=$am"
 
     setAuthenticationHeaders(wsClient.url(url), postParams)
       .post(Map("command" -> Seq(command),
-        "nonce" -> Seq(n),
-        "currencyPair" -> Seq(currencyPair),
-        "rate" -> Seq(rate.toString),
-        "amount" -> Seq(amount.toString)
+      "nonce" -> Seq(n),
+      "currencyPair" -> Seq(currencyPair),
+      "rate" -> Seq(rt.toString),
+      "amount" -> Seq(am.toString)
       ))
       .map{ response =>
-        println(s"HERE ${response.json.toString()}")
+        response.json.validate[OrderNumber] match {
+          case s: JsSuccess[OrderNumber] => Some(s.get)
+          case e: JsError => None
+        }
       }
   }
+
+  case class Status(success: Int)
+  implicit val statusRead = Json.format[Status]
 
   /**
-    * Places a sell order in a given market.
-    *
-    * @param currencyPair
-    * @param rate
-    * @param amount
+    * Cancel an open order.
+    * @param orderNumber
+    * @return
     */
-  def sell(currencyPair: String, rate: BigDecimal, amount: BigDecimal): Unit = {
+  def cancelOrder(orderNumber: Long): Future[Boolean] = {
     val n = nonce
-    val command = "sell"
-    val postParams = params(command, n) +
-      s"&currencyPair=$currencyPair&rate=$rate&amount=$amount"
+    val command = "cancelOrder"
+    val postParams = params(command, n) + s"&orderNumber=$orderNumber"
 
     setAuthenticationHeaders(wsClient.url(url), postParams)
       .post(Map("command" -> Seq(command),
         "nonce" -> Seq(n),
-        "currencyPair" -> Seq(currencyPair),
-        "rate" -> Seq(rate.toString),
-        "amount" -> Seq(amount.toString)
+        "orderNumber" -> Seq(orderNumber.toString)
       ))
       .map{ response =>
-        println(s"HERE ${response.json.toString()}")
+        response.json.validate[Status] match {
+          case s: JsSuccess[Status] if s.get.success > 0 => true
+          case e: JsError => false
+          case _ => false
+        }
       }
   }
 
+  private implicit val moveOrderRead: Reads[MoveOrderStatus] = (
+    (JsPath \ "success").read[Int] and
+    (JsPath \ "orderNumber").read[Long](strToLong)
+    )(MoveOrderStatus.apply _)
   /**
     * Cancels an order and places a new one of the same type in a single atomic transaction,
     * meaning either both operations will succeed or both will fail.
@@ -161,12 +207,13 @@ class PoloniexTradeClient (apiKey: String,
     * @param rate
     * @param amount
     */
-  def moveOrder(orderNumber: Long, rate: BigDecimal, amount: BigDecimal): Unit = {
+  def moveOrder(orderNumber: Long, rate: BigDecimal, amount: BigDecimal): Future[MoveOrderStatus] = {
     val n = nonce
     val command = "moveOrder"
-    val postParams = params(command, n) +
-      s"&orderNumber=$orderNumber&rate=$rate&amount=$amount"
+    val postParams = s"rate=$rate&orderNumber=$orderNumber&nonce=$n&command=$command&amount=$amount"
 
+    // TODO add resulting trades in the validation read
+    //{"success":1,"orderNumber":"3254037865","resultingTrades":{"BTC_AMP":[]}}
     setAuthenticationHeaders(wsClient.url(url), postParams)
       .post(Map("command" -> Seq(command),
         "nonce" -> Seq(n),
@@ -175,7 +222,10 @@ class PoloniexTradeClient (apiKey: String,
         "amount" -> Seq(amount.toString)
       ))
       .map{ response =>
-        println(s"HERE ${response.json.toString()}")
+        response.json.validate[MoveOrderStatus] match {
+          case s: JsSuccess[MoveOrderStatus] => s.get
+          case e: JsError => MoveOrderStatus(0, 0)
+        }
       }
   }
 }
