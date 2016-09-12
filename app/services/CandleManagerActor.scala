@@ -12,7 +12,7 @@ import scala.collection.mutable.ListBuffer
 import scala.language.postfixOps
 
 // internal
-import models.poloniex.{Market, MarketCandle}
+import models.poloniex.{MarketUpdate, MarketCandle}
 
 
 object CandleManagerActor {
@@ -48,7 +48,7 @@ class CandleManagerActor @Inject() extends Actor with ActorLogging {
 
   def receive: Receive = {
 
-    case update: Market =>
+    case update: MarketUpdate =>
       updateMarket(update)
 
     case GetCandles(name) =>
@@ -85,7 +85,7 @@ class CandleManagerActor @Inject() extends Actor with ActorLogging {
       }
   }
 
-  private def updateMarket(update: Market) = {
+  private def updateMarket(update: MarketUpdate) = {
     val name = update.name
     // only care about BTC markets
     if (name.startsWith("BTC")) {
@@ -112,7 +112,7 @@ class CandleManagerActor @Inject() extends Actor with ActorLogging {
         // are we still in the time period of the last candle that we created
         if (currentCandle.time.isEqual(time)) {
           // if so we need to update the info for the last candle
-          currentCandle.updateStatus(update.status)
+          currentCandle.updateStatus(update.info)
         } else {
           // if we've skipped some candle periods due to no trade activity
           // we need to fill in those missed periods
@@ -128,8 +128,8 @@ class CandleManagerActor @Inject() extends Actor with ActorLogging {
           }
 
           // start a new candle
-          val candle = MarketCandle(time, candleTimeMinutes, update.status.last)
-          candle.updateStatus(update.status)
+          val candle = MarketCandle(time, candleTimeMinutes, update.info.last)
+          candle.updateStatus(update.info)
           // most recent candles at front list
           candleBuffer.insert(0, candle)
 
@@ -141,12 +141,12 @@ class CandleManagerActor @Inject() extends Actor with ActorLogging {
         }
 
       } else {
-        val candle = MarketCandle(time, candleTimeMinutes, update.status.last)
-        candle.updateStatus(update.status)
+        val candle = MarketCandle(time, candleTimeMinutes, update.info.last)
+        candle.updateStatus(update.info)
         candleBuffer.append(candle)
       }
 
-      eventBus.publish(MarketEvent("/market/candle/close", MarketCandleClose(name, ClosePrice(time, update.status.last))))
+      eventBus.publish(MarketEvent("/market/candle/close", MarketCandleClose(name, ClosePrice(time, update.info.last))))
     }
   }
 }

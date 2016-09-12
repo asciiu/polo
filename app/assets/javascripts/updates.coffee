@@ -13,25 +13,26 @@ $ ->
       console.log("no chart")
       return
 
+    # Should be of type MarketUpdate in json
     market = JSON.parse(event.data)
 
     if (market.name == "USDT_BTC")
-      h1 = $('#'+market.name).html(market.status.last)
+      h1 = $('#'+market.name).html(market.info.last)
     else
-      # update market status
+      # update market.info
       tr = $('#'+market.name).children('td')
 
-      $(tr[1]).html((market.status.last).toFixed(8))
-      $(tr[2]).html(market.status.baseVolume)
-      $(tr[3]).html(market.status.percentChange)
+      $(tr[1]).html((market.info.last).toFixed(8))
+      $(tr[2]).html(market.info.baseVolume)
+      $(tr[3]).html(market.info.percentChange)
 
     # update chart
     if (market.name == chart.title.textStr)
       # update the header stats
-      $('#td-change').html(market.status.percentChange)
-      $('#td-high').html(market.status.last.toFixed(8))
-      $('#td-low').html(market.status.high24hr.toFixed(8))
-      $('#td-last').html(market.status.low24hr.toFixed(8))
+      $('#td-change').html(market.info.percentChange)
+      $('#td-high').html(market.info.last.toFixed(8))
+      $('#td-low').html(market.info.high24hr.toFixed(8))
+      $('#td-last').html(market.info.low24hr.toFixed(8))
 
       # get latest candle from server
       route = jsRoutes.controllers.PoloniexController.latestCandle(market.name)

@@ -10,7 +10,7 @@ import org.joda.time.DateTime
 import scala.concurrent.ExecutionContext
 
 // internal
-import models.poloniex.{MarketStatus, Market}
+import models.poloniex.{MarketMessage, MarketUpdate}
 
 class PoloniexWebSocketClient @Inject() (conf: Configuration)(implicit context: ExecutionContext, system: ActorSystem) extends Actor with ActorLogging with Scope.Session {
   val endpoint = conf.getString("poloniex.websocket").getOrElse("wss://api.poloniex.com")
@@ -37,7 +37,7 @@ class PoloniexWebSocketClient @Inject() (conf: Configuration)(implicit context: 
     case x => log.warning(x.toString)
   }
 
-  def processPayload(list: List[Any]): Option[Market] = {
+  def processPayload(list: List[Any]): Option[MarketUpdate] = {
     // number of arguments could change but as of 8/14/16 there are
     // 10 arguments in poloniex's websocket ticker feed
     // List(BTC_LSK, 0.00043800, 0.00043720, 0.00043659, 0.02693957, 481.98338671, 1104065.03193835, 0, 0.00045139, 0.00041697)
@@ -45,7 +45,7 @@ class PoloniexWebSocketClient @Inject() (conf: Configuration)(implicit context: 
     if (list.length == 10) {
       val args = list.map(_.toString)
       var now = new DateTime()
-      val status = MarketStatus(
+      val status = MarketMessage(
         0,
         BigDecimal(args(1)),
         BigDecimal(args(2)),
@@ -57,7 +57,7 @@ class PoloniexWebSocketClient @Inject() (conf: Configuration)(implicit context: 
         BigDecimal(args(8)),
         BigDecimal(args(9))
       )
-      Some(Market(args(0),status))
+      Some(MarketUpdate(args(0),status))
     } else {
       None
     }

@@ -2,7 +2,7 @@ package utils.poloniex
 
 // external
 import akka.actor.{Actor, ActorLogging, ActorSystem, Cancellable, Props}
-import javax.inject.Inject
+import javax.inject.{Inject, Singleton}
 
 import models.market.ClosePrice
 import org.joda.time.{DateTime, DateTimeZone}
@@ -31,13 +31,14 @@ object PoloniexCandleRetrieverActor {
   * Retrieves candles for markets within the last 24 hours. All candles
   * are of 5 minute periods.
   */
+@Singleton
 class PoloniexCandleRetrieverActor @Inject()(ws: WSClient, conf: Configuration) extends Actor with ActorLogging {
   import PoloniexCandleRetrieverActor._
   import scala.concurrent.duration._
   import scala.language.postfixOps
 
   val eventBus = PoloniexEventBus()
-  val url = conf.getString("poloniex.endpoint.public").getOrElse("https://poloniex.com/public")
+  val url = conf.getString("poloniex.url.public").getOrElse("https://poloniex.com/public")
   val marketQueue = scala.collection.mutable.Queue[String]()
   // 300 seconds = 5 minutes
   val candleLength = 300
@@ -104,7 +105,7 @@ class PoloniexCandleRetrieverActor @Inject()(ws: WSClient, conf: Configuration) 
       if (marketQueue.nonEmpty) {
         val marketName = marketQueue.dequeue()
         // TODO remove this condition
-        if (marketName == "BTC_XMR") {
+        if (marketName == "BTC_AMP" || marketName == "BTC_MAID" || marketName == "BTC_LBC" || marketName == "BTC_SC") {
           // 24 hours ago in seconds
           // poloniex timestamps should be in UTC
           val timeStartSeconds = (new DateTime(DateTimeZone.UTC)).getMillis() / 1000L - 86400L

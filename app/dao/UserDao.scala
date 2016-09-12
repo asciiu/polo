@@ -13,6 +13,8 @@ import scala.concurrent.Future
 // internal
 import models.User
 
+// TODO merge this with Entity and User models
+// This needs to be DI if you're going to use it
 object UserDao {
   val dbConfig = DatabaseConfigProvider.get[JdbcProfile](Play.current)
 

@@ -1,9 +1,11 @@
 package utils
 
 import play.api.i18n.Messages
+
 import play.twirl.api.Html
 import models.User
 import services.MailService
+import scala.language.implicitConversions
 import views.html.mails
 
 object Mailer {

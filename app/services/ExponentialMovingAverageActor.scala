@@ -3,8 +3,12 @@ package services
 import javax.inject.Inject
 
 import akka.actor.{Actor, ActorLogging}
+import models.market.TradeActor
 import org.joda.time.DateTime
 import play.api.Configuration
+import TradeActor.MarketEMA
+import utils.poloniex.MarketEvent
+
 import scala.collection.mutable.ListBuffer
 import scala.math.BigDecimal.RoundingMode
 
@@ -45,11 +49,11 @@ class ExponentialMovingAverageActor @Inject() (configuration: Configuration) ext
     eventBus.subscribe(self, "/market/prices")
 
     // default tracking periods are 7 and 15 candles
-    trackingPeriods ++= List(7, 15)
+    trackingPeriods ++= List(5, 15)
   }
 
   override def postStop() = {
-    eventBus.unsubscribe(self, "/makert/candle/close")
+    eventBus.unsubscribe(self, "/market/candle/close")
     eventBus.unsubscribe(self, "/market/prices")
   }
 
@@ -68,16 +72,24 @@ class ExponentialMovingAverageActor @Inject() (configuration: Configuration) ext
       sender ! avgs.toList
 
 
+    /**
+      * Send to original sender the moving averages of a market.
+      */
     case GetMovingAverages(marketName) =>
+
       val allAvgs = for (periodNum <- trackingPeriods if (movingAverages.contains((marketName, periodNum)))) yield {
         (periodNum, movingAverages.get((marketName, periodNum)).get.toList)
       }
       sender ! allAvgs.toList
 
     case MarketCandleClose(marketName, close) =>
-      for (periodNum <- trackingPeriods) {
+      val updates = for (periodNum <- trackingPeriods) yield {
         updateAverages(marketName, close, periodNum)
       }
+      if (updates(0).ema != 0 && updates(1).ema != 0) {
+        eventBus.publish(MarketEvent("/ema/update", MarketEMA(marketName, updates(0), updates(1))))
+      }
+
 
     case MarketCandleClosePrices(marketName, prices) =>
       // for each tracking period compute the moving averages
@@ -145,22 +157,24 @@ class ExponentialMovingAverageActor @Inject() (configuration: Configuration) ext
     * @param periodNum
     * @return
     */
-  private def updateAverages(marketName: String, closePrice: ClosePrice, periodNum: Int) = {
+  private def updateAverages(marketName: String, closePrice: ClosePrice, periodNum: Int): EMA = {
     movingAverages.get((marketName, periodNum)) match {
       case Some(averages) =>
         val latestAvg = averages.head
 
-        if (latestAvg.time.isEqual(closePrice.time)) {
+        val updateAvg = if (latestAvg.time.isEqual(closePrice.time)) {
           val previousEMA = averages(1).ema
           val ema = (closePrice.price - previousEMA) * multiplier(periodNum) + previousEMA
           // replace the head with new
           averages.remove(0)
           averages.insert(0, EMA(closePrice.time, ema.setScale(8, RoundingMode.CEILING)))
+          EMA(closePrice.time, ema)
         } else {
           val previousEMA = averages(0).ema
           val ema = (closePrice.price - previousEMA) * multiplier(periodNum) + previousEMA
           // replace the head with new
           averages.insert(0, EMA(closePrice.time, ema.setScale(8, RoundingMode.CEILING)))
+          EMA(closePrice.time, ema)
         }
 
         // limit averages to 24 hours
@@ -168,9 +182,10 @@ class ExponentialMovingAverageActor @Inject() (configuration: Configuration) ext
           val removeNum = averages.length - 288
           averages.remove(288, removeNum)
         }
-
+        updateAvg
       case None =>
         log.debug(s"can't update moving average for $marketName because I haven't received initial averages for this market")
+        EMA(closePrice.time, 0)
     }
   }
 }

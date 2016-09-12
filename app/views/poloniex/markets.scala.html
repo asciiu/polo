@@ -1,6 +1,6 @@
-@import models.poloniex.Market
+@import models.poloniex.MarketUpdate
 
-@(account: Entity[Account], btc: Option[Market], markets: List[Market])(implicit webJarAssets: WebJarAssets, messages: Messages)
+@(account: Entity[Account], btcUpdate: Option[MarketUpdate], updates: List[MarketUpdate])(implicit webJarAssets: WebJarAssets, messages: Messages)
 
 @scripts = {
     <script type='text/javascript' src='@routes.Assets.at("javascripts/init.js")'></script>
@@ -23,7 +23,7 @@
               </thead>
               <tbody>
               <tr>
-                  <td id="td-change">3</td>
+                  <td id="td-change">>3</td>
                   <td id="td-high">4</td>
                   <td id="td-low">5</td>
                   <td id="td-last">1</td>
@@ -34,9 +34,6 @@
         <div class="row" id="candle-chart"></div>
         </div>
         <div class="columns small-4">
-            <!--@btc.map{ m =>
-            <h4 id="@m.name">@m.status.last</h4>
-            }-->
             <table>
                 <thead>
                 <tr>
@@ -48,14 +45,14 @@
                 </thead>
 
                 <tbody>
-                @for(market <- markets) {
-                    <tr id="@market.name">
-                    <td>@market.name</td>
-                    <td>@("%1.8f".format(market.status.last))</td>
-                    <td>@market.status.baseVolume</td>
-                    <td>@market.status.percentChange</td>
-                    <td hidden>@market.status.high24hr</td>
-                    <td hidden>@market.status.low24hr</td>
+                @for(update <- updates) {
+                    <tr id="@update.name">
+                    <td>@update.name</td>
+                    <td>@("%1.8f".format(update.info.last))</td>
+                    <td>@update.info.baseVolume</td>
+                    <td>@update.info.percentChange</td>
+                    <td hidden>@update.info.high24hr</td>
+                    <td hidden>@update.info.low24hr</td>
                     </tr>
                 }
                 </tbody>

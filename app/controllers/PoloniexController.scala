@@ -6,9 +6,9 @@ import akka.pattern.ask
 import akka.util.Timeout
 import akka.stream.Materializer
 import javax.inject.{Inject, Named, Singleton}
+
 import jp.t2v.lab.play2.auth.AuthElement
 import play.api.i18n.{I18nSupport, MessagesApi}
-import play.api.inject.ApplicationLifecycle
 import play.api.libs.ws.{WSClient, WSRequest}
 import play.api.mvc.{Controller, WebSocket}
 import play.api.libs.json._
@@ -17,6 +17,8 @@ import play.api.Configuration
 import org.joda.time.format.DateTimeFormat
 import services.ExponentialMovingAverageActor.{GetMovingAverage, GetMovingAverages}
 import services.CandleManagerActor
+import utils.poloniex.PoloniexTradeClient
+
 import scala.language.postfixOps
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
@@ -24,7 +26,7 @@ import scala.math.BigDecimal.RoundingMode
 
 // internal
 import models.db.AccountRole
-import models.poloniex.{Market, MarketStatus}
+import models.poloniex.{MarketUpdate, MarketMessage}
 import services.DBService
 import utils.poloniex.PoloniexEventBus
 import models.bittrex.AllMarketSummary
@@ -39,19 +41,27 @@ class PoloniexController @Inject()(val database: DBService,
                                    @Named("candle-actor") candleActorRef: ActorRef,
                                    @Named("ema-actor") movingAveragesActor: ActorRef,
                                    @Named("polo-candle-retriever") candleRetrieverActor: ActorRef,
-                                   @Named("polo-websocket-client") websocketClient: ActorRef)
+                                   @Named("polo-websocket-client") websocketClient: ActorRef,
+                                   @Named("trade-actor") tradeActor: ActorRef)
                                   (implicit system: ActorSystem,
                                    materializer: Materializer,
                                    context: ExecutionContext,
                                    webJarAssets: WebJarAssets)
   extends Controller with AuthConfigTrait with AuthElement with I18nSupport {
 
-  implicit val marketStatus = Json.format[MarketStatus]
-  implicit val marketWrite = Json.writes[Market]
-  implicit val marketRead: Reads[List[Market]] = Reads( js =>
+  implicit val marketStatus = Json.format[MarketMessage]
+  implicit val marketWrite = Json.writes[MarketUpdate]
+  implicit val marketRead: Reads[List[MarketUpdate]] = Reads(js =>
     JsSuccess(js.as[JsObject].fieldSet.map { ticker =>
-      Market(ticker._1, ticker._2.as[MarketStatus])
+      MarketUpdate(ticker._1, ticker._2.as[MarketMessage])
     }.toList))
+
+  val tradeClient = new PoloniexTradeClient(
+    conf.getString("poloniex.apiKey").getOrElse(""),
+    conf.getString("poloniex.secret").getOrElse(""),
+    conf,
+    ws
+  )
 
   /**
     * Websocket for clients that sends market updates.
@@ -68,13 +78,13 @@ class PoloniexController @Inject()(val database: DBService,
 
       def receive = {
         // send updates from Bitcoin markets only
-        case update: Market if update.name.startsWith("BTC") =>
-          val percentChange = update.status.percentChange * 100
+        case update: MarketUpdate if update.name.startsWith("BTC") =>
+          val percentChange = update.info.percentChange * 100
           val name = update.name.replace("BTC_", "")
-          val ud = update.copy(name = name, status = update.status.copy(percentChange =
+          val ud = update.copy(name = name, info = update.info.copy(percentChange =
             percentChange.setScale(2, RoundingMode.CEILING)))
           out ! Json.toJson(ud).toString
-        case update: Market if update.name == "USDT_BTC" =>
+        case update: MarketUpdate if update.name == "USDT_BTC" =>
           out ! Json.toJson(update).toString
       }
     }
@@ -83,10 +93,10 @@ class PoloniexController @Inject()(val database: DBService,
   }
 
   def markets() = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
-    implicit val marketStatus = Json.reads[MarketStatus]
-    implicit val marketRead: Reads[List[Market]] = Reads( js =>
+    implicit val marketStatus = Json.reads[MarketMessage]
+    implicit val marketRead: Reads[List[MarketUpdate]] = Reads(js =>
       JsSuccess(js.as[JsObject].fieldSet.map { ticker =>
-        Market(ticker._1, ticker._2.as[MarketStatus])
+        MarketUpdate(ticker._1, ticker._2.as[MarketMessage])
       }.toList))
 
     // poloniex markets
@@ -95,7 +105,7 @@ class PoloniexController @Inject()(val database: DBService,
         .withRequestTimeout(10000.millis)
 
     poloniexRequest.get().map { polo =>
-      polo.json.validate[List[Market]] match {
+      polo.json.validate[List[MarketUpdate]] match {
         case JsSuccess(tickers, t) =>
           // Bitcoin price
           val bitcoin = tickers.find( _.name == "USDT_BTC")
@@ -103,12 +113,12 @@ class PoloniexController @Inject()(val database: DBService,
           // only care about btc markets
           // order by base volume - btc vol
           val btcmarkets = tickers.filter(t =>  t.name.startsWith("BTC"))
-            .sortBy( tick => tick.status.baseVolume).reverse.map(t => {
+            .sortBy( tick => tick.info.baseVolume).reverse.map(t => {
 
             // change percent format from decimal
-            val percentChange = t.status.percentChange * 100
+            val percentChange = t.info.percentChange * 100
             val name = t.name.replace("BTC_", "")
-            t.copy(name = name, status = t.status.copy(percentChange =
+            t.copy(name = name, info = t.info.copy(percentChange =
               percentChange.setScale(2, RoundingMode.CEILING)))
           })
           Ok(views.html.poloniex.markets(loggedIn, bitcoin, btcmarkets))
@@ -184,10 +194,10 @@ class PoloniexController @Inject()(val database: DBService,
   def arbiter() = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
     import models.bittrex.Bittrex._
 
-    implicit val marketStatus = Json.reads[MarketStatus]
-    implicit val marketRead: Reads[List[Market]] = Reads( js =>
+    implicit val marketStatus = Json.reads[MarketMessage]
+    implicit val marketRead: Reads[List[MarketUpdate]] = Reads(js =>
       JsSuccess(js.as[JsObject].fieldSet.map { ticker =>
-        Market(ticker._1, ticker._2.as[MarketStatus])
+        MarketUpdate(ticker._1, ticker._2.as[MarketMessage])
       }.toList))
 
     // bittrex markets
@@ -205,7 +215,7 @@ class PoloniexController @Inject()(val database: DBService,
       btrx <- bittrexRequest.get()
     } yield {
 
-      (btrx.json.validate[AllMarketSummary], polo.json.validate[List[Market]]) match {
+      (btrx.json.validate[AllMarketSummary], polo.json.validate[List[MarketUpdate]]) match {
         case (JsSuccess(bitrxt, t1), JsSuccess(polot, t2)) =>
           // bittrex markets
           val btx = bitrxt.result.map{ b => b.copy(name = b.name.replace("-", "_"))}.filter( b => b.name.startsWith("BTC"))
@@ -215,9 +225,9 @@ class PoloniexController @Inject()(val database: DBService,
 
           // only care about btc markets
           val btcmarkets = polot.filter(t =>  t.name.startsWith("BTC"))
-            .sortBy( tick => tick.status.baseVolume).reverse.map(t => {
-            val percentChange = t.status.percentChange * 100
-            t.copy(status = t.status.copy(percentChange =
+            .sortBy( tick => tick.info.baseVolume).reverse.map(t => {
+            val percentChange = t.info.percentChange * 100
+            t.copy(info = t.info.copy(percentChange =
               percentChange.setScale(2, RoundingMode.CEILING)))
           })
 
@@ -227,10 +237,10 @@ class PoloniexController @Inject()(val database: DBService,
             polm <- btcmarkets
             if (btxm.name == polm.name)
           } yield {
-            val diff = (polm.status.last - btxm.last).abs
+            val diff = (polm.info.last - btxm.last).abs
             val f = "%1.8f".format(diff)
 
-            println( s"${polm.name} bittrex last: ${btxm.last} poloniex last: ${polm.status.last} diff: $f")
+            println( s"${polm.name} bittrex last: ${btxm.last} poloniex last: ${polm.info.last} diff: $f")
             polm.name
           }
 
