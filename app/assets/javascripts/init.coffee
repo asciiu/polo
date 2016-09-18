@@ -1,4 +1,13 @@
 $ ->
+
+  groupingUnits = [[
+    'week',
+    [1]
+  ], [
+    'month',
+    [1, 2, 3, 4, 6]
+  ]]
+
   $('#candle-chart').highcharts 'StockChart',
         title: text: 'Test'
         plotOptions: {
@@ -7,6 +16,29 @@ $ ->
             upColor: 'rgba(112, 219, 112, 0.7)'
           }
         }
+        yAxis: [{
+          labels: {
+              align: 'right',
+              x: -3
+          },
+          title: {
+              text: '5 min'
+          },
+          height: '60%',
+          lineWidth: 2
+        }, {
+          labels: {
+              align: 'right',
+              x: -3
+          },
+          title: {
+              text: '24 Hr Volume'
+          },
+          top: '65%',
+          height: '35%',
+          offset: 0,
+          lineWidth: 2
+        }],
         series: [ {
           type: 'candlestick'
           name: 'CandleSticks'
@@ -29,6 +61,14 @@ $ ->
           color: 'rgba(255, 102, 102, 1)',
           lineWidth: 1,
           data: []
+        }, {
+          type: 'column',
+          name: 'Volume',
+          data: [],
+          yAxis: 1,
+          dataGrouping: {
+              units: groupingUnits
+          }
         }]
 
   chart = $('#candle-chart').highcharts()
@@ -80,5 +120,10 @@ $ ->
         ema2 = ema2.filter (obj) ->
           obj.y > 0
         chart.series[2].setData( ema2, true )
+
+        vols = result.map (obj, index) ->
+          {x: index, y: obj[7]}
+
+        chart.series[3].setData( vols, true)
 
         return

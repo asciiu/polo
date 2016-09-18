@@ -3,13 +3,11 @@ package services
 // external
 import javax.inject.Inject
 
-import akka.actor.{Actor, ActorLogging, ActorSystem, Props}
+import akka.actor.{Actor, ActorLogging}
 import org.joda.time._
-import play.api.libs.ws.WSClient
-import utils.poloniex.{MarketEvent, PoloniexCandleRetrieverActor, PoloniexEventBus}
-
 import scala.collection.mutable.ListBuffer
 import scala.language.postfixOps
+import utils.poloniex.{MarketEvent, PoloniexCandleRetrieverActor, PoloniexEventBus}
 
 // internal
 import models.poloniex.{MarketUpdate, MarketCandle}

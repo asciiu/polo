@@ -6,7 +6,7 @@ package utils
 import com.google.inject.AbstractModule
 import models.market.TradeActor
 import play.api.libs.concurrent.AkkaGuiceSupport
-import services.{CandleManagerActor, ExponentialMovingAverageActor}
+import services.{CandleManagerActor, ExponentialMovingAverageActor, VolumeTrackerActor}
 import utils.poloniex.{PoloniexCandleRetrieverActor, PoloniexWebSocketClient}
 
 class CustomModule extends AbstractModule with AkkaGuiceSupport {
@@ -16,5 +16,6 @@ class CustomModule extends AbstractModule with AkkaGuiceSupport {
     bindActor[PoloniexCandleRetrieverActor]("polo-candle-retriever")
     bindActor[PoloniexWebSocketClient]("polo-websocket-client")
     bindActor[TradeActor]("trade-actor")
+    bindActor[VolumeTrackerActor]("volume-actor")
   }
 }

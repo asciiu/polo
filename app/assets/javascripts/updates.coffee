@@ -45,6 +45,7 @@ $ ->
           candles = chart.series[0]
           ema1 = chart.series[1]
           ema2 = chart.series[2]
+          vol  = chart.series[3]
 
           # last candle in chart data
           last = data[data.length-1]
@@ -69,6 +70,13 @@ $ ->
               else
                 ema2.data[ema2.data.length-1].update({y:result[6]})
 
+            # 24 hour volume
+            if (vol.data.length == 0)
+              vol.addPoint({x: data.length-1, y: result[7]})
+            else
+              vol.data[vol.data.length-1].update({y: result[7]})
+
+          # new candle period
           else if (data.length == 0 || result[0] != last.name)
             candles.addPoint(result, true)
 
@@ -77,6 +85,8 @@ $ ->
 
             if (result[6] != 0)
               ema2.addPoint({x: data.length-1, y:result[6]})
+
+            vol.addPoint({x: data.length-1, y:result[7]})
 
           return
     return
