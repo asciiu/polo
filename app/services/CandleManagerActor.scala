@@ -97,11 +97,14 @@ class CandleManagerActor @Inject() extends Actor with ActorLogging {
       val candleBuffer = marketCandles.get(name) match {
         case Some(candles) => candles
         case None =>
-          val candles =  scala.collection.mutable.ListBuffer.empty[MarketCandle]
+          val candles = scala.collection.mutable.ListBuffer.empty[MarketCandle]
           marketCandles.put(name, candles)
 
           // send a message to the retriever to get the candle data from Poloniex
-          eventBus.publish(MarketEvent("/market/added", QueueMarket(name)))
+          // TODO remove this condition
+          if (update.info.baseVolume > 500) {
+            eventBus.publish(MarketEvent("/market/added", QueueMarket(name)))
+          }
           candles
       }
 

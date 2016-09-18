@@ -125,7 +125,7 @@ class ExponentialMovingAverageActor @Inject() (configuration: Configuration) ext
       val averages = scala.collection.mutable.ListBuffer.empty[EMA]
 
       val firstClose = closingPrices(closingPrices.length - periodNum)
-      val sum = closingPrices.takeRight(periodNum).map(_.price).sum
+      val sum = closingPrices.takeRight(periodNum).foldLeft(BigDecimal(0))( (a, p) => p.price + a)
       val simpleMovingAverage = sum / periodNum
       // exponential moving average begins with a simple moving average
       averages.append(EMA(firstClose.time, simpleMovingAverage))

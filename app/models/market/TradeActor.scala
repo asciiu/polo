@@ -29,6 +29,11 @@ object TradeActor {
 class TradeActor @Inject() (@Named("candle-actor") candleActorRef: ActorRef) (implicit context: ExecutionContext) extends Actor with ActorLogging {
   import TradeActor._
 
+  case class BuyRecord(date: DateTime, buyPrice: BigDecimal, amount: BigDecimal, last24BtcVolume: BigDecimal)
+
+  // TODO track market volume as it happens how do you do this based upon the rolling 24 hour volume
+
+
   val marketWatch = scala.collection.mutable.ListBuffer.empty[String]
   val eventBus = PoloniexEventBus()
   var lastBuy: BigDecimal = 0
@@ -60,30 +65,30 @@ class TradeActor @Inject() (@Named("candle-actor") candleActorRef: ActorRef) (im
           marketWatch.remove(marketWatch.indexOf(marketName))
           // unsubscribe from market update for this
           // I need to know the time and current price to buy at
-          (candleActorRef ? GetLastestCandle(marketName)).mapTo[Option[MarketCandle]].map { opt =>
-            opt match {
-              case Some(candle) =>
-                // sell here
-                val percent = (candle.close - lastBuy) / lastBuy * 100
-                val stats = s"$marketName (${new DateTime()}) sell: ${candle.close}, bought: $lastBuy, percent: ${percent.setScale(2)}"
-                println(stats)
-              case None =>
-                println("Could not get latest candle?")
-            }
-          }
+          //(candleActorRef ? GetLastestCandle(marketName)).mapTo[Option[MarketCandle]].map { opt =>
+          //  opt match {
+          //    case Some(candle) =>
+          //      // sell here
+          //      val percent = (candle.close - lastBuy) / lastBuy * 100
+          //      val stats = s"$marketName (${new DateTime()}) sell: ${candle.close}, bought: $lastBuy, percent: ${percent.setScale(2)}"
+          //      println(stats)
+          //    case None =>
+          //      println("Could not get latest candle?")
+          //  }
+          //}
         }
       } else  {
         if (emaShort.ema > emaLong.ema) {
           marketWatch.append(marketName)
-          (candleActorRef ? GetLastestCandle(marketName)).mapTo[Option[MarketCandle]].map { opt =>
-            opt match {
-              case Some(candle) =>
-                lastBuy = candle.close
-                println(s"$marketName: buy at $lastBuy (${new DateTime()})")
-              case None =>
-                println("why?")
-            }
-          }
+          //(candleActorRef ? GetLastestCandle(marketName)).mapTo[Option[MarketCandle]].map { opt =>
+          //  opt match {
+          //    case Some(candle) =>
+          //      lastBuy = candle.close
+          //      println(s"$marketName: buy at $lastBuy (${new DateTime()})")
+          //    case None =>
+          //      println("why?")
+          //  }
+          //}
           // subscribe to market updates
           // need to know the time and current price
         }

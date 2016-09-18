@@ -15,6 +15,7 @@ import models.poloniex.{MarketMessage, MarketUpdate}
 class PoloniexWebSocketClient @Inject() (conf: Configuration)(implicit context: ExecutionContext, system: ActorSystem) extends Actor with ActorLogging with Scope.Session {
   val endpoint = conf.getString("poloniex.websocket").getOrElse("wss://api.poloniex.com")
   val eventBus = PoloniexEventBus()
+  private var openSession: Option[Session] = None
 
   override def preStart(): Unit = {
     for {
@@ -30,7 +31,13 @@ class PoloniexWebSocketClient @Inject() (conf: Configuration)(implicit context: 
               log info "received payload arguments not equal to 10"
           }}
         }
-    } yield ()
+    } yield {
+      openSession = Some(session)
+    }
+  }
+
+  override def postStop(): Unit = {
+    openSession.foreach( session => session.close() )
   }
 
   def receive: Receive = {

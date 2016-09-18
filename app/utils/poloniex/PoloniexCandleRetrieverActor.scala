@@ -98,38 +98,43 @@ class PoloniexCandleRetrieverActor @Inject()(ws: WSClient, conf: Configuration) 
   }
 
   def receive: Receive = {
+    /**
+      * Queques a market name.
+      */
     case QueueMarket(marketName) =>
       marketQueue.enqueue(marketName)
       startScheduler()
+
+    /**
+      * Removes a market name from the queue and retrieves the
+      * market candles within the last 24 hours.
+      */
     case DequeueMarket =>
       if (marketQueue.nonEmpty) {
         val marketName = marketQueue.dequeue()
-        // TODO remove this condition
-        if (marketName == "BTC_AMP" || marketName == "BTC_MAID" || marketName == "BTC_LBC" || marketName == "BTC_SC") {
-          // 24 hours ago in seconds
-          // poloniex timestamps should be in UTC
-          val timeStartSeconds = (new DateTime(DateTimeZone.UTC)).getMillis() / 1000L - 86400L
-          ws.url(url)
-            .withHeaders("Accept" -> "application/json")
-            .withQueryString("command" -> "returnChartData")
-            .withQueryString("currencyPair" -> marketName)
-            .withQueryString("start" -> timeStartSeconds.toString)
-            .withQueryString("end" -> "9999999999")
-            .withQueryString("period" -> candleLength.toString)
-            .withRequestTimeout(10000 milliseconds)
-            .get().map { polo => {
-              polo.json.validate[List[PoloMarketCandle]] match {
-                case JsSuccess(candles, t) =>
-                  // sorted by time with most recent first
-                  val last24HrCandles = candles.map( cand => MarketCandle(cand) ).sortBy(_.time).reverse
-                  eventBus.publish(MarketEvent("/market/candles", SetCandles(marketName, last24HrCandles)))
+        // 24 hours ago in seconds
+        // poloniex timestamps should be in UTC
+        val timeStartSeconds = (new DateTime(DateTimeZone.UTC)).getMillis() / 1000L - 86400L
+        ws.url(url)
+          .withHeaders("Accept" -> "application/json")
+          .withQueryString("command" -> "returnChartData")
+          .withQueryString("currencyPair" -> marketName)
+          .withQueryString("start" -> timeStartSeconds.toString)
+          .withQueryString("end" -> "9999999999")
+          .withQueryString("period" -> candleLength.toString)
+          .withRequestTimeout(10000 milliseconds)
+          .get().map { polo => {
+            polo.json.validate[List[PoloMarketCandle]] match {
+              case JsSuccess(candles, t) =>
+                // sorted by time with most recent first
+                val last24HrCandles = candles.map( cand => MarketCandle(cand) ).sortBy(_.time).reverse
+                eventBus.publish(MarketEvent("/market/candles", SetCandles(marketName, last24HrCandles)))
 
-                  // publish closing prices for this market
-                  val closingPrices = MarketCandleClosePrices(marketName, last24HrCandles.map( c => ClosePrice(c.time, c.close)))
-                  eventBus.publish(MarketEvent("/market/prices", closingPrices))
-                case x =>
-                  log.error(s"could not retrieve candles for $marketName: ${x.toString}")
-              }
+                // publish closing prices for this market
+                val closingPrices = MarketCandleClosePrices(marketName, last24HrCandles.map( c => ClosePrice(c.time, c.close)))
+                eventBus.publish(MarketEvent("/market/prices", closingPrices))
+              case x =>
+                log.error(s"could not retrieve candles for $marketName: ${x.toString}")
             }
           }
         }
