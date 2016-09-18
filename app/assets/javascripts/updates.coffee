@@ -49,14 +49,18 @@ $ ->
 
           # last candle in chart data
           last = data[data.length-1]
+          time = last.x
+          
+          if (last.x == undefined)
+            console.log(last)
 
           # if there is not candle then there's nothing to report
           if (result.length == 0)
             return
 
           # is the last.name (the candle period) the same as the result candle period?
-          if (last != undefined && result[0] == last.name)
-            last.update({high: result[2], low: result[3], close: result[4]})
+          if (last != undefined && result[0] == time)
+            last.update({x: result[0], high: result[2], low: result[3], close: result[4]})
 
             # ema1
             if (result[5] != 0)
@@ -65,28 +69,29 @@ $ ->
 
             # ema2
             if (result[6] != 0)
-              if (ema2.data.length == 0)
-                ema2.addPoint({x: data.length-1, y:result[6]})
-              else
-                ema2.data[ema2.data.length-1].update({y:result[6]})
+              ema2.data[ema2.data.length-1].update({y:result[6]})
 
             # 24 hour volume
             if (vol.data.length == 0)
-              vol.addPoint({x: data.length-1, y: result[7]})
+              vol.addPoint({x: time, y: result[7]})
             else
               vol.data[vol.data.length-1].update({y: result[7]})
 
           # new candle period
-          else if (data.length == 0 || result[0] != last.name)
-            candles.addPoint(result, true)
+          else if (data.length == 0 || result[0] != time)
+            candles.addPoint(result.slice(0, 4), true, true, true)
 
             if (result[5] != 0)
-              ema1.addPoint({x: data.length-1, y:result[5]})
+              ema1.addPoint({x: result[0], y:result[5]}, true, true, true)
 
             if (result[6] != 0)
-              ema2.addPoint({x: data.length-1, y:result[6]})
+              ema2.addPoint({x: result[0], y:result[6]}, true, true, true)
 
-            vol.addPoint({x: data.length-1, y:result[7]})
+            # limit data to 288 values
+            if (vol.data.length < 288)
+              vol.addPoint({x: result[0], y:result[7]}, true, false, true)
+            else
+              vol.addPoint({x: result[0], y:result[7]}, true, true, true)
 
           return
     return

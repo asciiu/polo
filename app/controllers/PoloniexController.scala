@@ -142,11 +142,10 @@ class PoloniexController @Inject()(val database: DBService,
       movingAverages <- (movingAveragesActor ? GetMovingAverages(marketName)).mapTo[List[(Int, List[EMA])]]
       volume24hr <- (volumeActor ? GetVolumes(marketName)).mapTo[List[PeriodVolume]]
     } yield {
-      // TODO this will fail if there are not 2 moving averages
-      val df = DateTimeFormat.forPattern("MMM dd HH:mm")
       val l = candles.map { c =>
         Json.arr(
-          df.print(c.time),
+          // TODO UTF offerset should come from client
+          c.time.getMillis - (6*3.6e+6),
           c.open,
           c.high,
           c.low,
@@ -175,10 +174,11 @@ class PoloniexController @Inject()(val database: DBService,
     } yield {
       val df = DateTimeFormat.forPattern("MMM dd HH:mm")
 
+      // TODO UTF offerset should come from client
       val info = candle match {
         case Some(c) if averages.length == 2 =>
             Json.arr(
-              df.print(c.time),
+              c.time.getMillis() - (6*3.6e+6),
               c.open,
               c.high,
               c.low,

@@ -52,7 +52,7 @@ class CandleManagerActor @Inject() extends Actor with ActorLogging {
     case GetCandles(name) =>
       marketCandles.get(name) match {
         case Some(list) =>
-          sender ! list.toList.take(70).reverse
+          sender ! list.toList.reverse
         case None =>
           sender ! List[MarketCandle]()
       }
