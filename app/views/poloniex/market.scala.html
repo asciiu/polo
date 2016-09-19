@@ -1,0 +1,36 @@
+@import models.poloniex.MarketMessage
+
+@(account: Entity[Account], marketName: String, msg: MarketMessage)(implicit webJarAssets: WebJarAssets, messages: Messages)
+
+@scripts = {
+    <script type='text/javascript' src='@routes.Assets.at("javascripts/init.js")'></script>
+    <script type='text/javascript' src='@routes.Assets.at("javascripts/chartUpdates.js")'></script>
+}
+
+
+@_template(Some(account), scripts) {
+    <div class="row markets">
+        <div hidden id="market-name">@marketName</div>
+        <div class="row" id="candle-chart"></div>
+        <div class="row">
+           <table>
+              <thead>
+                  <tr>
+                  <th>24 Hour Change</th>
+                  <th>Last Sale</th>
+                  <th>24 Hour High</th>
+                  <th>24 Hour Low</th>
+                  </tr>
+              </thead>
+              <tbody>
+              <tr>
+                  <td><span id="span-change">@msg.percentChange</span> %</td>
+                  <td id="td-last">@msg.last</td>
+                  <td id="td-high">@msg.high24hr</td>
+                  <td id="td-low">@msg.low24hr</td>
+              </td>
+              </tbody>
+           </table>
+        </div>
+    </div>
+}

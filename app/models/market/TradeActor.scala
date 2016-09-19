@@ -6,10 +6,11 @@ import javax.inject.{Inject, Named}
 import akka.actor.{Actor, ActorLogging, ActorRef}
 import akka.pattern.ask
 import akka.util.Timeout
-import models.poloniex.{MarketUpdate, MarketCandle}
+import models.poloniex.{MarketCandle, MarketMessage, MarketUpdate}
 import org.joda.time.DateTime
 import services.CandleManagerActor.GetLastestCandle
 
+import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -21,6 +22,7 @@ object TradeActor {
   trait TradeMessage
 
   case class MarketEMA(marketName: String, emaShort: EMA, emaLong: EMA) extends TradeMessage
+  case class GetLatestMessage(marketName: String) extends TradeMessage
 }
 
 /**
@@ -33,7 +35,7 @@ class TradeActor @Inject() (@Named("candle-actor") candleActorRef: ActorRef) (im
 
   // TODO track market volume as it happens how do you do this based upon the rolling 24 hour volume
 
-
+  val marketSummaries = scala.collection.mutable.Map[String, MarketMessage]()
   val marketWatch = scala.collection.mutable.ListBuffer.empty[String]
   val eventBus = PoloniexEventBus()
   var lastBuy: BigDecimal = 0
@@ -53,7 +55,11 @@ class TradeActor @Inject() (@Named("candle-actor") candleActorRef: ActorRef) (im
 
   def receive = {
     case update: MarketUpdate =>
-      // TODO keep track of the volume
+      marketSummaries(update.name) = update.info
+
+
+    case GetLatestMessage(marketName) =>
+      sender ! marketSummaries.get(marketName)
 
     // this needs to receive both computed emas
     // TODO change the EMA actor update alorithm to fix this

@@ -3,36 +3,12 @@
 @(account: Entity[Account], btcUpdate: Option[MarketUpdate], updates: List[MarketUpdate])(implicit webJarAssets: WebJarAssets, messages: Messages)
 
 @scripts = {
-    <script type='text/javascript' src='@routes.Assets.at("javascripts/init.js")'></script>
     <script type='text/javascript' src='@routes.Assets.at("javascripts/updates.js")'></script>
 }
 
 
 @_template(Some(account), scripts) {
     <div class="row markets">
-        <div class="columns small-8">
-        <div class="row">
-           <table>
-              <thead>
-                  <tr>
-                  <th>24 Hour Change</th>
-                  <th>Last Sale</th>
-                  <th>24 Hour High</th>
-                  <th>24 Hour Low</th>
-                  </tr>
-              </thead>
-              <tbody>
-              <tr>
-                  <td id="td-change">>3</td>
-                  <td id="td-high">4</td>
-                  <td id="td-low">5</td>
-                  <td id="td-last">1</td>
-              </td>
-              </tbody>
-           </table>
-        </div>
-        <div class="row" id="candle-chart"></div>
-        </div>
         <div class="columns small-4">
             <table>
                 <thead>
@@ -47,7 +23,7 @@
                 <tbody>
                 @for(update <- updates) {
                     <tr id="@update.name">
-                    <td>@update.name</td>
+                    <td><a href="@routes.PoloniexController.market(update.name)">@update.name</a></td>
                     <td>@("%1.8f".format(update.info.last))</td>
                     <td>@update.info.baseVolume</td>
                     <td>@update.info.percentChange</td>

@@ -9,20 +9,22 @@ import javax.inject.{Inject, Named, Singleton}
 
 import jp.t2v.lab.play2.auth.AuthElement
 import models.market.PeriodVolume
+import models.market.TradeActor.GetLatestMessage
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.ws.{WSClient, WSRequest}
-import play.api.mvc.{Controller, WebSocket}
+import play.api.mvc.{Controller, RequestHeader, WebSocket}
 import play.api.libs.json._
 import play.api.libs.streams.ActorFlow
 import play.api.Configuration
 import org.joda.time.format.DateTimeFormat
 import services.ExponentialMovingAverageActor.{GetMovingAverage, GetMovingAverages}
 import services.CandleManagerActor
+import services.CandleManagerActor.GetLastestCandle
 import services.VolumeTrackerActor.{GetVolume, GetVolumes}
 import utils.poloniex.PoloniexTradeClient
 
 import scala.language.postfixOps
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.math.BigDecimal.RoundingMode
 
@@ -83,8 +85,7 @@ class PoloniexController @Inject()(val database: DBService,
         // send updates from Bitcoin markets only
         case update: MarketUpdate if update.name.startsWith("BTC") =>
           val percentChange = update.info.percentChange * 100
-          val name = update.name.replace("BTC_", "")
-          val ud = update.copy(name = name, info = update.info.copy(percentChange =
+          val ud = update.copy(info = update.info.copy(percentChange =
             percentChange.setScale(2, RoundingMode.CEILING)))
           out ! Json.toJson(ud).toString
         case update: MarketUpdate if update.name == "USDT_BTC" =>
@@ -120,8 +121,8 @@ class PoloniexController @Inject()(val database: DBService,
 
             // change percent format from decimal
             val percentChange = t.info.percentChange * 100
-            val name = t.name.replace("BTC_", "")
-            t.copy(name = name, info = t.info.copy(percentChange =
+            //val name = t.name.replace("BTC_", "")
+            t.copy(info = t.info.copy(percentChange =
               percentChange.setScale(2, RoundingMode.CEILING)))
           })
           Ok(views.html.poloniex.markets(loggedIn, bitcoin, btcmarkets))
@@ -131,12 +132,30 @@ class PoloniexController @Inject()(val database: DBService,
     }
   }
 
+  def market(marketName: String) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
+    implicit val timeout = Timeout(5 seconds)
+
+    (tradeActor ? GetLatestMessage(marketName)).mapTo[Option[MarketMessage]].map { msg =>
+      msg match {
+        case Some(m) =>
+          // change percent format from decimal
+          val percentChange = m.percentChange * 100
+          //val name = t.name.replace("BTC_", "")
+          val normalized = m.copy(percentChange =
+            percentChange.setScale(2, RoundingMode.CEILING))
+
+          Ok(views.html.poloniex.market(loggedIn, marketName, normalized))
+        case None =>
+          NotFound(views.html.errors.notFound(request))
+      }
+    }
+  }
+
   // returns locally stored candles
-  def candles(simpleName: String) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
+  def candles(marketName: String) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
     import CandleManagerActor._
     implicit val timeout = Timeout(5 seconds)
 
-    val marketName = s"BTC_$simpleName"
     for {
       candles <- (candleActorRef ? GetCandles(marketName)).mapTo[List[MarketCandle]]
       movingAverages <- (movingAveragesActor ? GetMovingAverages(marketName)).mapTo[List[(Int, List[EMA])]]
@@ -152,7 +171,7 @@ class PoloniexController @Inject()(val database: DBService,
           c.close,
           movingAverages(0)._2.find( avg => c.time.equals(avg.time)).getOrElse(EMA(c.time, 0)).ema,
           movingAverages(1)._2.find( avg => c.time.equals(avg.time)).getOrElse(EMA(c.time, 0)).ema,
-          volume24hr.find( vol => c.time.equals(vol.time)).getOrElse(PeriodVolume(c.time, 0)).btcVolume
+          volume24hr.find( vol => c.time.equals(vol.time)).getOrElse(PeriodVolume(c.time, 0)).btcVolume.setScale(2, RoundingMode.DOWN)
         )
       }
 
@@ -161,11 +180,10 @@ class PoloniexController @Inject()(val database: DBService,
   }
 
   // returns latest candle
-  def latestCandle(simpleName: String) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
+  def latestCandle(marketName: String) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
     import CandleManagerActor._
     implicit val timeout = Timeout(5 seconds)
 
-    val marketName = s"BTC_$simpleName"
     // TODO this will fail if the first future returns a None
     for {
       candle <- (candleActorRef ? GetLastestCandle(marketName)).mapTo[Option[MarketCandle]]
@@ -185,7 +203,7 @@ class PoloniexController @Inject()(val database: DBService,
               c.close,
               averages(0)._2,
               averages(1)._2,
-              volume24hr.btcVolume
+              volume24hr.btcVolume.setScale(2, RoundingMode.DOWN)
             )
         case _ =>
           Json.arr()

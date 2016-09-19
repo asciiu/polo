@@ -23,7 +23,11 @@
             <div class="row">
                 <div class="top-bar-left">
                     <ul class="dropdown menu" data-dropdown-menu>
-                        <li class="menu-text"><a href="@routes.Application.index()">Trade!</a></li>
+                        @if(account.isEmpty) {
+                          <li class="menu-text"><a href="@routes.Application.index()">Block</a></li>
+                        } else {
+                          <li class="menu-text"><a href="@routes.PoloniexController.markets()">Markets</a></li>
+                        }
                         <li class="menu-text">
                             Balance : 00.00
                         </li>
