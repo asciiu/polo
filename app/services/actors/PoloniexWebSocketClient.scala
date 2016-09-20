@@ -1,16 +1,18 @@
-package utils.poloniex
+package services.actors
 
 // external
+import javax.inject.Inject
+
 import akka.actor._
 import akka.wamp._
 import akka.wamp.client._
-import javax.inject.Inject
-import play.api.Configuration
+import models.poloniex.{MarketEvent, MarketMessage, MarketUpdate, PoloniexEventBus}
 import org.joda.time.DateTime
+import play.api.Configuration
+
 import scala.concurrent.ExecutionContext
 
 // internal
-import models.poloniex.{MarketMessage, MarketUpdate}
 
 class PoloniexWebSocketClient @Inject() (conf: Configuration)(implicit context: ExecutionContext, system: ActorSystem) extends Actor with ActorLogging with Scope.Session {
   val endpoint = conf.getString("poloniex.websocket").getOrElse("wss://api.poloniex.com")

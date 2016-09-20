@@ -1,11 +1,10 @@
-package utils.poloniex
+package models.poloniex
 
-import java.util.Base64
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
-import play.api.libs.ws.WSRequest
 import org.apache.commons.codec.binary.Hex
+import play.api.libs.ws.WSRequest
 
 /**
   * Created by bishop on 9/7/16.

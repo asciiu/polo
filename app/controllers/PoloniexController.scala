@@ -6,7 +6,9 @@ import akka.pattern.ask
 import akka.util.Timeout
 import akka.stream.Materializer
 import javax.inject.{Inject, Named, Singleton}
+
 import jp.t2v.lab.play2.auth.AuthElement
+import models.poloniex.{PoloniexEventBus, PoloniexTradeClient}
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.ws.{WSClient, WSRequest}
 import play.api.mvc.{Controller, RequestHeader, WebSocket}
@@ -14,6 +16,7 @@ import play.api.libs.json._
 import play.api.libs.streams.ActorFlow
 import play.api.Configuration
 import org.joda.time.format.DateTimeFormat
+
 import scala.language.postfixOps
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
@@ -24,14 +27,12 @@ import models.market.PeriodVolume
 import models.db.AccountRole
 import models.poloniex.{MarketUpdate, MarketMessage}
 import services.DBService
-import utils.poloniex.PoloniexEventBus
 import models.bittrex.AllMarketSummary
 import models.market.EMA
 import models.poloniex.MarketCandle
 import services.actors.TradeActor.GetLatestMessage
 import services.actors.VolumeTrackerActor.{GetVolume, GetVolumes}
 import services.actors.{CandleManagerActor, ExponentialMovingAverageActor, TradeActor}
-import utils.poloniex.PoloniexTradeClient
 import ExponentialMovingAverageActor._
 import CandleManagerActor._
 

@@ -1,14 +1,12 @@
-package utils.poloniex
+package models.poloniex
 
-import models.poloniex._
-import org.joda.time.DateTime
 import play.api.Configuration
+import play.api.libs.functional.syntax._
 import play.api.libs.json._
 import play.api.libs.ws.WSClient
-import play.api.libs.functional.syntax._
 
-import scala.language.postfixOps
 import scala.concurrent.{ExecutionContext, Future}
+import scala.language.postfixOps
 
 /**
   * Created by bishop on 9/7/16.

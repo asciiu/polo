@@ -1,4 +1,4 @@
-package utils.poloniex
+package models.poloniex
 
 import akka.event.{ActorEventBus, LookupClassification}
 

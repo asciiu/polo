@@ -4,8 +4,9 @@ package services.actors
 import javax.inject.Inject
 
 import akka.actor.{Actor, ActorLogging}
+import models.poloniex.{MarketEvent, PoloniexEventBus}
 import org.joda.time._
-import utils.poloniex.{MarketEvent, PoloniexCandleRetrieverActor, PoloniexEventBus}
+import models.poloniex.MarketEvent
 
 import scala.collection.mutable.ListBuffer
 import scala.language.postfixOps

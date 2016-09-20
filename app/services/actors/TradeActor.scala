@@ -6,7 +6,7 @@ import javax.inject.Inject
 import akka.actor.{Actor, ActorLogging}
 import akka.util.Timeout
 import models.market.EMA
-import models.poloniex.{MarketMessage, MarketUpdate}
+import models.poloniex.{MarketMessage, MarketUpdate, PoloniexEventBus}
 import org.joda.time.DateTime
 
 import scala.concurrent.ExecutionContext
@@ -15,7 +15,6 @@ import scala.language.postfixOps
 import scala.math.BigDecimal.RoundingMode
 
 // internal
-import utils.poloniex.PoloniexEventBus
 
 object TradeActor {
   trait TradeMessage

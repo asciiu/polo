@@ -1,24 +1,23 @@
-package utils.poloniex
+package services.actors
 
 // external
-import akka.actor.{Actor, ActorLogging, ActorSystem, Cancellable, Props}
 import javax.inject.{Inject, Singleton}
 
+import akka.actor.{Actor, ActorLogging, Cancellable}
 import models.market.ClosePrice
+import models.poloniex.{MarketCandle, MarketEvent, PoloMarketCandle, PoloniexEventBus}
 import org.joda.time.{DateTime, DateTimeZone}
 import play.api.Configuration
-import play.api.libs.ws.WSClient
-import play.api.libs.json._
-import play.api.libs.json.Reads._
 import play.api.libs.functional.syntax._
-import services.actors.{CandleManagerActor, ExponentialMovingAverageActor}
+import play.api.libs.json.Reads._
+import play.api.libs.json._
+import play.api.libs.ws.WSClient
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
 // internal
-import models.poloniex.{MarketCandle, PoloMarketCandle}
-import CandleManagerActor.SetCandles
-import ExponentialMovingAverageActor._
+import services.actors.CandleManagerActor.SetCandles
+import services.actors.ExponentialMovingAverageActor._
 
 
 object PoloniexCandleRetrieverActor {
@@ -35,6 +34,7 @@ object PoloniexCandleRetrieverActor {
 @Singleton
 class PoloniexCandleRetrieverActor @Inject()(ws: WSClient, conf: Configuration) extends Actor with ActorLogging {
   import PoloniexCandleRetrieverActor._
+
   import scala.concurrent.duration._
   import scala.language.postfixOps
 
