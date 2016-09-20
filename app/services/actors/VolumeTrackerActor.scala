@@ -1,15 +1,16 @@
-package services
+package services.actors
+
+import javax.inject.Inject
 
 import akka.actor.{Actor, ActorLogging}
-import javax.inject.Inject
 import org.joda.time.DateTime
 import play.api.Configuration
+
 import scala.collection.mutable.ListBuffer
 
 // internals
 import models.market.PeriodVolume
-import models.poloniex.MarketCandle
-import models.poloniex.MarketUpdate
+import models.poloniex.{MarketCandle, MarketUpdate}
 import utils.poloniex.PoloniexEventBus
 
 

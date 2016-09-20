@@ -11,13 +11,14 @@ import play.api.libs.ws.WSClient
 import play.api.libs.json._
 import play.api.libs.json.Reads._
 import play.api.libs.functional.syntax._
+import services.actors.{CandleManagerActor, ExponentialMovingAverageActor}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
 // internal
 import models.poloniex.{MarketCandle, PoloMarketCandle}
-import services.CandleManagerActor.SetCandles
-import services.ExponentialMovingAverageActor._
+import CandleManagerActor.SetCandles
+import ExponentialMovingAverageActor._
 
 
 object PoloniexCandleRetrieverActor {

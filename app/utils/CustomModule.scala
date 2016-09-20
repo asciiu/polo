@@ -4,9 +4,9 @@ package utils
   * Created by bishop on 9/5/16.
   */
 import com.google.inject.AbstractModule
-import models.market.TradeActor
 import play.api.libs.concurrent.AkkaGuiceSupport
-import services.{CandleManagerActor, ExponentialMovingAverageActor, VolumeTrackerActor}
+
+import services.actors._
 import utils.poloniex.{PoloniexCandleRetrieverActor, PoloniexWebSocketClient}
 
 class CustomModule extends AbstractModule with AkkaGuiceSupport {

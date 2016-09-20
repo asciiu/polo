@@ -1,12 +1,11 @@
-package services
+package services.actors
 
 import javax.inject.Inject
 
 import akka.actor.{Actor, ActorLogging}
-import models.market.TradeActor
+import TradeActor.MarketEMA
 import org.joda.time.DateTime
 import play.api.Configuration
-import TradeActor.MarketEMA
 import utils.poloniex.MarketEvent
 
 import scala.collection.mutable.ListBuffer
@@ -14,7 +13,7 @@ import scala.math.BigDecimal.RoundingMode
 
 // internals
 import models.market.{ClosePrice, EMA}
-import utils.poloniex.{PoloniexEventBus}
+import utils.poloniex.PoloniexEventBus
 
 
 object ExponentialMovingAverageActor {

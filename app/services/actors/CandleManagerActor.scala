@@ -1,16 +1,18 @@
-package services
+package services.actors
 
 // external
 import javax.inject.Inject
 
 import akka.actor.{Actor, ActorLogging}
 import org.joda.time._
-import scala.collection.mutable.ListBuffer
-import scala.language.postfixOps
 import utils.poloniex.{MarketEvent, PoloniexCandleRetrieverActor, PoloniexEventBus}
 
+import scala.collection.mutable.ListBuffer
+import scala.language.postfixOps
+
 // internal
-import models.poloniex.{MarketUpdate, MarketCandle}
+import models.poloniex.{MarketCandle, MarketUpdate}
+import services.actors.ExponentialMovingAverageActor.MarketCandleClose
 
 
 object CandleManagerActor {
@@ -27,7 +29,6 @@ class CandleManagerActor @Inject() extends Actor with ActorLogging {
   import CandleManagerActor._
   import PoloniexCandleRetrieverActor._
   import models.market.ClosePrice
-  import services.ExponentialMovingAverageActor.MarketCandleClose
 
   val eventBus = PoloniexEventBus()
   val marketCandles = scala.collection.mutable.Map[String, ListBuffer[MarketCandle]]()
