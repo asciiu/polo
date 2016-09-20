@@ -1,4 +1,4 @@
-package models.poloniex
+package models.poloniex.trade
 
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec

@@ -1,5 +1,6 @@
-package models.poloniex
+package models.poloniex.trade
 
+import org.joda.time.DateTime
 import play.api.Configuration
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
@@ -7,6 +8,34 @@ import play.api.libs.ws.WSClient
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
+
+object PoloniexTradeClient {
+  case class CurrencyBalance(marketName: String,
+                             available: BigDecimal,
+                             onOrders: BigDecimal,
+                             btcValue: BigDecimal)
+
+  case class MoveOrderStatus(status: Int, orderNumber: Long)
+
+  case class Order(orderNumber: Long,
+                   side: String,
+                   rate: BigDecimal,
+                   startingAmount: BigDecimal,
+                   amount: BigDecimal,
+                   total: BigDecimal)
+
+  case class OrderNumber(orderNumber: Long,
+                         resultingTrades: List[Trade])
+
+  case class OrdersOpened(marketName: String, orders: List[Order])
+
+  case class Trade(date: DateTime,
+                   amount: BigDecimal,
+                   rate: BigDecimal,
+                   total: BigDecimal,
+                   tradeId: Long,
+                   `type`: String)
+}
 
 /**
   * Created by bishop on 9/7/16.
@@ -17,6 +46,7 @@ class PoloniexTradeClient (apiKey: String,
                            wsClient: WSClient)
                           (implicit context: ExecutionContext) extends PoloniexAuth(apiKey, secretKey) {
 
+  import PoloniexTradeClient._
   val url = conf.getString("poloniex.url.trade").getOrElse("https://poloniex.com/tradingApi")
 
   private def nonce = System.currentTimeMillis().toInt.toString

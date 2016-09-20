@@ -8,7 +8,8 @@ import akka.stream.Materializer
 import javax.inject.{Inject, Named, Singleton}
 
 import jp.t2v.lab.play2.auth.AuthElement
-import models.poloniex.{PoloniexEventBus, PoloniexTradeClient}
+import models.poloniex.PoloniexEventBus
+import models.poloniex.trade.PoloniexTradeClient
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.ws.{WSClient, WSRequest}
 import play.api.mvc.{Controller, RequestHeader, WebSocket}
