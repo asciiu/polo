@@ -6,13 +6,27 @@ import com.typesafe.config.ConfigFactory
 import slick.profile.SqlProfile.ColumnOption
 
 import scala.concurrent.Await
+import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.Duration
 
 /**
-  * Based on https://github.com/tminglei/slick-pg/blob/master/examples/codegen-customization/codegen/src/main/scala/demo/CustomizedCodeGenerator.scala
+  * This will generate all slick DB models for the database defined in
+  * application.conf. To
   */
-object SourceCodeGenerator extends App {
+object CustomSickCodeGenerator {
+
+  def main(args: Array[String]): Unit = {
+    Await.ready(
+      codegen.map{_.writeToFile(
+        slickDriver,
+        "app",
+        "models.db",
+        "Tables",
+        "Tables.scala"
+      )},
+      20.seconds
+    )
+  }
 
   val config = ConfigFactory.parseFile(new File("conf/application.conf"))
 
@@ -32,10 +46,6 @@ object SourceCodeGenerator extends App {
       value
     }
   }
-  val generatedFileClass = "Tables"
-  val generatedFilePackage = "models.db"
-  val generatedFileName = "Tables.scala"
-  val generatedFileOutputFolder = "app"
 
   val db = TetraoPostgresDriver.api.Database.forURL(
     url = databaseURL,
@@ -44,12 +54,30 @@ object SourceCodeGenerator extends App {
     password = databasePassword
   )
 
-  //the table spatial_ref_sys is an internal table of the postgis extension
-  val modelAction = TetraoPostgresDriver.createModel(Some(TetraoPostgresDriver.defaultTables))
+  // add all tables that should be ignored here
+  val ignore = Seq("play_evolutions")
 
-  val codegen = db.run(modelAction).map { model =>
+  val codegen = db.run{
+    TetraoPostgresDriver.defaultTables.map(
+      _.filter ( t => !ignore.contains(t.name.name))
+    ).flatMap( TetraoPostgresDriver.createModelBuilder(_,false).buildModel )
+  }.map{ model =>
 
     new slick.codegen.SourceCodeGenerator(model) {
+
+      override def entityName = dbTableName => dbTableName match {
+        case "users" => "AccountRow"
+        case "messages" => "MessageRow"
+        case "poloniex_messages" => "PoloniexMessageRow"
+        case _ => super.entityName(dbTableName)
+      }
+
+      override def tableName = dbTableName => dbTableName match {
+        case "users" => "Account"
+        case "poloniex_messages" => "PoloniexMessage"
+        case _ => super.tableName(dbTableName)
+      }
+
       override def Table = new Table(_) {
         table =>
 
@@ -69,7 +97,7 @@ object SourceCodeGenerator extends App {
               case "_text" => "List[String]"
 
               //enums
-              case "account_role" => "models.db.AccountRole.Value"
+              case "user_role" => "models.db.AccountRole.Value"
 
               case "text" => "String"
               case "varchar" => "String"
@@ -105,6 +133,5 @@ trait ${container}${parentType.map(t => s" extends $t").getOrElse("")} {
       }
     }
   }
-
-  Await.ready(codegen.map(_.writeToFile(slickDriver, generatedFileOutputFolder, generatedFilePackage, generatedFileClass, generatedFileName)), Duration.Inf)
 }
+

@@ -1,3 +1,5 @@
+import com.typesafe.config.ConfigFactory
+
 name := "poloniex"
 
 //common settings for the project and subprojects
@@ -7,6 +9,8 @@ lazy val commonSettings = Seq(
 	scalaVersion := "2.11.8",
 	scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-target:jvm-1.8")
 )
+
+updateOptions := updateOptions.value.withCachedResolution(true)
 
 lazy val root = (project in file("."))
 	.settings(commonSettings: _*)
@@ -25,10 +29,11 @@ lazy val root = (project in file("."))
 		libraryDependencies += "com.github.t3hnar" %% "scala-bcrypt" % "2.6",
 		libraryDependencies += "org.webjars" %% "webjars-play" % "2.5.0",
 		libraryDependencies += "org.webjars" % "foundation" % "6.2.3",
-		libraryDependencies += "com.typesafe.play" %% "play-mailer" % "5.0.0"
+		libraryDependencies += "com.typesafe.play" %% "play-mailer" % "5.0.0",
+		libraryDependencies += "org.scalatestplus.play" %% "scalatestplus-play" % "1.5.0" % "test"
 	)
   .enablePlugins(PlayScala)
   .enablePlugins(SbtWeb)
 
 //to generate models/db/Tables.scala
-addCommandAlias("tables", "run-main utils.db.SourceCodeGenerator")
+addCommandAlias("gen-tables", "run-main utils.db.CustomSickCodeGenerator")
