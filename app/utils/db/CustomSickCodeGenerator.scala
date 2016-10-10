@@ -69,12 +69,14 @@ object CustomSickCodeGenerator {
         case "users" => "AccountRow"
         case "messages" => "MessageRow"
         case "poloniex_messages" => "PoloniexMessageRow"
+        case "poloniex_candles" => "PoloniexCandleRow"
         case _ => super.entityName(dbTableName)
       }
 
       override def tableName = dbTableName => dbTableName match {
         case "users" => "Account"
         case "poloniex_messages" => "PoloniexMessage"
+        case "poloniex_candles" => "PoloniexCandle"
         case _ => super.tableName(dbTableName)
       }
 

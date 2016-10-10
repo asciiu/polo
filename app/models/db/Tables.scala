@@ -1,6 +1,6 @@
 package models.db
 
-// AUTO-GENERATED Slick data model [2016-10-07T14:05:59.776-06:00[America/Denver]]
+// AUTO-GENERATED Slick data model [2016-10-09T16:05:29.688-06:00[America/Denver]]
 
 /** Stand-alone Slick data model for immediate use */
 object Tables extends {
@@ -16,7 +16,7 @@ trait Tables {
   import slick.jdbc.{GetResult => GR}
 
   /** DDL for all tables. Call .create to execute. */
-  lazy val schema: profile.SchemaDescription = Account.schema ++ Message.schema ++ PoloniexMessage.schema
+  lazy val schema: profile.SchemaDescription = Account.schema ++ Message.schema ++ PoloniexCandle.schema ++ PoloniexMessage.schema
   @deprecated("Use .schema instead of .ddl", "3.0")
   def ddl = schema
 
@@ -95,6 +95,44 @@ trait Tables {
   }
   /** Collection-like TableQuery object for table Message */
   lazy val Message = new TableQuery(tag => new Message(tag))
+
+  /** Entity class storing rows of table PoloniexCandle
+   *  @param id Database column id SqlType(serial), AutoInc, PrimaryKey
+   *  @param cryptoCurrency Database column crypto_currency SqlType(text)
+   *  @param open Database column open SqlType(numeric)
+   *  @param close Database column close SqlType(numeric)
+   *  @param lowestAsk Database column lowest_ask SqlType(numeric)
+   *  @param highestBid Database column highest_bid SqlType(numeric)
+   *  @param createdAt Database column created_at SqlType(timestamptz) */
+  case class PoloniexCandleRow(id: Int, cryptoCurrency: String, open: scala.math.BigDecimal, close: scala.math.BigDecimal, lowestAsk: scala.math.BigDecimal, highestBid: scala.math.BigDecimal, createdAt: java.time.OffsetDateTime)
+  /** GetResult implicit for fetching PoloniexCandleRow objects using plain SQL queries */
+  implicit def GetResultPoloniexCandleRow(implicit e0: GR[Int], e1: GR[String], e2: GR[scala.math.BigDecimal], e3: GR[java.time.OffsetDateTime]): GR[PoloniexCandleRow] = GR{
+    prs => import prs._
+    PoloniexCandleRow.tupled((<<[Int], <<[String], <<[scala.math.BigDecimal], <<[scala.math.BigDecimal], <<[scala.math.BigDecimal], <<[scala.math.BigDecimal], <<[java.time.OffsetDateTime]))
+  }
+  /** Table description of table poloniex_candles. Objects of this class serve as prototypes for rows in queries. */
+  class PoloniexCandle(_tableTag: Tag) extends Table[PoloniexCandleRow](_tableTag, "poloniex_candles") {
+    def * = (id, cryptoCurrency, open, close, lowestAsk, highestBid, createdAt) <> (PoloniexCandleRow.tupled, PoloniexCandleRow.unapply)
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? = (Rep.Some(id), Rep.Some(cryptoCurrency), Rep.Some(open), Rep.Some(close), Rep.Some(lowestAsk), Rep.Some(highestBid), Rep.Some(createdAt)).shaped.<>({r=>import r._; _1.map(_=> PoloniexCandleRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+
+    /** Database column id SqlType(serial), AutoInc, PrimaryKey */
+    val id: Rep[Int] = column[Int]("id", O.AutoInc, O.PrimaryKey)
+    /** Database column crypto_currency SqlType(text) */
+    val cryptoCurrency: Rep[String] = column[String]("crypto_currency")
+    /** Database column open SqlType(numeric) */
+    val open: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("open")
+    /** Database column close SqlType(numeric) */
+    val close: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("close")
+    /** Database column lowest_ask SqlType(numeric) */
+    val lowestAsk: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("lowest_ask")
+    /** Database column highest_bid SqlType(numeric) */
+    val highestBid: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("highest_bid")
+    /** Database column created_at SqlType(timestamptz) */
+    val createdAt: Rep[java.time.OffsetDateTime] = column[java.time.OffsetDateTime]("created_at")
+  }
+  /** Collection-like TableQuery object for table PoloniexCandle */
+  lazy val PoloniexCandle = new TableQuery(tag => new PoloniexCandle(tag))
 
   /** Entity class storing rows of table PoloniexMessage
    *  @param id Database column id SqlType(serial), AutoInc, PrimaryKey
