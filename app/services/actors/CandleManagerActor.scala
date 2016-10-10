@@ -7,6 +7,7 @@ import akka.actor.{Actor, ActorLogging}
 import models.poloniex.{MarketEvent, PoloniexEventBus}
 import org.joda.time._
 import models.poloniex.MarketEvent
+import play.api.Configuration
 
 import scala.collection.mutable.ListBuffer
 import scala.language.postfixOps
@@ -26,7 +27,7 @@ object CandleManagerActor {
 /**
   * Created by bishop on 8/17/16. This actor is responsible for managing candles for all markets.
   */
-class CandleManagerActor @Inject() extends Actor with ActorLogging {
+class CandleManagerActor @Inject()(conf: Configuration) extends Actor with ActorLogging {
   import CandleManagerActor._
   import PoloniexCandleRetrieverActor._
   import models.market.ClosePrice
@@ -34,6 +35,7 @@ class CandleManagerActor @Inject() extends Actor with ActorLogging {
   val eventBus = PoloniexEventBus()
   val marketCandles = scala.collection.mutable.Map[String, ListBuffer[MarketCandle]]()
   val candleTimeMinutes = 5
+  val baseVolumeRule = conf.getInt("poloniex.candle.baseVolume").getOrElse(500)
 
   override def preStart() = {
     log info "subscribed to market updates"
@@ -101,9 +103,9 @@ class CandleManagerActor @Inject() extends Actor with ActorLogging {
           marketCandles.put(name, candles)
 
           // send a message to the retriever to get the candle data from Poloniex
-          // TODO remove this condition
-          if (update.info.baseVolume > 500) {
-            eventBus.publish(MarketEvent("/market/added", QueueMarket(name)))
+          // if the 24 hour baseVolume from this update is greater than our threshold
+          if (update.info.baseVolume > baseVolumeRule) {
+              eventBus.publish(MarketEvent("/market/added", QueueMarket(name)))
           }
           candles
       }
