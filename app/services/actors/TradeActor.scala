@@ -8,6 +8,7 @@ import akka.util.Timeout
 import models.market.EMA
 import models.poloniex.{MarketMessage, MarketUpdate, PoloniexEventBus}
 import org.joda.time.DateTime
+import play.api.Configuration
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
@@ -26,7 +27,7 @@ object TradeActor {
 /**
   * Created by bishop on 9/7/16.
   */
-class TradeActor @Inject() () (implicit context: ExecutionContext) extends Actor with ActorLogging {
+class TradeActor @Inject()(conf: Configuration)(implicit context: ExecutionContext) extends Actor with ActorLogging {
   import TradeActor._
 
   case class BuyRecord(date: DateTime, buyPrice: BigDecimal, amount: BigDecimal, last24BtcVolume: BigDecimal)
@@ -37,9 +38,12 @@ class TradeActor @Inject() () (implicit context: ExecutionContext) extends Actor
 
   // define a map for the market name to the change in volume
   private case class Volumes(first: BigDecimal, last: BigDecimal)
+
   private val marketVols = scala.collection.mutable.Map[String, Volumes]()
 
-  val marketWatch = scala.collection.mutable.Set[String]()
+  //  when ema short > ema long
+  val emaConditionMet = scala.collection.mutable.Set[String]()
+
   val eventBus = PoloniexEventBus()
   var lastBuy: BigDecimal = 0
 
@@ -75,18 +79,19 @@ class TradeActor @Inject() () (implicit context: ExecutionContext) extends Actor
     // TODO change the EMA actor update alorithm to fix this
     case MarketEMA(marketName, emaShort, emaLong) => {
       // are we already watching this market
-      if (marketWatch.contains(marketName) && emaShort.ema < emaLong.ema) {
-        marketWatch.remove(marketName)
+      if (emaConditionMet.contains(marketName) && emaShort.ema < emaLong.ema) {
+        emaConditionMet.remove(marketName)
       } else if (emaShort.ema > emaLong.ema) {
         // TODO compute the slope from the last two period moving averages
 
         val vols = marketVols(marketName)
         if (vols.first != 0 && vols.last - vols.first > 3) {
-          if (!marketWatch.contains(marketName)) {
-            marketWatch.add(marketName)
+          if (!emaConditionMet.contains(marketName)) {
+            emaConditionMet.add(marketName)
           } else {
             val delta = (vols.last - vols.first).setScale(2, RoundingMode.DOWN)
-            println(s"$marketName change in vol: $delta")
+            val time = new DateTime()
+            //println(s"$time - $marketName change in vol: $delta")
           }
         }
       }
