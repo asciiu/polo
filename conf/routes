@@ -32,4 +32,6 @@ GET     /last/:marketName           controllers.PoloniexController.latestCandle(
 GET     /socket                     controllers.PoloniexController.socket()
 GET     /markets                    controllers.PoloniexController.markets()
 GET     /market/:marketName         controllers.PoloniexController.market(marketName)
-GET     /arbiter                    controllers.PoloniexController.arbiter()
+
+# Research and Development controller
+GET     /arbiter                    controllers.ProtoController.arbiter()

@@ -47,7 +47,8 @@ class PoloniexController @Inject()(val database: DBService,
                                    @Named("polo-candle-retriever") candleRetrieverActor: ActorRef,
                                    @Named("polo-websocket-client") websocketClient: ActorRef,
                                    @Named("trade-actor") tradeActor: ActorRef,
-                                   @Named("volume-actor") volumeActor: ActorRef)
+                                   @Named("volume-actor") volumeActor: ActorRef,
+                                   @Named("archive-actor") archive: ActorRef)
                                   (implicit system: ActorSystem,
                                    materializer: Materializer,
                                    context: ExecutionContext,
@@ -69,7 +70,7 @@ class PoloniexController @Inject()(val database: DBService,
   )
 
   /**
-    * Websocket for clients that sends market updates.
+    * Sends market updates to all connected clients.
     */
   def socket() = WebSocket.accept[String, String] { request =>
 
@@ -96,6 +97,10 @@ class PoloniexController @Inject()(val database: DBService,
     ActorFlow.actorRef(out => Props(new BrowserActor(out)))
   }
 
+
+  /**
+    * Displays all poloniex markets.
+    */
   def markets() = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
     implicit val marketStatus = Json.reads[MarketMessage]
     implicit val marketRead: Reads[List[MarketUpdate]] = Reads(js =>
@@ -132,6 +137,11 @@ class PoloniexController @Inject()(val database: DBService,
     }
   }
 
+  /**
+    * The latest market data.
+    * @param marketName
+    * @return
+    */
   def market(marketName: String) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
     implicit val timeout = Timeout(5 seconds)
 
@@ -151,7 +161,11 @@ class PoloniexController @Inject()(val database: DBService,
     }
   }
 
-  // returns locally stored candles
+
+  /**
+    * Returns candle data for the following market.
+    * @param marketName
+    */
   def candles(marketName: String) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
     import CandleManagerActor._
     implicit val timeout = Timeout(5 seconds)
@@ -179,7 +193,10 @@ class PoloniexController @Inject()(val database: DBService,
     }
   }
 
-  // returns latest candle
+  /**
+    * Returns the latest candle for a market.
+    * @param marketName
+    */
   def latestCandle(marketName: String) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
     import CandleManagerActor._
     implicit val timeout = Timeout(5 seconds)
@@ -210,69 +227,6 @@ class PoloniexController @Inject()(val database: DBService,
       }
 
       Ok(Json.toJson(info))
-    }
-  }
-
-
-  // Prototyping an arbitrage scenario between Polo and bittrex
-  // needs to be implemented.
-  def arbiter() = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
-    import models.bittrex.Bittrex._
-
-    implicit val marketStatus = Json.reads[MarketMessage]
-    implicit val marketRead: Reads[List[MarketUpdate]] = Reads(js =>
-      JsSuccess(js.as[JsObject].fieldSet.map { ticker =>
-        MarketUpdate(ticker._1, ticker._2.as[MarketMessage])
-      }.toList))
-
-    // bittrex markets
-    val bittrexRequest: WSRequest = ws.url("https://bittrex.com/api/v1.1/public/getmarketsummaries")
-      .withHeaders("Accept" -> "application/json")
-      .withRequestTimeout(1000.millis)
-
-    // poloniex markets
-    val poloniexRequest: WSRequest = ws.url("https://poloniex.com/public?command=returnTicker")
-      .withHeaders("Accept" -> "application/json")
-      .withRequestTimeout(10000.millis)
-
-    for {
-      polo <- poloniexRequest.get()
-      btrx <- bittrexRequest.get()
-    } yield {
-
-      (btrx.json.validate[AllMarketSummary], polo.json.validate[List[MarketUpdate]]) match {
-        case (JsSuccess(bitrxt, t1), JsSuccess(polot, t2)) =>
-          // bittrex markets
-          val btx = bitrxt.result.map{ b => b.copy(name = b.name.replace("-", "_"))}.filter( b => b.name.startsWith("BTC"))
-
-          // Bitcoin price
-          val bitcoin = polot.find( _.name == "USDT_BTC")
-
-          // only care about btc markets
-          val btcmarkets = polot.filter(t =>  t.name.startsWith("BTC"))
-            .sortBy( tick => tick.info.baseVolume).reverse.map(t => {
-            val percentChange = t.info.percentChange * 100
-            t.copy(info = t.info.copy(percentChange =
-              percentChange.setScale(2, RoundingMode.CEILING)))
-          })
-
-          // find last differences here
-          val markets = for {
-            btxm <- btx
-            polm <- btcmarkets
-            if (btxm.name == polm.name)
-          } yield {
-            val diff = (polm.info.last - btxm.last).abs
-            val f = "%1.8f".format(diff)
-
-            println( s"${polm.name} bittrex last: ${btxm.last} poloniex last: ${polm.info.last} diff: $f")
-            polm.name
-          }
-
-          Ok(views.html.poloniex.markets(loggedIn, bitcoin, btcmarkets))
-        case _ =>
-          BadRequest("could not read polo and/or bittrex")
-      }
     }
   }
 }
