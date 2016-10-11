@@ -1,12 +1,13 @@
 package controllers
 
-import javax.inject.Inject
+import javax.inject.{Inject, Named}
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorRef, ActorSystem}
 import akka.stream.Materializer
 import jp.t2v.lab.play2.auth.AuthElement
 import models.bittrex.AllMarketSummary
-import models.db.AccountRole
+import models.db.{AccountRole, Tables}
+import models.market.ClosePrice
 import models.poloniex.{MarketMessage, MarketUpdate}
 import play.api.Configuration
 import play.api.i18n.{I18nSupport, MessagesApi}
@@ -14,14 +15,18 @@ import play.api.libs.json.{JsObject, JsSuccess, Json, Reads}
 import play.api.libs.ws.{WSClient, WSRequest}
 import play.api.mvc.Controller
 import services.DBService
-import scala.concurrent.duration._
+import models.db.Tables.profile.api._
+import services.actors.ExponentialMovingAverageActor.MarketCandleClosePrices
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContext, Future}
 import scala.math.BigDecimal.RoundingMode
+import models.db.Tables._
 
 
 /**
   * All R&D projects should start here.
+  *
   * @param database
   * @param messagesApi
   * @param ws

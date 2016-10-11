@@ -26,6 +26,9 @@ POST    /messages/:id/delete        controllers.RestrictedApplication.deleteMess
 GET     /assets/*file               controllers.Assets.at(path="/public", file)
 GET     /webjars/*file              controllers.WebJarAssets.at(file)
 
+# Playback controller reads data recorded in DB
+GET     /playback                   controllers.PlaybackController.playback()
+
 # Poloneix
 GET     /candles/:marketName        controllers.PoloniexController.candles(marketName)
 GET     /last/:marketName           controllers.PoloniexController.latestCandle(marketName)
