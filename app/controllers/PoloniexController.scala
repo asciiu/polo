@@ -178,7 +178,8 @@ class PoloniexController @Inject()(val database: DBService,
       val l = candles.map { c =>
         Json.arr(
           // TODO UTF offerset should come from client
-          c.time.getMillis - (6*3.6e+6),
+          //c.time.getMillis - (6*3.6e+6),
+          c.time.toEpochSecond(),
           c.open,
           c.high,
           c.low,
@@ -213,7 +214,8 @@ class PoloniexController @Inject()(val database: DBService,
       val info = candle match {
         case Some(c) if averages.length == 2 =>
             Json.arr(
-              c.time.getMillis() - (6*3.6e+6),
+              //c.time.getMillis() - (6*3.6e+6),
+              c.time.toEpochSecond,
               c.open,
               c.high,
               c.low,

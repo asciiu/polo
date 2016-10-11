@@ -5,11 +5,12 @@ import javax.inject.Inject
 
 import akka.actor.{Actor, ActorLogging}
 import akka.util.Timeout
-import models.market.EMA
-import models.poloniex.{MarketMessage, MarketUpdate, PoloniexEventBus}
+import models.market.{EMA, PeriodVolume}
+import models.poloniex.{MarketCandle, MarketMessage, MarketUpdate, PoloniexEventBus}
 import org.joda.time.DateTime
 import play.api.Configuration
 
+import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -33,13 +34,12 @@ class TradeActor @Inject()(conf: Configuration)(implicit context: ExecutionConte
   case class BuyRecord(date: DateTime, buyPrice: BigDecimal, amount: BigDecimal, last24BtcVolume: BigDecimal)
 
   // TODO track market volume as it happens how do you do this based upon the rolling 24 hour volume
-
   val marketSummaries = scala.collection.mutable.Map[String, MarketMessage]()
-
   // define a map for the market name to the change in volume
   private case class Volumes(first: BigDecimal, last: BigDecimal)
-
   private val marketVols = scala.collection.mutable.Map[String, Volumes]()
+
+  val periodVolumes = scala.collection.mutable.Map[String,  ListBuffer[PeriodVolume]]()
 
   //  when ema short > ema long
   val emaConditionMet = scala.collection.mutable.Set[String]()
