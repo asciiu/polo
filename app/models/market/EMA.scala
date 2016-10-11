@@ -1,9 +1,9 @@
 package models.market
 
-import org.joda.time.DateTime
+import java.time.OffsetDateTime
 
 /**
   * Created by bishop on 9/6/16.
   */
 // TODO add period number
-case class EMA(time: DateTime, ema: BigDecimal)
+case class EMA(time: OffsetDateTime, ema: BigDecimal)

@@ -1,6 +1,7 @@
 package services.actors
 
 // external
+import java.time.OffsetDateTime
 import javax.inject.Inject
 
 import akka.actor.{Actor, ActorLogging}
@@ -93,7 +94,7 @@ class CandleManagerActor @Inject()(conf: Configuration) extends Actor with Actor
     if (name.startsWith("BTC")) {
 
       // this is the current time rounded down to 5 minutes
-      val time = MarketCandle.roundDateToMinute(new DateTime(), candleTimeMinutes)
+      val time = MarketCandle.roundDateToMinute(OffsetDateTime.now(), candleTimeMinutes)
 
       // get candle collection for this market
       val candleBuffer = marketCandles.get(name) match {
@@ -121,10 +122,11 @@ class CandleManagerActor @Inject()(conf: Configuration) extends Actor with Actor
         } else {
           // if we've skipped some candle periods due to no trade activity
           // we need to fill in those missed periods
-          val skippedCandles = ((time.getMillis - currentCandle.time.getMillis) / (candleTimeMinutes * 60000L)).toInt - 1
+          val skippedCandles = ((time.toEpochSecond - currentCandle.time.toEpochSecond) / (candleTimeMinutes * 60L)).toInt - 1
           for (i <- 1 to skippedCandles) {
             // add appropriate 5 minute interval to compute next candle time
-            val candleTime = new DateTime(currentCandle.time.getMillis + (candleTimeMinutes * 60000L * i))
+
+            val candleTime = currentCandle.time.plusMinutes(candleTimeMinutes * i)
             val candle = MarketCandle(candleTime, candleTimeMinutes, currentCandle.close)
 
             // inform the moving average actor of new close period

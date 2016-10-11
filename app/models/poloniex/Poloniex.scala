@@ -1,5 +1,7 @@
 package models.poloniex
 
+import java.time.OffsetDateTime
+
 import org.joda.time.DateTime
 
 
@@ -20,7 +22,7 @@ case class MarketMessage(id: Int,
 
 //[{"date":1405699200,"high":0.0045388,"low":0.00403001,"open":0.00404545,"close":0.00427592,"volume":44.11655644,
 //"quoteVolume":10259.29079097,"weightedAverage":0.00430015}, ...]
-case class PoloMarketCandle(date: DateTime,
+case class PoloMarketCandle(date: OffsetDateTime,
                          high: BigDecimal,
                          low: BigDecimal,
                          open: BigDecimal,
@@ -31,6 +33,7 @@ case class PoloMarketCandle(date: DateTime,
 
 
 object MarketCandle {
+  // TODO you only need one of these
   def roundDateToMinute(dateTime: DateTime, minutes: Int): DateTime = {
     if (minutes < 1 || 5 % minutes != 0) {
       throw new IllegalArgumentException("minutes must be a factor of 5")
@@ -45,6 +48,15 @@ object MarketCandle {
     )
   }
 
+  def roundDateToMinute(dateTime: OffsetDateTime, minutes: Int): OffsetDateTime = {
+    if (minutes < 1 || 5 % minutes != 0) {
+      throw new IllegalArgumentException("minutes must be a factor of 5")
+    }
+
+    val m = dateTime.getMinute() / minutes
+    dateTime.withMinute(m)
+  }
+
   def apply (poloCandle: PoloMarketCandle): MarketCandle = {
     val candle = MarketCandle(poloCandle.date, 5, poloCandle.open)
     candle.low = poloCandle.low
@@ -55,7 +67,7 @@ object MarketCandle {
   }
 }
 
-case class MarketCandle(time: DateTime,
+case class MarketCandle(time: OffsetDateTime,
                         timeIntervalMinutes: Int,
                         var open: BigDecimal) {
   var low: BigDecimal = 0

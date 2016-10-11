@@ -1,5 +1,6 @@
 package services.actors
 
+import java.time.OffsetDateTime
 import javax.inject.Inject
 
 import akka.actor.{Actor, ActorLogging}
@@ -14,14 +15,13 @@ import scala.math.BigDecimal.RoundingMode
 // internals
 import models.market.{ClosePrice, EMA}
 
-
 object ExponentialMovingAverageActor {
   trait EMAMessage
 
   case class MarketCandleClose(marketName: String, close: ClosePrice)
   case class MarketCandleClosePrices(marketName: String, prices: List[ClosePrice]) extends EMAMessage
   case class AddEMAPeriod(periods: Int) extends EMAMessage
-  case class GetMovingAverage(marketname: String, time: DateTime) extends EMAMessage
+  case class GetMovingAverage(marketname: String, time: OffsetDateTime) extends EMAMessage
   case class GetMovingAverages(marketName: String) extends EMAMessage
 }
 

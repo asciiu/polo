@@ -1,8 +1,8 @@
 package models.market
 
-import org.joda.time.DateTime
+import java.time.OffsetDateTime
 
 /**
   * Created by bishop on 9/6/16.
   */
-case class ClosePrice(time: DateTime, price: BigDecimal)
+case class ClosePrice(time: OffsetDateTime, price: BigDecimal)

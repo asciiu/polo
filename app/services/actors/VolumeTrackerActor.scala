@@ -1,5 +1,6 @@
 package services.actors
 
+import java.time.OffsetDateTime
 import javax.inject.Inject
 
 import akka.actor.{Actor, ActorLogging}
@@ -17,7 +18,7 @@ import models.poloniex.{MarketCandle, MarketUpdate}
 object VolumeTrackerActor {
   trait VolumeTrackerMessage
 
-  case class GetVolume(marketName: String, time: DateTime) extends VolumeTrackerMessage
+  case class GetVolume(marketName: String, time: OffsetDateTime) extends VolumeTrackerMessage
   case class GetVolumes(marketName: String) extends VolumeTrackerMessage
   case class MarketVolume(marketName: String, btc24HrVolume: BigDecimal) extends VolumeTrackerMessage
 }
@@ -34,16 +35,15 @@ class VolumeTrackerActor @Inject() (configuration: Configuration) extends Actor 
 
   override def preStart() = {
     log info "started"
-    //eventBus.subscribe(self, "/market/volumes")
     eventBus.subscribe(self, "/market/update")
   }
 
   override def postStop() = {
-    //eventBus.unsubscribe(self, "/market/volumes")
     eventBus.unsubscribe(self, "/market/update")
   }
 
   def receive = {
+
     case GetVolume(marketName, time) =>
       periodVolumes.get(marketName) match {
         case Some(volumes) =>
@@ -91,11 +91,10 @@ class VolumeTrackerActor @Inject() (configuration: Configuration) extends Actor 
     * @param btc24HrVolume
     */
   private def updateVolume(marketName: String, btc24HrVolume: BigDecimal) = {
-    val time = MarketCandle.roundDateToMinute(new DateTime(), 5)
+    val time = MarketCandle.roundDateToMinute(OffsetDateTime.now(), 5)
 
     periodVolumes.get(marketName) match {
       case Some(volumes) =>
-        val time = MarketCandle.roundDateToMinute(new DateTime(), 5)
         val lastVolume = volumes.head
 
         // update the latest volume

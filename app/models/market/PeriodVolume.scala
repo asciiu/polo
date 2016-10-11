@@ -1,9 +1,10 @@
 package models.market
 
-import org.joda.time.DateTime
+import java.time.OffsetDateTime
+
 
 /**
   * Created by bishop on 9/6/16.
   */
-case class PeriodVolume(time: DateTime, btcVolume: BigDecimal)
+case class PeriodVolume(time: OffsetDateTime, btcVolume: BigDecimal)
 

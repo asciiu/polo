@@ -1,6 +1,7 @@
 package services.actors
 
 // external
+import java.time.{Instant, OffsetDateTime, ZoneId}
 import javax.inject.{Inject, Singleton}
 
 import akka.actor.{Actor, ActorLogging, Cancellable}
@@ -46,13 +47,14 @@ class PoloniexCandleRetrieverActor @Inject()(ws: WSClient, conf: Configuration) 
   private var schedule: Option[Cancellable] = None
 
   // needed to convert poloniex long time (seconds) into DateTime
-  val jodaDateReads = Reads[DateTime](js =>
-    js.validate[Long].map[DateTime] { seconds =>
-      new DateTime(seconds * 1000L)
+  val dateReads = Reads[OffsetDateTime](js =>
+    js.validate[Long].map[OffsetDateTime] { seconds =>
+      //new DateTime(seconds * 1000L)
+      OffsetDateTime.ofInstant(Instant.ofEpochSecond(seconds),ZoneId.systemDefault())
     })
 
   val poloMarketReads: Reads[PoloMarketCandle] = (
-    (JsPath \ "date").read[DateTime](jodaDateReads) and
+    (JsPath \ "date").read[OffsetDateTime](dateReads) and
       (JsPath \ "high").read[BigDecimal] and
       (JsPath \ "low").read[BigDecimal] and
       (JsPath \ "open").read[BigDecimal] and
