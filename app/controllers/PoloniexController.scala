@@ -178,8 +178,8 @@ class PoloniexController @Inject()(val database: DBService,
       val l = candles.map { c =>
         Json.arr(
           // TODO UTF offerset should come from client
-          //c.time.getMillis - (6*3.6e+6),
-          c.time.toEpochSecond(),
+          // I've subtracted 6 hours(2.16e+7 milliseconds) for denver time for now
+          c.time.toEpochSecond() * 1000L - 2.16e+7,
           c.open,
           c.high,
           c.low,
@@ -210,12 +210,11 @@ class PoloniexController @Inject()(val database: DBService,
     } yield {
       val df = DateTimeFormat.forPattern("MMM dd HH:mm")
 
-      // TODO UTF offerset should come from client
       val info = candle match {
         case Some(c) if averages.length == 2 =>
             Json.arr(
-              //c.time.getMillis() - (6*3.6e+6),
-              c.time.toEpochSecond,
+              // TODO UTF offerset should come from client
+              c.time.toEpochSecond() * 1000L - 2.16e+7,
               c.open,
               c.high,
               c.low,
