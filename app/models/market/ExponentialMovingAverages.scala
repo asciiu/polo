@@ -1,6 +1,8 @@
 package models.market
 
 
+import java.time.OffsetDateTime
+
 import com.typesafe.scalalogging.LazyLogging
 
 import scala.collection.mutable.ListBuffer
@@ -122,7 +124,7 @@ class ExponentialMovingAverages(val trackingPeriods: List[Int] = List(5,15)) ext
     val updates = for (periodNum <- trackingPeriods) yield {
       (periodNum, updateAverages(marketName, close, periodNum))
     }
-    updates.map(t => t._1 -> t._2) toMap
+    updates.map(t => t._1 -> t._2).toMap
   }
 
 
@@ -130,7 +132,18 @@ class ExponentialMovingAverages(val trackingPeriods: List[Int] = List(5,15)) ext
     val allAvgs = for (periodNum <- trackingPeriods if (movingAverages.contains((marketName, periodNum)))) yield {
       (periodNum, movingAverages.get((marketName, periodNum)).get.toList)
     }
-    allAvgs.map(t => t._1 -> t._2) toMap
+    allAvgs.map(t => t._1 -> t._2).toMap
+  }
+
+  def getMovingAverages(marketName: String, time: OffsetDateTime): Map[Int, BigDecimal] = {
+    val avgs = for (periodNum <- trackingPeriods if (movingAverages.contains((marketName, periodNum)))) yield {
+      // tuple of (periodNum, ema)
+      (
+        periodNum,
+        movingAverages.get((marketName, periodNum)).get.find( a => a.time.equals(time)).getOrElse(EMA(time, 0)).ema
+        )
+    }
+    avgs.map(t => t._1 -> t._2).toMap
   }
 }
 
