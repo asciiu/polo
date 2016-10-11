@@ -1,12 +1,11 @@
 package services.actors
 
 // external
-import java.time.{Instant, OffsetDateTime, ZoneId}
+import akka.actor.{Actor, ActorLogging, Cancellable}
+
+import java.time.{Instant, OffsetDateTime, ZoneOffset}
 import javax.inject.{Inject, Singleton}
 
-import akka.actor.{Actor, ActorLogging, Cancellable}
-import models.market.ClosePrice
-import models.poloniex.{MarketCandle, MarketEvent, PoloMarketCandle, PoloniexEventBus}
 import org.joda.time.{DateTime, DateTimeZone}
 import play.api.Configuration
 import play.api.libs.functional.syntax._
@@ -19,6 +18,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 // internal
 import services.actors.CandleManagerActor.SetCandles
 import services.actors.ExponentialMovingAverageActor._
+import models.market.ClosePrice
+import models.poloniex.{MarketCandle, MarketEvent, PoloMarketCandle, PoloniexEventBus}
 
 
 object PoloniexCandleRetrieverActor {
@@ -49,8 +50,8 @@ class PoloniexCandleRetrieverActor @Inject()(ws: WSClient, conf: Configuration) 
   // needed to convert poloniex long time (seconds) into DateTime
   val dateReads = Reads[OffsetDateTime](js =>
     js.validate[Long].map[OffsetDateTime] { seconds =>
-      //new DateTime(seconds * 1000L)
-      OffsetDateTime.ofInstant(Instant.ofEpochSecond(seconds),ZoneId.systemDefault())
+      // all timestamps are in seconds UTC time
+      OffsetDateTime.ofInstant(Instant.ofEpochSecond(seconds),ZoneOffset.UTC)
     })
 
   val poloMarketReads: Reads[PoloMarketCandle] = (
@@ -67,11 +68,6 @@ class PoloniexCandleRetrieverActor @Inject()(ws: WSClient, conf: Configuration) 
   implicit val listReads: Reads[List[PoloMarketCandle]] = Reads { js =>
     JsSuccess(js.as[JsArray].value.map(j => j.validate[PoloMarketCandle](poloMarketReads).get).toList)
   }
-
-  object Joda {
-    implicit def dateTimeOrdering: Ordering[DateTime] = Ordering.fromLessThan(_ isBefore _)
-  }
-  import Joda._
 
   private def startScheduler() = {
     if (!schedule.isDefined) {
@@ -136,6 +132,7 @@ class PoloniexCandleRetrieverActor @Inject()(ws: WSClient, conf: Configuration) 
                 // publish closing prices for this market
                 val closingPrices = MarketCandleClosePrices(marketName, last24HrCandles.map( c => ClosePrice(c.time, c.close)))
                 eventBus.publish(MarketEvent("/market/prices", closingPrices))
+
               case x =>
                 log.error(s"could not retrieve candles for $marketName: ${x.toString}")
             }
