@@ -5,14 +5,14 @@ import javax.inject.Inject
 
 import akka.actor.{Actor, ActorLogging}
 import models.poloniex.PoloniexEventBus
-import org.joda.time.DateTime
 import play.api.Configuration
+import utils.Misc
 
 import scala.collection.mutable.ListBuffer
 
 // internals
 import models.market.PeriodVolume
-import models.poloniex.{MarketCandle, MarketUpdate}
+import models.poloniex.MarketUpdate
 
 
 object VolumeTrackerActor {
@@ -91,7 +91,7 @@ class VolumeTrackerActor @Inject() (configuration: Configuration) extends Actor 
     * @param btc24HrVolume
     */
   private def updateVolume(marketName: String, btc24HrVolume: BigDecimal) = {
-    val time = MarketCandle.roundDateToMinute(OffsetDateTime.now(), 5)
+    val time = Misc.currentTimeRoundedDown(5)
 
     periodVolumes.get(marketName) match {
       case Some(volumes) =>
