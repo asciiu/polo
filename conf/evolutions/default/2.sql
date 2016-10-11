@@ -16,8 +16,8 @@ CREATE TABLE poloniex_messages (
     is_frozen BOOLEAN NOT NULL,
     high_24hr NUMERIC(12, 8) NOT NULL,
     low_24hr NUMERIC(12, 8) NOT NULL,
-    created_at timestamp with time zone not null default now(),
-    updated_at timestamp with time zone not null default now()
+    created_at timestamp without time zone not null default now(),
+    updated_at timestamp without time zone not null default now()
 );
 
 
@@ -28,7 +28,7 @@ CREATE TABLE poloniex_candles (
     close NUMERIC(12, 8) NOT NULL,
     lowest_ask NUMERIC(12, 8) NOT NULL,
     highest_bid NUMERIC(12, 8) NOT NULL,
-    created_at timestamp with time zone not null default now()
+    created_at timestamp without time zone not null default now()
 );
 
 

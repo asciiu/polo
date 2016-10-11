@@ -1,6 +1,6 @@
 package models.db
 
-// AUTO-GENERATED Slick data model [2016-10-09T16:05:29.688-06:00[America/Denver]]
+// AUTO-GENERATED Slick data model [2016-10-11T13:26:13.125-06:00[America/Denver]]
 
 /** Stand-alone Slick data model for immediate use */
 object Tables extends {
@@ -103,7 +103,7 @@ trait Tables {
    *  @param close Database column close SqlType(numeric)
    *  @param lowestAsk Database column lowest_ask SqlType(numeric)
    *  @param highestBid Database column highest_bid SqlType(numeric)
-   *  @param createdAt Database column created_at SqlType(timestamptz) */
+   *  @param createdAt Database column created_at SqlType(timestamp) */
   case class PoloniexCandleRow(id: Int, cryptoCurrency: String, open: scala.math.BigDecimal, close: scala.math.BigDecimal, lowestAsk: scala.math.BigDecimal, highestBid: scala.math.BigDecimal, createdAt: java.time.OffsetDateTime)
   /** GetResult implicit for fetching PoloniexCandleRow objects using plain SQL queries */
   implicit def GetResultPoloniexCandleRow(implicit e0: GR[Int], e1: GR[String], e2: GR[scala.math.BigDecimal], e3: GR[java.time.OffsetDateTime]): GR[PoloniexCandleRow] = GR{
@@ -128,7 +128,7 @@ trait Tables {
     val lowestAsk: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("lowest_ask")
     /** Database column highest_bid SqlType(numeric) */
     val highestBid: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("highest_bid")
-    /** Database column created_at SqlType(timestamptz) */
+    /** Database column created_at SqlType(timestamp) */
     val createdAt: Rep[java.time.OffsetDateTime] = column[java.time.OffsetDateTime]("created_at")
   }
   /** Collection-like TableQuery object for table PoloniexCandle */
@@ -146,8 +146,8 @@ trait Tables {
    *  @param isFrozen Database column is_frozen SqlType(bool)
    *  @param high24hr Database column high_24hr SqlType(numeric)
    *  @param low24hr Database column low_24hr SqlType(numeric)
-   *  @param createdAt Database column created_at SqlType(timestamptz)
-   *  @param updatedAt Database column updated_at SqlType(timestamptz) */
+   *  @param createdAt Database column created_at SqlType(timestamp)
+   *  @param updatedAt Database column updated_at SqlType(timestamp) */
   case class PoloniexMessageRow(id: Int, cryptoCurrency: String, last: scala.math.BigDecimal, lowestAsk: scala.math.BigDecimal, highestBid: scala.math.BigDecimal, percentChange: scala.math.BigDecimal, baseVolume: scala.math.BigDecimal, quoteVolume: scala.math.BigDecimal, isFrozen: Boolean, high24hr: scala.math.BigDecimal, low24hr: scala.math.BigDecimal, createdAt: java.time.OffsetDateTime, updatedAt: java.time.OffsetDateTime)
   /** GetResult implicit for fetching PoloniexMessageRow objects using plain SQL queries */
   implicit def GetResultPoloniexMessageRow(implicit e0: GR[Int], e1: GR[String], e2: GR[scala.math.BigDecimal], e3: GR[Boolean], e4: GR[java.time.OffsetDateTime]): GR[PoloniexMessageRow] = GR{
@@ -182,9 +182,9 @@ trait Tables {
     val high24hr: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("high_24hr")
     /** Database column low_24hr SqlType(numeric) */
     val low24hr: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("low_24hr")
-    /** Database column created_at SqlType(timestamptz) */
+    /** Database column created_at SqlType(timestamp) */
     val createdAt: Rep[java.time.OffsetDateTime] = column[java.time.OffsetDateTime]("created_at")
-    /** Database column updated_at SqlType(timestamptz) */
+    /** Database column updated_at SqlType(timestamp) */
     val updatedAt: Rep[java.time.OffsetDateTime] = column[java.time.OffsetDateTime]("updated_at")
   }
   /** Collection-like TableQuery object for table PoloniexMessage */
