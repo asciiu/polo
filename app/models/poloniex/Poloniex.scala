@@ -2,9 +2,6 @@ package models.poloniex
 
 import java.time.OffsetDateTime
 
-import org.joda.time.DateTime
-
-
 case class MarketUpdate(name: String, info: MarketMessage)
 
 //"BTC_1CR":{"id":1,"last":"0.00185835","lowestAsk":"0.00195342","highestBid":"0.00185835","percentChange":"-0.02771891",
@@ -33,30 +30,6 @@ case class PoloMarketCandle(date: OffsetDateTime,
 
 
 object MarketCandle {
-  // TODO you only need one of these
-  def roundDateToMinute(dateTime: DateTime, minutes: Int): DateTime = {
-    if (minutes < 1 || 5 % minutes != 0) {
-      throw new IllegalArgumentException("minutes must be a factor of 5")
-    }
-
-    val m = dateTime.getMinuteOfHour() / minutes
-    new DateTime(dateTime.getYear(),
-      dateTime.getMonthOfYear(),
-      dateTime.getDayOfMonth,
-      dateTime.getHourOfDay(),
-      m * minutes
-    )
-  }
-
-  def roundDateToMinute(dateTime: OffsetDateTime, minutes: Int): OffsetDateTime = {
-    if (minutes < 1 || 5 % minutes != 0) {
-      throw new IllegalArgumentException("minutes must be a factor of 5")
-    }
-
-    val m = dateTime.getMinute() / minutes
-    dateTime.withMinute(m)
-  }
-
   def apply (poloCandle: PoloMarketCandle): MarketCandle = {
     val candle = MarketCandle(poloCandle.date, 5, poloCandle.open)
     candle.low = poloCandle.low
