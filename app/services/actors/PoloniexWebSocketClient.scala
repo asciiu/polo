@@ -6,13 +6,12 @@ import javax.inject.Inject
 import akka.actor._
 import akka.wamp._
 import akka.wamp.client._
-import models.poloniex.{MarketEvent, MarketMessage, MarketUpdate, PoloniexEventBus}
-import org.joda.time.DateTime
 import play.api.Configuration
 
 import scala.concurrent.ExecutionContext
 
 // internal
+import models.poloniex.{MarketEvent, MarketMessage, MarketUpdate, PoloniexEventBus}
 
 class PoloniexWebSocketClient @Inject() (conf: Configuration)(implicit context: ExecutionContext, system: ActorSystem) extends Actor with ActorLogging with Scope.Session {
   val endpoint = conf.getString("poloniex.websocket").getOrElse("wss://api.poloniex.com")
@@ -53,7 +52,6 @@ class PoloniexWebSocketClient @Inject() (conf: Configuration)(implicit context: 
     // currencyPair, last, lowestAsk, highestBid, percentChange, baseVolume, quoteVolume, isFrozen, 24hrHigh, 24hrLow
     if (list.length == 10) {
       val args = list.map(_.toString)
-      var now = new DateTime()
       val status = MarketMessage(
         0,
         BigDecimal(args(1)),
