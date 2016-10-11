@@ -1,14 +1,13 @@
 package services.actors
 
 // external
-import java.time.OffsetDateTime
 import javax.inject.Inject
 
 import akka.actor.{Actor, ActorLogging}
 import models.poloniex.{MarketEvent, PoloniexEventBus}
-import org.joda.time._
 import models.poloniex.MarketEvent
 import play.api.Configuration
+import utils.Misc
 
 import scala.collection.mutable.ListBuffer
 import scala.language.postfixOps
@@ -94,7 +93,7 @@ class CandleManagerActor @Inject()(conf: Configuration) extends Actor with Actor
     if (name.startsWith("BTC")) {
 
       // this is the current time rounded down to 5 minutes
-      val time = MarketCandle.roundDateToMinute(OffsetDateTime.now(), candleTimeMinutes)
+      val time = Misc.currentTimeRoundedDown(candleTimeMinutes)
 
       // get candle collection for this market
       val candleBuffer = marketCandles.get(name) match {
