@@ -29,7 +29,7 @@ class CandleManagerActor @Inject()(conf: Configuration) extends Actor with Actor
   val eventBus = PoloniexEventBus()
   val baseVolumeRule = conf.getInt("poloniex.candle.baseVolume").getOrElse(500)
 
-  val marketCandles2 = new MarketCandles()
+  val marketCandles = new MarketCandles()
 
   override def preStart() = {
     log info "subscribed to market updates"
@@ -48,13 +48,13 @@ class CandleManagerActor @Inject()(conf: Configuration) extends Actor with Actor
       updateMarket(update)
 
     case GetCandles(name) =>
-      sender ! marketCandles2.getMarketCandles(name)
+      sender ! marketCandles.getMarketCandles(name)
 
     case GetLastestCandle(name) =>
-      sender ! marketCandles2.getLatestCandle(name)
+      sender ! marketCandles.getLatestCandle(name)
 
     case SetCandles(name, last24hrCandles) =>
-      marketCandles2.appendCandles(name, last24hrCandles)
+      marketCandles.appendCandles(name, last24hrCandles)
 
   }
 
@@ -63,7 +63,7 @@ class CandleManagerActor @Inject()(conf: Configuration) extends Actor with Actor
     // only care about BTC markets
     if (name.startsWith("BTC")) {
 
-      if (!marketCandles2.containsMarket(name)) {
+      if (!marketCandles.containsMarket(name)) {
         // send a message to the retriever to get the candle data from Poloniex
         // if the 24 hour baseVolume from this update is greater than our threshold
         if (update.info.baseVolume > baseVolumeRule) {
@@ -71,7 +71,7 @@ class CandleManagerActor @Inject()(conf: Configuration) extends Actor with Actor
         }
       }
 
-      marketCandles2.updateMarket(update){ candleClose =>
+      marketCandles.updateMarket(update){ candleClose =>
         eventBus.publish(MarketEvent("/market/candle/close", candleClose))
       }
     }
