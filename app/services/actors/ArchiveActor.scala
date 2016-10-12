@@ -43,7 +43,7 @@ class ArchiveActor @Inject() (database: DBService,
   }
 
   implicit def convertUpdate(update: MarketUpdate): PoloniexMessageRow = {
-    val now = OffsetDateTime.now()
+    val now = utils.Misc.now()
     PoloniexMessageRow(
       id = -1,
       cryptoCurrency = update.name,
