@@ -1,5 +1,7 @@
 package models.market
 
+import java.time.OffsetDateTime
+
 import com.typesafe.scalalogging.LazyLogging
 import models.poloniex.{MarketCandle, MarketEvent, MarketUpdate}
 import services.actors.ExponentialMovingAverageActor.MarketCandleClose
@@ -35,9 +37,11 @@ class MarketCandles(val periodMinutes: Int = 5) extends LazyLogging {
           candles.appendAll(last24hrCandles)
         }
       case None =>
-        logger.error(s"received $marketName ${last24hrCandles.length} but nowhere to add them??")
+        logger.info(s"Set candle data for $marketName")
+        val candles = scala.collection.mutable.ListBuffer.empty[MarketCandle]
+        candles.appendAll(last24hrCandles)
+        marketCandles.put(marketName, candles)
     }
-
   }
 
   def getLatestCandle(marketName: String): Option[MarketCandle] = {
@@ -58,13 +62,15 @@ class MarketCandles(val periodMinutes: Int = 5) extends LazyLogging {
     marketCandles.contains(marketName)
   }
 
-  def updateMarket(update: MarketUpdate)(closeFn: (MarketCandleClose) => Unit) = {
+  def updateMarket(update: MarketUpdate,
+                   time: OffsetDateTime = Misc.currentTimeRoundedDown(periodMinutes))
+                  (closeFn: (MarketCandleClose) => Unit) = {
     val name = update.name
     // only care about BTC markets
     if (name.startsWith("BTC")) {
 
       // this is the current time rounded down to 5 minutes
-      val time = Misc.currentTimeRoundedDown(periodMinutes)
+      //val time = Misc.currentTimeRoundedDown(periodMinutes)
 
       // get candle collection for this market
       val candleBuffer = marketCandles.get(name) match {

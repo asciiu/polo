@@ -38,6 +38,14 @@ object MarketCandle {
     candle.close = poloCandle.close
     candle
   }
+
+  def apply (candleRow: models.db.Tables.PoloniexCandleRow): MarketCandle = {
+    val candle = MarketCandle(candleRow.createdAt, 5, candleRow.open)
+    candle.low = candleRow.lowestAsk
+    candle.high = candleRow.highestBid
+    candle.close = candleRow.close
+    candle
+  }
 }
 
 case class MarketCandle(time: OffsetDateTime,

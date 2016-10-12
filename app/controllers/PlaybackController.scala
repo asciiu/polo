@@ -7,8 +7,8 @@ import akka.stream.Materializer
 import jp.t2v.lab.play2.auth.AuthElement
 import models.bittrex.AllMarketSummary
 import models.db.{AccountRole, Tables}
-import models.market.{ClosePrice, ExponentialMovingAverages}
-import models.poloniex.{MarketMessage, MarketUpdate}
+import models.market.{ClosePrice, ExponentialMovingAverages, MarketCandles, VolumeMatrix}
+import models.poloniex.{MarketCandle, MarketMessage, MarketUpdate}
 import play.api.Configuration
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.json.{JsObject, JsSuccess, Json, Reads}
@@ -47,8 +47,16 @@ class PlaybackController  @Inject()(val database: DBService,
 
   extends Controller with AuthConfigTrait with AuthElement with I18nSupport {
 
-  val emas = new ExponentialMovingAverages()
+  val allEmas = new ExponentialMovingAverages()
+  val allCandles = new MarketCandles()
+  val allVolumes = new VolumeMatrix()
 
+  implicit def convertMessageRow(row: PoloniexMessageRow): MarketUpdate = {
+    val msg = MarketMessage(0, row.last, row.lowestAsk, row.highestBid,
+      row.percentChange, row.baseVolume, row.quoteVolume, row.isFrozen.toString, row.high24hr,
+      row.low24hr)
+    MarketUpdate(row.cryptoCurrency, msg)
+  }
   /**
     * Reads captured poloniex data from the DB and replays it in a test trading scenario.
     * @return
@@ -66,10 +74,31 @@ class PlaybackController  @Inject()(val database: DBService,
 
       for (marketName <- groupByMarket.keys) {
         // sort in descending time
-        val candlesSorted = groupByMarket(marketName).sortBy(_.createdAt).reverse
+        val sortedRows = groupByMarket(marketName).sortBy(_.createdAt).reverse
 
-        val closePrices = candlesSorted.map{ c => ClosePrice(c.createdAt, c.close)}.toList
-        emas.setInitialMarketClosePrices(marketName, closePrices)
+        val candles =  sortedRows.map(MarketCandle(_)).toList
+        allCandles.appendCandles(marketName, candles)
+
+        val closePrices = sortedRows.map{ c => ClosePrice(c.createdAt, c.close)}.toList
+        allEmas.setInitialMarketClosePrices(marketName, closePrices)
+      }
+
+      // stream these
+      val query2 = PoloniexMessage.filter(_.cryptoCurrency.startsWith("BTC_")).sortBy(_.createdAt)
+      database.runAsync(query2.result).map { updates =>
+
+        // play back all updates
+        for( update <- updates) {
+
+          val time = utils.Misc.roundDateToMinute(update.createdAt, 5)
+          allCandles.updateMarket(update, time){ closePrice =>
+            allEmas.update(closePrice.marketName, closePrice.close)
+          }
+          allEmas.update(update.cryptoCurrency, ClosePrice(time, update.last))
+
+          // check the cross here
+
+        }
       }
       Ok("playback info here")
     }
