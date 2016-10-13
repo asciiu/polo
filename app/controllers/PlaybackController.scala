@@ -21,6 +21,7 @@ import services.actors.ExponentialMovingAverageActor.MarketCandleClosePrices
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.math.BigDecimal.RoundingMode
+import scala.language.implicitConversions
 import models.db.Tables._
 
 
@@ -82,6 +83,7 @@ class PlaybackController  @Inject()(val database: DBService,
         val closePrices = sortedRows.map{ c => ClosePrice(c.createdAt, c.close)}.toList
         allEmas.setInitialMarketClosePrices(marketName, closePrices)
       }
+
 
       // stream these
       val query2 = PoloniexMessage.filter(_.cryptoCurrency.startsWith("BTC_")).sortBy(_.createdAt)
