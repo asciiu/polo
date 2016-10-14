@@ -105,7 +105,9 @@ class MarketExponentialMovingAvgs (val marketName: String,
     val latestAvg = movingAverages.head
 
     val average =
-      if (latestAvg.time.isEqual(normalizedTime)) {
+      if (normalizedTime.isBefore(latestAvg.time)) {
+        latestAvg
+      } else if (latestAvg.time.isEqual(normalizedTime)) {
         val previousEMA = movingAverages(1).ema
         val a = ema(closePrice.price, previousEMA)
         val expo = ExponentialMovingAverage(normalizedTime, a.setScale(8, RoundingMode.CEILING), closePrice.price)
