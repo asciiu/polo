@@ -4,9 +4,11 @@ package models.market
 import java.time.OffsetDateTime
 
 import com.typesafe.scalalogging.LazyLogging
+import utils.Misc
 
 import scala.collection.mutable.ListBuffer
 import scala.math.BigDecimal.RoundingMode
+
 
 // tracking periods pertains to ema periods that this actor is responsible for tracking
 class ExponentialMovingAverages(val trackingPeriods: List[Int] = List(5,15)) extends LazyLogging {
@@ -133,6 +135,15 @@ class ExponentialMovingAverages(val trackingPeriods: List[Int] = List(5,15)) ext
       (periodNum, movingAverages.get((marketName, periodNum)).get.toList)
     }
     allAvgs.map(t => t._1 -> t._2).toMap
+  }
+
+  def getMovingAverages(marketName: String, periodNum: Int): List[EMA] = {
+
+    movingAverages.get((marketName, periodNum)) match {
+      case Some(buff) => buff.toList
+      case None => List[EMA]()
+    }
+
   }
 
   def getMovingAverages(marketName: String, time: OffsetDateTime): Map[Int, BigDecimal] = {
