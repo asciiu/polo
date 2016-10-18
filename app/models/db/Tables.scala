@@ -1,6 +1,6 @@
 package models.db
 
-// AUTO-GENERATED Slick data model [2016-10-17T22:29:28.369-06:00[America/Denver]]
+// AUTO-GENERATED Slick data model [2016-10-18T00:30:26.233-06:00[America/Denver]]
 
 /** Stand-alone Slick data model for immediate use */
 object Tables extends {
@@ -206,18 +206,18 @@ trait Tables {
    *  @param id Database column id SqlType(serial), AutoInc, PrimaryKey
    *  @param notes Database column notes SqlType(text), Default(None)
    *  @param startedAt Database column started_at SqlType(timestamptz)
-   *  @param endedAt Database column ended_at SqlType(timestamptz) */
-  case class PoloniexSessionsRow(id: Int, notes: Option[String] = None, startedAt: java.time.OffsetDateTime, endedAt: java.time.OffsetDateTime)
+   *  @param endedAt Database column ended_at SqlType(timestamptz), Default(None) */
+  case class PoloniexSessionsRow(id: Int, notes: Option[String] = None, startedAt: java.time.OffsetDateTime, endedAt: Option[java.time.OffsetDateTime] = None)
   /** GetResult implicit for fetching PoloniexSessionsRow objects using plain SQL queries */
-  implicit def GetResultPoloniexSessionsRow(implicit e0: GR[Int], e1: GR[Option[String]], e2: GR[java.time.OffsetDateTime]): GR[PoloniexSessionsRow] = GR{
+  implicit def GetResultPoloniexSessionsRow(implicit e0: GR[Int], e1: GR[Option[String]], e2: GR[java.time.OffsetDateTime], e3: GR[Option[java.time.OffsetDateTime]]): GR[PoloniexSessionsRow] = GR{
     prs => import prs._
-    PoloniexSessionsRow.tupled((<<[Int], <<?[String], <<[java.time.OffsetDateTime], <<[java.time.OffsetDateTime]))
+    PoloniexSessionsRow.tupled((<<[Int], <<?[String], <<[java.time.OffsetDateTime], <<?[java.time.OffsetDateTime]))
   }
   /** Table description of table poloniex_sessions. Objects of this class serve as prototypes for rows in queries. */
   class PoloniexSessions(_tableTag: Tag) extends Table[PoloniexSessionsRow](_tableTag, "poloniex_sessions") {
     def * = (id, notes, startedAt, endedAt) <> (PoloniexSessionsRow.tupled, PoloniexSessionsRow.unapply)
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? = (Rep.Some(id), notes, Rep.Some(startedAt), Rep.Some(endedAt)).shaped.<>({r=>import r._; _1.map(_=> PoloniexSessionsRow.tupled((_1.get, _2, _3.get, _4.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+    def ? = (Rep.Some(id), notes, Rep.Some(startedAt), endedAt).shaped.<>({r=>import r._; _1.map(_=> PoloniexSessionsRow.tupled((_1.get, _2, _3.get, _4)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column id SqlType(serial), AutoInc, PrimaryKey */
     val id: Rep[Int] = column[Int]("id", O.AutoInc, O.PrimaryKey)
@@ -225,8 +225,8 @@ trait Tables {
     val notes: Rep[Option[String]] = column[Option[String]]("notes", O.Default(None))
     /** Database column started_at SqlType(timestamptz) */
     val startedAt: Rep[java.time.OffsetDateTime] = column[java.time.OffsetDateTime]("started_at")
-    /** Database column ended_at SqlType(timestamptz) */
-    val endedAt: Rep[java.time.OffsetDateTime] = column[java.time.OffsetDateTime]("ended_at")
+    /** Database column ended_at SqlType(timestamptz), Default(None) */
+    val endedAt: Rep[Option[java.time.OffsetDateTime]] = column[Option[java.time.OffsetDateTime]]("ended_at", O.Default(None))
   }
   /** Collection-like TableQuery object for table PoloniexSessions */
   lazy val PoloniexSessions = new TableQuery(tag => new PoloniexSessions(tag))
