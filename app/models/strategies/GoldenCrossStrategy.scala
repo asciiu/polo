@@ -1,27 +1,22 @@
-package services.actors
+package models.strategies
 
-import java.time.OffsetDateTime
-
-import akka.actor.Actor.Receive
-import akka.actor.{Actor, ActorLogging}
-
-import scala.collection.mutable.ListBuffer
+import akka.actor.Actor
 import models.market.{ClosePrice, MarketExponentialMovingAvgs}
 import models.poloniex.MarketMessage2
 
+import scala.collection.mutable.ListBuffer
 import scala.math.BigDecimal.RoundingMode
 
 
-case class BuyRecord(val price: BigDecimal, val quantity: Int, val atVol: BigDecimal)
-
-case class Result(marketName: String, percent: BigDecimal, quantity: Int, atVol: BigDecimal, atCost: BigDecimal, atSale: BigDecimal) {
-  override def toString = {
-    s"$marketName percent: ${(percent*100).setScale(2, RoundingMode.CEILING)}% quantity: $quantity atVol: $atVol atCost: $atCost atSale: $atSale"
-  }
-}
-
-trait GoldenCross {
+trait GoldenCrossStrategy {
   self: Actor =>
+  case class BuyRecord(val price: BigDecimal, val quantity: Int, val atVol: BigDecimal)
+
+  case class Result(marketName: String, percent: BigDecimal, quantity: Int, atVol: BigDecimal, atCost: BigDecimal, atSale: BigDecimal) {
+    override def toString = {
+      s"$marketName percent: ${(percent*100).setScale(2, RoundingMode.CEILING)}% quantity: $quantity atVol: $atVol atCost: $atCost atSale: $atSale"
+    }
+  }
 
   // marketName -> list of moving averages
   val averages = scala.collection.mutable.Map[String, List[MarketExponentialMovingAvgs]]()
@@ -31,6 +26,7 @@ trait GoldenCross {
 
   val maxBTCTradable: BigDecimal = 1.0
   var balance: BigDecimal = 1.0
+  var total: BigDecimal = balance
   var sellCount = 0
   var buyCount = 0
   var winCount = 0
@@ -44,6 +40,14 @@ trait GoldenCross {
   val lossPercentMin = -0.1
 
   def setAllMarketAverages(marketAverages: Map[String, List[MarketExponentialMovingAvgs]]) = averages ++= marketAverages
+
+  def inventoryBalance: BigDecimal = {
+    buyRecords.foldLeft(BigDecimal(0.0))( (a,r) => (r._2.price * r._2.quantity) + a)
+  }
+
+  def totalBalance: BigDecimal = {
+    balance + inventoryBalance
+  }
 
   def handleMessageUpdate: Receive = {
     case msg: MarketMessage2 =>
@@ -136,17 +140,15 @@ trait GoldenCross {
       }
   }
 
-
   def printResults(): Unit = {
-    val inventory = buyRecords.foldLeft(BigDecimal(0.0))( (a,r) => (r._2.price * r._2.quantity) + a)
-    println(s"Inventory: $inventory")
+    println(s"Inventory: $inventoryBalance")
     println(s"Balance: $balance")
-    println(s"Total: ${balance+inventory}")
+    println(s"Total: $totalBalance")
     println(s"Buy: $buyCount")
     println(s"Sell: $sellCount")
-    println(s"Largest Win Record: $largestWinRecord")
-    println(s"Largest Loss: $largestLoss")
     println(s"Wins: $winCount")
     println(s"Losses: $lossCount")
+    println(s"Largest Win: $largestWinRecord")
+    println(s"Largest Loss: $largestLoss")
   }
 }

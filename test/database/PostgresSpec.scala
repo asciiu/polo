@@ -9,7 +9,7 @@ import utils.db.TetraoPostgresDriver
 /**
   * Setups up a slick connection to the DB defined in application.conf.
   */
-trait PostgresSpec extends Suite with BeforeAndAfterAll {
+trait Postgres extends Suite with BeforeAndAfterAll {
   val conf = ConfigFactory.parseFile(new File("conf/application.conf"))
   val databaseURL = conf.getString("slick.dbs.default.db.url")
   val databaseUser = conf.getString("slick.dbs.default.db.user")
