@@ -20,7 +20,15 @@ The file `models.db.Tables.scala` contains the database mapping code. It has bee
 `utils.db.SourceCodeGenerator`. If you want to regenerate the database mapping code for any reason, check the
 config file `conf/application.conf` and run:
 
-    sbt tables
+    sbt gen-tables
+
+### Database config (required!)
+The app assumes the timezone set for the postgres server is UTC. You can set the default timezone per session for
+the server's DB or set it globally via the server's postgresql.conf file.
+
+Add this:
+"timezone = 'UTC'"
+
 
 ## Mailer Setup
 Add your mail server settings to application.conf under play.mailer. Set 'mock' to false to send emails.
