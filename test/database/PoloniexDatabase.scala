@@ -33,7 +33,7 @@ trait PoloniexDatabase extends Postgres with ScalaFutures {
     val periodMinutes = 5
 
     // only read BTC candles in DB
-    val query = PoloniexCandle.filter(_.cryptoCurrency.startsWith("BTC_"))
+    val query = PoloniexCandle.filter(candle => candle.cryptoCurrency.startsWith("BTC_") && candle.sessionId === 1)
     val result: Future[Seq[PoloniexCandleRow]] = database.run(query.result)
     // market name -> moving averages computed for all DB candles
     val marketCandles = scala.collection.mutable.Map[String, List[MarketExponentialMovingAvgs]]()
@@ -69,7 +69,7 @@ trait PoloniexDatabase extends Postgres with ScalaFutures {
     */
   def messageSource: Source[Tables.PoloniexMessageRow, NotUsed] = {
     // only BTC messages sorted by created time
-    val query = Tables.PoloniexMessage.filter(_.cryptoCurrency.startsWith("BTC_")).sortBy(_.createdAt).result
+    val query = Tables.PoloniexMessage.filter(msg => msg.cryptoCurrency.startsWith("BTC_") && msg.sessionId === 1).sortBy(_.createdAt).result
     val publisher: DatabasePublisher[Tables.PoloniexMessageRow] = database.stream(
       query.transactionally.withStatementParameters(fetchSize = 1000)
     )

@@ -14,17 +14,27 @@ import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext
 import scala.language.postfixOps
 import models.db.Tables.profile.api._
-import Tables.{PoloniexCandleRow, PoloniexMessageRow}
+import Tables.{PoloniexCandleRow, PoloniexMessageRow, PoloniexSessionsRow}
 import play.api.Configuration
 import services.actors.CandleManagerActor.SetCandles
+import utils.Misc
 
 import scala.language.implicitConversions
+
+object ArchiveActor {
+
+  trait ArchiveActorMsg
+  case object StartCapture extends ArchiveActorMsg
+  case object EndCapture extends ArchiveActorMsg
+}
 
 class ArchiveActor @Inject() (database: DBService,
                               conf: Configuration) (implicit context: ExecutionContext) extends Actor with ActorLogging {
 
+  import ArchiveActor._
   val eventBus = PoloniexEventBus()
   val isCaptureMode = conf.getBoolean("poloniex.capture").getOrElse(false)
+  var session: Option[PoloniexSessionsRow] = None
 
   implicit val timeout = Timeout(5 seconds)
 
@@ -42,10 +52,11 @@ class ArchiveActor @Inject() (database: DBService,
     eventBus.unsubscribe(self, "/market/candles")
   }
 
-  implicit def convertUpdate(update: MarketUpdate): PoloniexMessageRow = {
+  implicit def convertUpdate(update: MarketUpdate, sessionId: Int): PoloniexMessageRow = {
     val now = utils.Misc.now()
     PoloniexMessageRow(
       id = -1,
+      sessionId,
       cryptoCurrency = update.name,
       last = update.info.last,
       lowestAsk = update.info.lowestAsk,
@@ -61,18 +72,24 @@ class ArchiveActor @Inject() (database: DBService,
     )
   }
 
-  private def convertCandles(candles: SetCandles): List[PoloniexCandleRow] = {
+  private def convertCandles(candles: SetCandles, sessionId: Int): List[PoloniexCandleRow] = {
     val name = candles.marketName
-    candles.candles.map( c => PoloniexCandleRow(-1, name, c.open, c.close, c.low, c.high, OffsetDateTime.parse(c.time.toString)))
+    candles.candles.map( c => PoloniexCandleRow(-1, sessionId, name, c.open, c.close, c.low, c.high, OffsetDateTime.parse(c.time.toString)))
   }
 
   def receive = {
     case update: MarketUpdate =>
-      database.runAsync((Tables.PoloniexMessage returning Tables.PoloniexMessage.map(_.id)) += update)
+      //database.runAsync((Tables.PoloniexMessage returning Tables.PoloniexMessage.map(_.id)) += update)
 
     case candles: SetCandles =>
-      val insertStatement = Tables.PoloniexCandle ++= convertCandles(candles)
-      database.runAsync(insertStatement)
+      //val insertStatement = Tables.PoloniexCandle ++= convertCandles(candles)
+      //database.runAsync(insertStatement)
+
+    case StartCapture =>
+      //session = PoloniexSessionsRow(-1, "", Misc.now())
+
+    case EndCapture =>
+      session = None
   }
 }
 

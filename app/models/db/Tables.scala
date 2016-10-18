@@ -1,6 +1,6 @@
 package models.db
 
-// AUTO-GENERATED Slick data model [2016-10-11T13:26:13.125-06:00[America/Denver]]
+// AUTO-GENERATED Slick data model [2016-10-17T22:29:28.369-06:00[America/Denver]]
 
 /** Stand-alone Slick data model for immediate use */
 object Tables extends {
@@ -16,7 +16,7 @@ trait Tables {
   import slick.jdbc.{GetResult => GR}
 
   /** DDL for all tables. Call .create to execute. */
-  lazy val schema: profile.SchemaDescription = Account.schema ++ Message.schema ++ PoloniexCandle.schema ++ PoloniexMessage.schema
+  lazy val schema: profile.SchemaDescription = Account.schema ++ Message.schema ++ PoloniexCandle.schema ++ PoloniexMessage.schema ++ PoloniexSessions.schema
   @deprecated("Use .schema instead of .ddl", "3.0")
   def ddl = schema
 
@@ -98,26 +98,29 @@ trait Tables {
 
   /** Entity class storing rows of table PoloniexCandle
    *  @param id Database column id SqlType(serial), AutoInc, PrimaryKey
+   *  @param sessionId Database column session_id SqlType(int4)
    *  @param cryptoCurrency Database column crypto_currency SqlType(text)
    *  @param open Database column open SqlType(numeric)
    *  @param close Database column close SqlType(numeric)
    *  @param lowestAsk Database column lowest_ask SqlType(numeric)
    *  @param highestBid Database column highest_bid SqlType(numeric)
-   *  @param createdAt Database column created_at SqlType(timestamp) */
-  case class PoloniexCandleRow(id: Int, cryptoCurrency: String, open: scala.math.BigDecimal, close: scala.math.BigDecimal, lowestAsk: scala.math.BigDecimal, highestBid: scala.math.BigDecimal, createdAt: java.time.OffsetDateTime)
+   *  @param createdAt Database column created_at SqlType(timestamptz) */
+  case class PoloniexCandleRow(id: Int, sessionId: Int, cryptoCurrency: String, open: scala.math.BigDecimal, close: scala.math.BigDecimal, lowestAsk: scala.math.BigDecimal, highestBid: scala.math.BigDecimal, createdAt: java.time.OffsetDateTime)
   /** GetResult implicit for fetching PoloniexCandleRow objects using plain SQL queries */
   implicit def GetResultPoloniexCandleRow(implicit e0: GR[Int], e1: GR[String], e2: GR[scala.math.BigDecimal], e3: GR[java.time.OffsetDateTime]): GR[PoloniexCandleRow] = GR{
     prs => import prs._
-    PoloniexCandleRow.tupled((<<[Int], <<[String], <<[scala.math.BigDecimal], <<[scala.math.BigDecimal], <<[scala.math.BigDecimal], <<[scala.math.BigDecimal], <<[java.time.OffsetDateTime]))
+    PoloniexCandleRow.tupled((<<[Int], <<[Int], <<[String], <<[scala.math.BigDecimal], <<[scala.math.BigDecimal], <<[scala.math.BigDecimal], <<[scala.math.BigDecimal], <<[java.time.OffsetDateTime]))
   }
   /** Table description of table poloniex_candles. Objects of this class serve as prototypes for rows in queries. */
   class PoloniexCandle(_tableTag: Tag) extends Table[PoloniexCandleRow](_tableTag, "poloniex_candles") {
-    def * = (id, cryptoCurrency, open, close, lowestAsk, highestBid, createdAt) <> (PoloniexCandleRow.tupled, PoloniexCandleRow.unapply)
+    def * = (id, sessionId, cryptoCurrency, open, close, lowestAsk, highestBid, createdAt) <> (PoloniexCandleRow.tupled, PoloniexCandleRow.unapply)
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? = (Rep.Some(id), Rep.Some(cryptoCurrency), Rep.Some(open), Rep.Some(close), Rep.Some(lowestAsk), Rep.Some(highestBid), Rep.Some(createdAt)).shaped.<>({r=>import r._; _1.map(_=> PoloniexCandleRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+    def ? = (Rep.Some(id), Rep.Some(sessionId), Rep.Some(cryptoCurrency), Rep.Some(open), Rep.Some(close), Rep.Some(lowestAsk), Rep.Some(highestBid), Rep.Some(createdAt)).shaped.<>({r=>import r._; _1.map(_=> PoloniexCandleRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7.get, _8.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column id SqlType(serial), AutoInc, PrimaryKey */
     val id: Rep[Int] = column[Int]("id", O.AutoInc, O.PrimaryKey)
+    /** Database column session_id SqlType(int4) */
+    val sessionId: Rep[Int] = column[Int]("session_id")
     /** Database column crypto_currency SqlType(text) */
     val cryptoCurrency: Rep[String] = column[String]("crypto_currency")
     /** Database column open SqlType(numeric) */
@@ -128,14 +131,18 @@ trait Tables {
     val lowestAsk: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("lowest_ask")
     /** Database column highest_bid SqlType(numeric) */
     val highestBid: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("highest_bid")
-    /** Database column created_at SqlType(timestamp) */
+    /** Database column created_at SqlType(timestamptz) */
     val createdAt: Rep[java.time.OffsetDateTime] = column[java.time.OffsetDateTime]("created_at")
+
+    /** Foreign key referencing PoloniexSessions (database name poloniex_candles_new_session_id_fkey) */
+    lazy val poloniexSessionsFk = foreignKey("poloniex_candles_new_session_id_fkey", sessionId, PoloniexSessions)(r => r.id, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
   }
   /** Collection-like TableQuery object for table PoloniexCandle */
   lazy val PoloniexCandle = new TableQuery(tag => new PoloniexCandle(tag))
 
   /** Entity class storing rows of table PoloniexMessage
    *  @param id Database column id SqlType(serial), AutoInc, PrimaryKey
+   *  @param sessionId Database column session_id SqlType(int4)
    *  @param cryptoCurrency Database column crypto_currency SqlType(text)
    *  @param last Database column last SqlType(numeric)
    *  @param lowestAsk Database column lowest_ask SqlType(numeric)
@@ -146,22 +153,24 @@ trait Tables {
    *  @param isFrozen Database column is_frozen SqlType(bool)
    *  @param high24hr Database column high_24hr SqlType(numeric)
    *  @param low24hr Database column low_24hr SqlType(numeric)
-   *  @param createdAt Database column created_at SqlType(timestamp)
-   *  @param updatedAt Database column updated_at SqlType(timestamp) */
-  case class PoloniexMessageRow(id: Int, cryptoCurrency: String, last: scala.math.BigDecimal, lowestAsk: scala.math.BigDecimal, highestBid: scala.math.BigDecimal, percentChange: scala.math.BigDecimal, baseVolume: scala.math.BigDecimal, quoteVolume: scala.math.BigDecimal, isFrozen: Boolean, high24hr: scala.math.BigDecimal, low24hr: scala.math.BigDecimal, createdAt: java.time.OffsetDateTime, updatedAt: java.time.OffsetDateTime)
+   *  @param createdAt Database column created_at SqlType(timestamptz)
+   *  @param updatedAt Database column updated_at SqlType(timestamptz) */
+  case class PoloniexMessageRow(id: Int, sessionId: Int, cryptoCurrency: String, last: scala.math.BigDecimal, lowestAsk: scala.math.BigDecimal, highestBid: scala.math.BigDecimal, percentChange: scala.math.BigDecimal, baseVolume: scala.math.BigDecimal, quoteVolume: scala.math.BigDecimal, isFrozen: Boolean, high24hr: scala.math.BigDecimal, low24hr: scala.math.BigDecimal, createdAt: java.time.OffsetDateTime, updatedAt: java.time.OffsetDateTime)
   /** GetResult implicit for fetching PoloniexMessageRow objects using plain SQL queries */
   implicit def GetResultPoloniexMessageRow(implicit e0: GR[Int], e1: GR[String], e2: GR[scala.math.BigDecimal], e3: GR[Boolean], e4: GR[java.time.OffsetDateTime]): GR[PoloniexMessageRow] = GR{
     prs => import prs._
-    PoloniexMessageRow.tupled((<<[Int], <<[String], <<[scala.math.BigDecimal], <<[scala.math.BigDecimal], <<[scala.math.BigDecimal], <<[scala.math.BigDecimal], <<[scala.math.BigDecimal], <<[scala.math.BigDecimal], <<[Boolean], <<[scala.math.BigDecimal], <<[scala.math.BigDecimal], <<[java.time.OffsetDateTime], <<[java.time.OffsetDateTime]))
+    PoloniexMessageRow.tupled((<<[Int], <<[Int], <<[String], <<[scala.math.BigDecimal], <<[scala.math.BigDecimal], <<[scala.math.BigDecimal], <<[scala.math.BigDecimal], <<[scala.math.BigDecimal], <<[scala.math.BigDecimal], <<[Boolean], <<[scala.math.BigDecimal], <<[scala.math.BigDecimal], <<[java.time.OffsetDateTime], <<[java.time.OffsetDateTime]))
   }
   /** Table description of table poloniex_messages. Objects of this class serve as prototypes for rows in queries. */
   class PoloniexMessage(_tableTag: Tag) extends Table[PoloniexMessageRow](_tableTag, "poloniex_messages") {
-    def * = (id, cryptoCurrency, last, lowestAsk, highestBid, percentChange, baseVolume, quoteVolume, isFrozen, high24hr, low24hr, createdAt, updatedAt) <> (PoloniexMessageRow.tupled, PoloniexMessageRow.unapply)
+    def * = (id, sessionId, cryptoCurrency, last, lowestAsk, highestBid, percentChange, baseVolume, quoteVolume, isFrozen, high24hr, low24hr, createdAt, updatedAt) <> (PoloniexMessageRow.tupled, PoloniexMessageRow.unapply)
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? = (Rep.Some(id), Rep.Some(cryptoCurrency), Rep.Some(last), Rep.Some(lowestAsk), Rep.Some(highestBid), Rep.Some(percentChange), Rep.Some(baseVolume), Rep.Some(quoteVolume), Rep.Some(isFrozen), Rep.Some(high24hr), Rep.Some(low24hr), Rep.Some(createdAt), Rep.Some(updatedAt)).shaped.<>({r=>import r._; _1.map(_=> PoloniexMessageRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7.get, _8.get, _9.get, _10.get, _11.get, _12.get, _13.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+    def ? = (Rep.Some(id), Rep.Some(sessionId), Rep.Some(cryptoCurrency), Rep.Some(last), Rep.Some(lowestAsk), Rep.Some(highestBid), Rep.Some(percentChange), Rep.Some(baseVolume), Rep.Some(quoteVolume), Rep.Some(isFrozen), Rep.Some(high24hr), Rep.Some(low24hr), Rep.Some(createdAt), Rep.Some(updatedAt)).shaped.<>({r=>import r._; _1.map(_=> PoloniexMessageRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7.get, _8.get, _9.get, _10.get, _11.get, _12.get, _13.get, _14.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column id SqlType(serial), AutoInc, PrimaryKey */
     val id: Rep[Int] = column[Int]("id", O.AutoInc, O.PrimaryKey)
+    /** Database column session_id SqlType(int4) */
+    val sessionId: Rep[Int] = column[Int]("session_id")
     /** Database column crypto_currency SqlType(text) */
     val cryptoCurrency: Rep[String] = column[String]("crypto_currency")
     /** Database column last SqlType(numeric) */
@@ -182,11 +191,43 @@ trait Tables {
     val high24hr: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("high_24hr")
     /** Database column low_24hr SqlType(numeric) */
     val low24hr: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("low_24hr")
-    /** Database column created_at SqlType(timestamp) */
+    /** Database column created_at SqlType(timestamptz) */
     val createdAt: Rep[java.time.OffsetDateTime] = column[java.time.OffsetDateTime]("created_at")
-    /** Database column updated_at SqlType(timestamp) */
+    /** Database column updated_at SqlType(timestamptz) */
     val updatedAt: Rep[java.time.OffsetDateTime] = column[java.time.OffsetDateTime]("updated_at")
+
+    /** Foreign key referencing PoloniexSessions (database name poloniex_messages_new_session_id_fkey) */
+    lazy val poloniexSessionsFk = foreignKey("poloniex_messages_new_session_id_fkey", sessionId, PoloniexSessions)(r => r.id, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
   }
   /** Collection-like TableQuery object for table PoloniexMessage */
   lazy val PoloniexMessage = new TableQuery(tag => new PoloniexMessage(tag))
+
+  /** Entity class storing rows of table PoloniexSessions
+   *  @param id Database column id SqlType(serial), AutoInc, PrimaryKey
+   *  @param notes Database column notes SqlType(text), Default(None)
+   *  @param startedAt Database column started_at SqlType(timestamptz)
+   *  @param endedAt Database column ended_at SqlType(timestamptz) */
+  case class PoloniexSessionsRow(id: Int, notes: Option[String] = None, startedAt: java.time.OffsetDateTime, endedAt: java.time.OffsetDateTime)
+  /** GetResult implicit for fetching PoloniexSessionsRow objects using plain SQL queries */
+  implicit def GetResultPoloniexSessionsRow(implicit e0: GR[Int], e1: GR[Option[String]], e2: GR[java.time.OffsetDateTime]): GR[PoloniexSessionsRow] = GR{
+    prs => import prs._
+    PoloniexSessionsRow.tupled((<<[Int], <<?[String], <<[java.time.OffsetDateTime], <<[java.time.OffsetDateTime]))
+  }
+  /** Table description of table poloniex_sessions. Objects of this class serve as prototypes for rows in queries. */
+  class PoloniexSessions(_tableTag: Tag) extends Table[PoloniexSessionsRow](_tableTag, "poloniex_sessions") {
+    def * = (id, notes, startedAt, endedAt) <> (PoloniexSessionsRow.tupled, PoloniexSessionsRow.unapply)
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? = (Rep.Some(id), notes, Rep.Some(startedAt), Rep.Some(endedAt)).shaped.<>({r=>import r._; _1.map(_=> PoloniexSessionsRow.tupled((_1.get, _2, _3.get, _4.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+
+    /** Database column id SqlType(serial), AutoInc, PrimaryKey */
+    val id: Rep[Int] = column[Int]("id", O.AutoInc, O.PrimaryKey)
+    /** Database column notes SqlType(text), Default(None) */
+    val notes: Rep[Option[String]] = column[Option[String]]("notes", O.Default(None))
+    /** Database column started_at SqlType(timestamptz) */
+    val startedAt: Rep[java.time.OffsetDateTime] = column[java.time.OffsetDateTime]("started_at")
+    /** Database column ended_at SqlType(timestamptz) */
+    val endedAt: Rep[java.time.OffsetDateTime] = column[java.time.OffsetDateTime]("ended_at")
+  }
+  /** Collection-like TableQuery object for table PoloniexSessions */
+  lazy val PoloniexSessions = new TableQuery(tag => new PoloniexSessions(tag))
 }
