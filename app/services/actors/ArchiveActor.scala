@@ -14,7 +14,7 @@ import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext
 import scala.language.postfixOps
 import models.db.Tables.profile.api._
-import Tables.{PoloniexCandleRow, PoloniexMessageRow, PoloniexSessionsRow}
+import models.db.Tables.{PoloniexCandleRow, PoloniexMessageRow, PoloniexSessions, PoloniexSessionsRow}
 import play.api.Configuration
 import services.actors.CandleManagerActor.SetCandles
 import utils.Misc
@@ -33,26 +33,16 @@ class ArchiveActor @Inject() (database: DBService,
 
   import ArchiveActor._
   val eventBus = PoloniexEventBus()
-  val isCaptureMode = conf.getBoolean("poloniex.capture").getOrElse(false)
-  var session: Option[PoloniexSessionsRow] = None
+  var sessionId: Option[Int] = None
 
   implicit val timeout = Timeout(5 seconds)
-
-  override def preStart() = {
-
-    if (isCaptureMode) {
-      // receive messages from exponential moving average
-      eventBus.subscribe(self, "/market/update")
-      eventBus.subscribe(self, "/market/candles")
-    }
-  }
 
   override def postStop() = {
     eventBus.unsubscribe(self, "/market/update")
     eventBus.unsubscribe(self, "/market/candles")
   }
 
-  implicit def convertUpdate(update: MarketUpdate, sessionId: Int): PoloniexMessageRow = {
+  private def convertUpdate(update: MarketUpdate, sessionId: Int): PoloniexMessageRow = {
     val now = utils.Misc.now()
     PoloniexMessageRow(
       id = -1,
@@ -79,17 +69,43 @@ class ArchiveActor @Inject() (database: DBService,
 
   def receive = {
     case update: MarketUpdate =>
-      //database.runAsync((Tables.PoloniexMessage returning Tables.PoloniexMessage.map(_.id)) += update)
+      sessionId.map { id =>
+        val newRow = convertUpdate(update, id)
+        database.runAsync((Tables.PoloniexMessage returning Tables.PoloniexMessage.map(_.id)) += newRow)
+      }
 
     case candles: SetCandles =>
-      //val insertStatement = Tables.PoloniexCandle ++= convertCandles(candles)
-      //database.runAsync(insertStatement)
+      sessionId.map { id =>
+        val newRow = convertCandles(candles, id)
+        val insertStatement = Tables.PoloniexCandle ++= newRow
+        database.runAsync(insertStatement)
+      }
 
     case StartCapture =>
-      //session = PoloniexSessionsRow(-1, "", Misc.now())
+      val time = Misc.now()
+      val insert = (PoloniexSessions returning PoloniexSessions.map(_.id)) += PoloniexSessionsRow(-1, Some("New session"), time, None)
+
+      database.runAsync(insert).map { id =>
+        sessionId = Some(id)
+        eventBus.subscribe(self, "/market/update")
+        eventBus.subscribe(self, "/market/candles")
+
+        // TODO fix this you need to obtain all candles from the CandleManager now
+        // because I do not subscribe to the initial setting of candles upon startup anymore
+        // I could start a record session at any time!!
+      }
 
     case EndCapture =>
-      session = None
+      sessionId.map { id =>
+        // unsubscribe from all updates
+        eventBus.unsubscribe(self, "/market/update")
+        eventBus.unsubscribe(self, "/market/candles")
+
+        val query = for {session <- PoloniexSessions if session.id === id} yield session.endedAt
+        val updateAction = query.update(Some(Misc.now()))
+
+        database.runAsync(updateAction).map(id =>  sessionId = None)
+      }
   }
 }
 

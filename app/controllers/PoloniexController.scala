@@ -17,6 +17,7 @@ import play.api.libs.json._
 import play.api.libs.streams.ActorFlow
 import play.api.Configuration
 import org.joda.time.format.DateTimeFormat
+import services.actors.ArchiveActor.{EndCapture, StartCapture}
 
 import scala.language.postfixOps
 import scala.concurrent.{ExecutionContext, Future}
@@ -97,6 +98,15 @@ class PoloniexController @Inject()(val database: DBService,
     ActorFlow.actorRef(out => Props(new BrowserActor(out)))
   }
 
+  def startCapture() = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
+    archive ! StartCapture
+    Future.successful(Ok("ok"))
+  }
+
+  def endCapture() = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
+    archive ! EndCapture
+    Future.successful(Ok("ok"))
+  }
 
   /**
     * Displays all poloniex markets.
@@ -139,6 +149,7 @@ class PoloniexController @Inject()(val database: DBService,
 
   /**
     * The latest market data.
+    *
     * @param marketName
     * @return
     */
@@ -164,6 +175,7 @@ class PoloniexController @Inject()(val database: DBService,
 
   /**
     * Returns candle data for the following market.
+    *
     * @param marketName
     */
   def candles(marketName: String) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
@@ -196,6 +208,7 @@ class PoloniexController @Inject()(val database: DBService,
 
   /**
     * Returns the latest candle for a market.
+    *
     * @param marketName
     */
   def latestCandle(marketName: String) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
