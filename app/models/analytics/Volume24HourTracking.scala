@@ -12,7 +12,7 @@ import scala.collection.mutable.ListBuffer
 
 // internal
 import models.poloniex.MarketUpdate
-import models.market.PeriodVolume
+import models.market.MarketStructures.PeriodVolume
 import utils.Misc
 
 /**

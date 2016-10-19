@@ -25,7 +25,7 @@ import scala.concurrent.duration._
 import scala.math.BigDecimal.RoundingMode
 
 // internal
-import models.market.PeriodVolume
+import models.market.MarketStructures.PeriodVolume
 import models.db.AccountRole
 import models.poloniex.{MarketUpdate, MarketMessage}
 import services.DBService
