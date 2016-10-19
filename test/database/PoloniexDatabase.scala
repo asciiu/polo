@@ -12,7 +12,7 @@ import slick.backend.DatabasePublisher
 // internal
 import models.db.Tables.profile.api._
 import models.db.Tables.{PoloniexCandleRow, _}
-import models.market.MarketExponentialMovingCollection
+import models.market.MarketEMACollection
 import models.db.Tables
 import models.market.MarketStructures.ClosePrice
 import models.poloniex.MarketMessage2
@@ -29,7 +29,7 @@ trait PoloniexDatabase extends Postgres with ScalaFutures {
     * @param periods a list of periods to compute EMAs for: e.g. 7-period ema, 15-period ema
     * @return
     */
-  def exponentialMovingAverages(periods: List[Int] = List(7, 15)): Map[String, List[MarketExponentialMovingCollection]] = {
+  def exponentialMovingAverages(periods: List[Int] = List(7, 15)): Map[String, List[MarketEMACollection]] = {
     // the length of a period is 5 minutes
     val periodMinutes = 5
 
@@ -37,9 +37,9 @@ trait PoloniexDatabase extends Postgres with ScalaFutures {
     val query = PoloniexCandle.filter(candle => candle.cryptoCurrency.startsWith("BTC_") && candle.sessionId === 1)
     val result: Future[Seq[PoloniexCandleRow]] = database.run(query.result)
     // market name -> moving averages computed for all DB candles
-    val marketCandles = scala.collection.mutable.Map[String, List[MarketExponentialMovingCollection]]()
+    val marketCandles = scala.collection.mutable.Map[String, List[MarketEMACollection]]()
 
-    val averages: Future[Map[String, List[MarketExponentialMovingCollection]]] = result.map { candleRows =>
+    val averages: Future[Map[String, List[MarketEMACollection]]] = result.map { candleRows =>
 
       // market name -> candle rows
       val groupByMarket: Map[String, Seq[PoloniexCandleRow]] = candleRows.groupBy(_.cryptoCurrency)
@@ -51,7 +51,7 @@ trait PoloniexDatabase extends Postgres with ScalaFutures {
         val closePrices = sortedRows.map { candleRow => ClosePrice(candleRow.createdAt, candleRow.close) }.toList
 
         val averagesList = for (period <- periods)
-          yield new MarketExponentialMovingCollection(marketName, period, periodMinutes, closePrices)
+          yield new MarketEMACollection(marketName, period, periodMinutes, closePrices)
 
         marketCandles.put(marketName, averagesList)
       }

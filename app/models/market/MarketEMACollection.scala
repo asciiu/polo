@@ -20,10 +20,10 @@ import MarketStructures._
   *                            as this class. Example, close prices for every 5 minute
   *                            period for the last 24 hour window.
   */
-class MarketExponentialMovingCollection(val marketName: String,
-                                        val period: Int,
-                                        val periodMinutes: Int,
-                                        historicClosePrices: List[ClosePrice]) {
+class MarketEMACollection(val marketName: String,
+                          val period: Int,
+                          val periodMinutes: Int,
+                          historicClosePrices: List[ClosePrice]) {
   require(period > 0)
 
   // enough close prices needed to start the
