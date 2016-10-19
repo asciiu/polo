@@ -30,15 +30,15 @@ import models.db.AccountRole
 import models.poloniex.{MarketUpdate, MarketMessage}
 import services.DBService
 import models.market.MarketCandle
-import services.actors.CandleManagerActor
-import CandleManagerActor._
+import services.actors.PoloniexMarketActor
+import PoloniexMarketActor._
 
 @Singleton
 class PoloniexController @Inject()(val database: DBService,
                                    val messagesApi: MessagesApi,
                                    ws: WSClient,
                                    conf: Configuration,
-                                   @Named("candle-actor") candleActorRef: ActorRef,
+                                   @Named("polo-market") marketActorRef: ActorRef,
                                    @Named("polo-candle-retriever") candleRetrieverActor: ActorRef,
                                    @Named("polo-websocket-client") websocketClient: ActorRef)
                                   (implicit system: ActorSystem,
@@ -90,12 +90,12 @@ class PoloniexController @Inject()(val database: DBService,
   }
 
   def startCapture() = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
-    candleActorRef ! StartCapture
+    marketActorRef ! StartCapture
     Future.successful(Ok("ok"))
   }
 
   def endCapture() = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
-    candleActorRef ! EndCapture
+    marketActorRef ! EndCapture
     Future.successful(Ok("ok"))
   }
 
@@ -147,7 +147,7 @@ class PoloniexController @Inject()(val database: DBService,
   def market(marketName: String) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
     implicit val timeout = Timeout(5 seconds)
 
-    (candleActorRef ? GetLatestMessage(marketName)).mapTo[Option[MarketMessage]].map { msg =>
+    (marketActorRef ? GetLatestMessage(marketName)).mapTo[Option[MarketMessage]].map { msg =>
       msg match {
         case Some(m) =>
           // change percent format from decimal
@@ -170,13 +170,12 @@ class PoloniexController @Inject()(val database: DBService,
     * @param marketName
     */
   def candles(marketName: String) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
-    import CandleManagerActor._
     implicit val timeout = Timeout(5 seconds)
 
     for {
-      candles <- (candleActorRef ? GetCandles(marketName)).mapTo[List[MarketCandle]]
-      movingAverages <- (candleActorRef ? GetMovingAverages(marketName)).mapTo[List[(Int, List[ExponentialMovingAverage])]]
-      volume24hr <- (candleActorRef ? GetVolumes(marketName)).mapTo[List[PeriodVolume]]
+      candles <- (marketActorRef ? GetCandles(marketName)).mapTo[List[MarketCandle]]
+      movingAverages <- (marketActorRef ? GetMovingAverages(marketName)).mapTo[List[(Int, List[ExponentialMovingAverage])]]
+      volume24hr <- (marketActorRef ? GetVolumes(marketName)).mapTo[List[PeriodVolume]]
     } yield {
       val l = candles.map { c =>
         val defaultEMA = ExponentialMovingAverage(c.time, 0, c.close)
@@ -204,14 +203,13 @@ class PoloniexController @Inject()(val database: DBService,
     * @param marketName
     */
   def latestCandle(marketName: String) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
-    import CandleManagerActor._
     implicit val timeout = Timeout(5 seconds)
 
     // TODO this will fail if the first future returns a None
     for {
-      candle <- (candleActorRef ? GetLastestCandle(marketName)).mapTo[Option[MarketCandle]]
-      averages <- (candleActorRef ? GetMovingAverage(marketName, candle.get.time)).mapTo[List[(Int, BigDecimal)]]
-      volume24hr <- (candleActorRef ? GetVolume(marketName, candle.get.time)).mapTo[PeriodVolume]
+      candle <- (marketActorRef ? GetLastestCandle(marketName)).mapTo[Option[MarketCandle]]
+      averages <- (marketActorRef ? GetMovingAverage(marketName, candle.get.time)).mapTo[List[(Int, BigDecimal)]]
+      volume24hr <- (marketActorRef ? GetVolume(marketName, candle.get.time)).mapTo[PeriodVolume]
     } yield {
       val df = DateTimeFormat.forPattern("MMM dd HH:mm")
 

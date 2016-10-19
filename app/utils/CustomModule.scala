@@ -10,7 +10,7 @@ import services.actors._
 class CustomModule extends AbstractModule with AkkaGuiceSupport {
   def configure = {
     // for live traffic
-    bindActor[CandleManagerActor]("candle-actor")
+    bindActor[PoloniexMarketActor]("polo-market")
     bindActor[PoloniexCandleRetrieverActor]("polo-candle-retriever")
     bindActor[PoloniexWebSocketClient]("polo-websocket-client")
   }

@@ -16,7 +16,6 @@ import play.api.libs.ws.WSClient
 import scala.concurrent.ExecutionContext.Implicits.global
 
 // internal
-import services.actors.CandleManagerActor.SetCandles
 import models.market.MarketCandle
 import models.poloniex.{MarketEvent, PoloMarketCandle, PoloniexEventBus}
 
