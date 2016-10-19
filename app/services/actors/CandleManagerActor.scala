@@ -8,7 +8,7 @@ import akka.contrib.pattern.ReceivePipeline.Inner
 import java.time.OffsetDateTime
 import javax.inject.Inject
 
-import models.analytics.Volume24HourTracking
+import models.analytics.{LastMarketMessage, Volume24HourTracking}
 import play.api.Configuration
 
 import scala.language.postfixOps
@@ -35,6 +35,7 @@ object CandleManagerActor {
   case class GetMovingAverages(marketName: String) extends CandleManagerMessage
   case class GetVolume(marketName: String, time: OffsetDateTime) extends CandleManagerMessage
   case class GetVolumes(marketName: String) extends CandleManagerMessage
+  case class GetLatestMessage(marketName: String) extends CandleManagerMessage
 }
 
 /**
@@ -47,6 +48,7 @@ class CandleManagerActor @Inject()(val database: DBService,
   with MarketCandles
   with ExponentialMovingAverages
   with Volume24HourTracking
+  with LastMarketMessage
   with Archiving {
 
   import CandleManagerActor._
@@ -121,5 +123,8 @@ class CandleManagerActor @Inject()(val database: DBService,
 
     case GetVolumes(marketName) =>
       sender ! getVolumes(marketName)
+
+    case GetLatestMessage(marketName) =>
+      sender ! getLatestMessage(marketName)
   }
 }

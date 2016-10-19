@@ -13,6 +13,5 @@ class CustomModule extends AbstractModule with AkkaGuiceSupport {
     bindActor[CandleManagerActor]("candle-actor")
     bindActor[PoloniexCandleRetrieverActor]("polo-candle-retriever")
     bindActor[PoloniexWebSocketClient]("polo-websocket-client")
-    bindActor[TradeActor]("trade-actor")
   }
 }

@@ -30,7 +30,6 @@ import models.db.AccountRole
 import models.poloniex.{MarketUpdate, MarketMessage}
 import services.DBService
 import models.market.MarketCandle
-import services.actors.TradeActor.GetLatestMessage
 import services.actors.CandleManagerActor
 import CandleManagerActor._
 
@@ -41,8 +40,7 @@ class PoloniexController @Inject()(val database: DBService,
                                    conf: Configuration,
                                    @Named("candle-actor") candleActorRef: ActorRef,
                                    @Named("polo-candle-retriever") candleRetrieverActor: ActorRef,
-                                   @Named("polo-websocket-client") websocketClient: ActorRef,
-                                   @Named("trade-actor") tradeActor: ActorRef)
+                                   @Named("polo-websocket-client") websocketClient: ActorRef)
                                   (implicit system: ActorSystem,
                                    materializer: Materializer,
                                    context: ExecutionContext,
@@ -149,7 +147,7 @@ class PoloniexController @Inject()(val database: DBService,
   def market(marketName: String) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
     implicit val timeout = Timeout(5 seconds)
 
-    (tradeActor ? GetLatestMessage(marketName)).mapTo[Option[MarketMessage]].map { msg =>
+    (candleActorRef ? GetLatestMessage(marketName)).mapTo[Option[MarketMessage]].map { msg =>
       msg match {
         case Some(m) =>
           // change percent format from decimal
