@@ -25,4 +25,8 @@ class PoloniexEventBus extends ActorEventBus with LookupClassification {
 object PoloniexEventBus {
   lazy val instance = new PoloniexEventBus
   def apply() = instance
+
+  val PoloniexCandles = "/poloniex/candles"
+  val PoloniexUpdate = "/poloniex/updates"
+  val PoloniexMarketAdded = "/poloniex/newm"
 }

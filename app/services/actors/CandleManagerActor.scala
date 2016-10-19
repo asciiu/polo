@@ -63,16 +63,14 @@ class CandleManagerActor @Inject()(val database: DBService,
       val marketName = update.marketName
 
       // only care about BTC markets
-      if (marketName.startsWith("BTC")) {
+      if (marketName.startsWith("BTC") && !marketCandles.contains(marketName) &&
+        update.info.baseVolume > baseVolumeRule) {
 
-        if (!marketCandles.contains(marketName)) {
-          // send a message to the retriever to get the candle data from Poloniex
-          // if the 24 hour baseVolume from this update is greater than our threshold
-          if (update.info.baseVolume > baseVolumeRule) {
-            eventBus.publish(MarketEvent("/market/added", QueueMarket(marketName)))
-          }
-        }
+        // send a message to the retriever to get the candle data from Poloniex
+        // if the 24 hour baseVolume from this update is greater than our threshold
+        eventBus.publish(MarketEvent(PoloniexEventBus.PoloniexMarketAdded, QueueMarket(marketName)))
       }
+
       Inner(update)
   }
 
@@ -82,13 +80,13 @@ class CandleManagerActor @Inject()(val database: DBService,
 
   override def preStart() = {
     log info "subscribed to market updates"
-    eventBus.subscribe(self, "/market/update")
-    eventBus.subscribe(self, "/market/candles")
+    eventBus.subscribe(self, PoloniexEventBus.PoloniexUpdate)
+    eventBus.subscribe(self, PoloniexEventBus.PoloniexCandles)
   }
 
   override def postStop() = {
-    eventBus.unsubscribe(self, "/market/update")
-    eventBus.unsubscribe(self, "/market/candles")
+    eventBus.unsubscribe(self, PoloniexEventBus.PoloniexUpdate)
+    eventBus.unsubscribe(self, PoloniexEventBus.PoloniexCandles)
   }
 
   def receive: Receive = {

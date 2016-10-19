@@ -26,7 +26,7 @@ class PoloniexWebSocketClient @Inject() (conf: Configuration)(implicit context: 
         event.payload.map{ p =>
           processPayload(p.arguments) match {
             case Some(update) =>
-              eventBus.publish(MarketEvent("/market/update", update))
+              eventBus.publish(MarketEvent(PoloniexEventBus.PoloniexUpdate, update))
               //context.parent ! update
             case None =>
               log info "received payload arguments not equal to 10"
