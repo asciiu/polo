@@ -17,7 +17,6 @@ import play.api.libs.json._
 import play.api.libs.streams.ActorFlow
 import play.api.Configuration
 import org.joda.time.format.DateTimeFormat
-import services.actors.ArchiveActor.{EndCapture, StartCapture}
 
 import scala.language.postfixOps
 import scala.concurrent.{ExecutionContext, Future}
@@ -46,8 +45,7 @@ class PoloniexController @Inject()(val database: DBService,
                                    @Named("polo-candle-retriever") candleRetrieverActor: ActorRef,
                                    @Named("polo-websocket-client") websocketClient: ActorRef,
                                    @Named("trade-actor") tradeActor: ActorRef,
-                                   @Named("volume-actor") volumeActor: ActorRef,
-                                   @Named("archive-actor") archive: ActorRef)
+                                   @Named("volume-actor") volumeActor: ActorRef)
                                   (implicit system: ActorSystem,
                                    materializer: Materializer,
                                    context: ExecutionContext,
@@ -97,12 +95,12 @@ class PoloniexController @Inject()(val database: DBService,
   }
 
   def startCapture() = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
-    archive ! StartCapture
+    candleActorRef ! StartCapture
     Future.successful(Ok("ok"))
   }
 
   def endCapture() = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
-    archive ! EndCapture
+    candleActorRef ! EndCapture
     Future.successful(Ok("ok"))
   }
 

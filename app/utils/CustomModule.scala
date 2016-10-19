@@ -16,6 +16,5 @@ class CustomModule extends AbstractModule with AkkaGuiceSupport {
     bindActor[PoloniexWebSocketClient]("polo-websocket-client")
     bindActor[TradeActor]("trade-actor")
     bindActor[VolumeTrackerActor]("volume-actor")
-    bindActor[ArchiveActor]("archive-actor")
   }
 }

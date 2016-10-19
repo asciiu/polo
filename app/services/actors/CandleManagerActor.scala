@@ -82,6 +82,7 @@ class CandleManagerActor @Inject()(val database: DBService,
   def receive: Receive = {
 
     case StartCapture =>
+      // TODO fix you also need to save the current candles to the DB
       beginSession()
     case EndCapture =>
       endSession()
