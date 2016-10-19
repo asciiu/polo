@@ -22,8 +22,8 @@
 
                 <tbody>
                 @for(update <- updates) {
-                    <tr id="@update.name">
-                    <td><a href="@routes.PoloniexController.market(update.name)">@update.name</a></td>
+                    <tr id="@update.marketName">
+                    <td><a href="@routes.PoloniexController.market(update.marketName)">@update.marketName</a></td>
                     <td>@("%1.8f".format(update.info.last))</td>
                     <td>@update.info.baseVolume</td>
                     <td>@update.info.percentChange</td>

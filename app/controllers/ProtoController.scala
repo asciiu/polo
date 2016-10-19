@@ -79,10 +79,10 @@ class ProtoController  @Inject()(val database: DBService,
           val btx = bitrxt.result.map{ b => b.copy(name = b.name.replace("-", "_"))}.filter( b => b.name.startsWith("BTC"))
 
           // Bitcoin price
-          val bitcoin = polot.find( _.name == "USDT_BTC")
+          val bitcoin = polot.find( _.marketName == "USDT_BTC")
 
           // only care about btc markets
-          val btcmarkets = polot.filter(t =>  t.name.startsWith("BTC"))
+          val btcmarkets = polot.filter(t =>  t.marketName.startsWith("BTC"))
             .sortBy( tick => tick.info.baseVolume).reverse.map(t => {
             val percentChange = t.info.percentChange * 100
             t.copy(info = t.info.copy(percentChange =
@@ -93,13 +93,13 @@ class ProtoController  @Inject()(val database: DBService,
           val markets = for {
             btxm <- btx
             polm <- btcmarkets
-            if (btxm.name == polm.name)
+            if (btxm.name == polm.marketName)
           } yield {
             val diff = (polm.info.last - btxm.last).abs
             val f = "%1.8f".format(diff)
 
-            println( s"${polm.name} bittrex last: ${btxm.last} poloniex last: ${polm.info.last} diff: $f")
-            polm.name
+            println( s"${polm.marketName} bittrex last: ${btxm.last} poloniex last: ${polm.info.last} diff: $f")
+            polm.marketName
           }
 
           Ok(views.html.poloniex.markets(loggedIn, bitcoin, btcmarkets))

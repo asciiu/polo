@@ -62,13 +62,13 @@ class TradeActor @Inject()(conf: Configuration)(implicit context: ExecutionConte
 
   def receive = {
     case update: MarketUpdate =>
-      marketSummaries(update.name) = update.info
+      marketSummaries(update.marketName) = update.info
 
-      if (marketVols.contains(update.name)) {
-        val volumes = marketVols(update.name)
-        marketVols.update(update.name, Volumes(volumes.last, update.info.baseVolume))
+      if (marketVols.contains(update.marketName)) {
+        val volumes = marketVols(update.marketName)
+        marketVols.update(update.marketName, Volumes(volumes.last, update.info.baseVolume))
       } else {
-        marketVols.put(update.name, Volumes(0.0, update.info.baseVolume))
+        marketVols.put(update.marketName, Volumes(0.0, update.info.baseVolume))
       }
 
 

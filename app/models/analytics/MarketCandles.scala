@@ -1,9 +1,7 @@
 package models.analytics
 
 // external
-import akka.actor.{Actor, ActorLogging}
 import com.typesafe.scalalogging.LazyLogging
-
 import scala.collection.mutable.ListBuffer
 
 // internal
@@ -20,8 +18,8 @@ trait MarketCandles extends LazyLogging {
     * This class also assumes that the candle periods in the last 24 hr candles collection is uniform
     * and equal to the periodMinutes stated in this trait.
     *
-    * @param marketName
-    * @param last24hrCandles
+    * @param marketName the market name
+    * @param last24hrCandles last 24 hour candles 5 minute periods
     */
   def appendCandles(marketName: String, last24hrCandles: List[MarketCandle]) = {
     marketCandles.get(marketName) match {
@@ -55,7 +53,7 @@ trait MarketCandles extends LazyLogging {
   /**
     * Returns the list of candles ordered by time.
     *
-    * @param marketName
+    * @param marketName name of market
     * @return
     */
   def getMarketCandles(marketName: String): List[MarketCandle] = {
@@ -71,29 +69,27 @@ trait MarketCandles extends LazyLogging {
 
 
   def updateMarketCandle(marketName: String, closePrice: ClosePrice) = {
-    val normalizedTime = Misc.roundDateToMinute(closePrice.time, periodMinutes)
-    val name = marketName
-
     // get candle collection for this market
     val candleBuffer = marketCandles.get(marketName) match {
       case Some(candles) => candles
       case None =>
         val newBuffer = scala.collection.mutable.ListBuffer[MarketCandle]()
-        marketCandles.put(name, newBuffer)
+        marketCandles.put(marketName, newBuffer)
         newBuffer
     }
 
     candleBuffer.find(_.isTimePeriod(closePrice.time)) match {
       case Some(candle) => candle.update(closePrice)
       case None =>
-        if (candleBuffer.length > 0) {
+        if (candleBuffer.nonEmpty) {
           val headCandle = candleBuffer.head
+          val normalizedTime = Misc.roundDateToMinute(closePrice.time, periodMinutes)
           // were candle periods skipped?
           val skippedCandles = ((normalizedTime.toEpochSecond - headCandle.time.toEpochSecond) / (periodMinutes * 60L)).toInt - 1
           for (i <- 1 to skippedCandles) {
             // add appropriate 5 minute interval to compute next candle time
             val time = headCandle.time.plusMinutes(periodMinutes * i)
-            (new MarketCandle(ClosePrice(time, headCandle.close), periodMinutes)) +=: candleBuffer
+            new MarketCandle(ClosePrice(time, headCandle.close), periodMinutes) +=: candleBuffer
           }
         }
 

@@ -2,7 +2,10 @@ package models.poloniex
 
 import java.time.OffsetDateTime
 
-case class MarketUpdate(name: String, info: MarketMessage)
+import models.market.ClosePrice
+import utils.Misc
+
+case class MarketUpdate(marketName: String, info: MarketMessage)
 
 //"BTC_1CR":{"id":1,"last":"0.00185835","lowestAsk":"0.00195342","highestBid":"0.00185835","percentChange":"-0.02771891",
 // "baseVolume":"6.80216315","quoteVolume":"3424.46300964","isFrozen":"0","high24hr":"0.00220238","low24hr":"0.00178000"}
@@ -85,6 +88,23 @@ case class MarketCandle(time: OffsetDateTime,
     if (update.last < low || low == 0) low = update.last
     if (update.last > high || high == 0) high = update.last
     close = update.last
+  }
+
+  /**
+    * Assumes the close price time is normalized
+    * @param closePrice
+    */
+  def update(closePrice: ClosePrice) = {
+    if (isTimePeriod(closePrice.time)) {
+      if (closePrice.price < low || low == 0) low = closePrice.price
+      if (closePrice.price > high || high == 0) high = closePrice.price
+      close = closePrice.price
+    }
+  }
+
+  def isTimePeriod(time: OffsetDateTime) : Boolean = {
+    val normalizedTime = Misc.roundDateToMinute(time, timeIntervalMinutes)
+    time.isEqual(normalizedTime)
   }
 }
 

@@ -47,7 +47,7 @@ class ArchiveActor @Inject() (database: DBService,
     PoloniexMessageRow(
       id = -1,
       sessionId,
-      cryptoCurrency = update.name,
+      cryptoCurrency = update.marketName,
       last = update.info.last,
       lowestAsk = update.info.lowestAsk,
       highestBid = update.info.highestBid,

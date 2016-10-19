@@ -2,7 +2,6 @@ package services.actors
 
 // external
 import akka.actor.{Actor, ActorLogging, Cancellable}
-
 import java.time.{Instant, OffsetDateTime, ZoneOffset}
 import javax.inject.{Inject, Singleton}
 
@@ -18,8 +17,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 // internal
 import services.actors.CandleManagerActor.SetCandles
 import services.actors.ExponentialMovingAverageActor._
-import models.market.ClosePrice
-import models.poloniex.{MarketCandle, MarketEvent, PoloMarketCandle, PoloniexEventBus}
+import models.market.{ClosePrice, MarketCandle}
+import models.poloniex.{MarketEvent, PoloMarketCandle, PoloniexEventBus}
 
 
 object PoloniexCandleRetrieverActor {
@@ -43,6 +42,7 @@ class PoloniexCandleRetrieverActor @Inject()(ws: WSClient, conf: Configuration) 
   val eventBus = PoloniexEventBus()
   val url = conf.getString("poloniex.url.public").getOrElse("https://poloniex.com/public")
   val marketQueue = scala.collection.mutable.Queue[String]()
+  val periodMinutes = 5
   // 300 seconds = 5 minutes
   val candleLength = 300
   private var schedule: Option[Cancellable] = None
@@ -125,8 +125,12 @@ class PoloniexCandleRetrieverActor @Inject()(ws: WSClient, conf: Configuration) 
           .get().map { polo => {
             polo.json.validate[List[PoloMarketCandle]] match {
               case JsSuccess(candles, t) =>
-                // sorted by time with most recent first
-                val last24HrCandles = candles.map( cand => MarketCandle(cand) ).sortBy(_.time).reverse
+
+                // the last 24 hr candles with latest time first
+                val last24HrCandles = candles.map( cand =>
+                  new MarketCandle(cand.date, periodMinutes, cand.open, cand.close, cand.high, cand.low )
+                ).sortBy(_.time).reverse
+
                 eventBus.publish(MarketEvent("/market/candles", SetCandles(marketName, last24HrCandles)))
 
                 // publish closing prices for this market

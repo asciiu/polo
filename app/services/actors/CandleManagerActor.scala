@@ -3,13 +3,19 @@ package services.actors
 // external
 import akka.actor.{Actor, ActorLogging}
 import javax.inject.Inject
+
+import models.market.ClosePrice
 import play.api.Configuration
+import utils.Misc
+
 import scala.language.postfixOps
 
 // internal
-import models.market.MarketCandles
 import models.poloniex.PoloniexEventBus
-import models.poloniex.{MarketEvent, MarketCandle, MarketUpdate}
+import models.poloniex.{MarketEvent, MarketUpdate}
+
+import models.market.MarketCandle
+import models.analytics.MarketCandles
 
 
 object CandleManagerActor {
@@ -20,16 +26,15 @@ object CandleManagerActor {
 }
 
 /**
-  * Created by bishop on 8/17/16. This actor is responsible for managing candles for all markets.
+  * This actor is responsible for managing candles for all markets.
   */
-class CandleManagerActor @Inject()(conf: Configuration) extends Actor with ActorLogging {
+class CandleManagerActor @Inject()(conf: Configuration) extends Actor with ActorLogging with MarketCandles {
   import CandleManagerActor._
   import PoloniexCandleRetrieverActor._
+  import Misc._
 
   val eventBus = PoloniexEventBus()
   val baseVolumeRule = conf.getInt("poloniex.candle.baseVolume").getOrElse(500)
-
-  val marketCandles = new MarketCandles()
 
   override def preStart() = {
     log info "subscribed to market updates"
@@ -45,35 +50,28 @@ class CandleManagerActor @Inject()(conf: Configuration) extends Actor with Actor
   def receive: Receive = {
 
     case update: MarketUpdate =>
-      updateMarket(update)
+      val marketName = update.marketName
+      // only care about BTC markets
+      if (marketName.startsWith("BTC")) {
 
-    case GetCandles(name) =>
-      sender ! marketCandles.getMarketCandles(name)
-
-    case GetLastestCandle(name) =>
-      sender ! marketCandles.getLatestCandle(name)
-
-    case SetCandles(name, last24hrCandles) =>
-      marketCandles.appendCandles(name, last24hrCandles)
-
-  }
-
-  private def updateMarket(update: MarketUpdate) = {
-    val name = update.name
-    // only care about BTC markets
-    if (name.startsWith("BTC")) {
-
-      if (!marketCandles.containsMarket(name)) {
-        // send a message to the retriever to get the candle data from Poloniex
-        // if the 24 hour baseVolume from this update is greater than our threshold
-        if (update.info.baseVolume > baseVolumeRule) {
-          eventBus.publish(MarketEvent("/market/added", QueueMarket(name)))
+        if (!marketCandles.contains(marketName)) {
+          // send a message to the retriever to get the candle data from Poloniex
+          // if the 24 hour baseVolume from this update is greater than our threshold
+          if (update.info.baseVolume > baseVolumeRule) {
+            eventBus.publish(MarketEvent("/market/added", QueueMarket(marketName)))
+          }
         }
+
+        updateMarketCandle(update.marketName, ClosePrice(now(), update.info.last))
       }
 
-      marketCandles.updateMarket(update){ candleClose =>
-        eventBus.publish(MarketEvent("/market/candle/close", candleClose))
-      }
-    }
+    case GetCandles(marketName) =>
+      sender ! getMarketCandles(marketName)
+
+    case GetLastestCandle(marketName) =>
+      sender ! getLatestCandle(marketName)
+
+    case SetCandles(marketName, last24hrCandles) =>
+      appendCandles(marketName, last24hrCandles)
   }
 }

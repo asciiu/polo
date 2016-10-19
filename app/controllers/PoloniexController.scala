@@ -29,9 +29,7 @@ import models.market.PeriodVolume
 import models.db.AccountRole
 import models.poloniex.{MarketUpdate, MarketMessage}
 import services.DBService
-import models.bittrex.AllMarketSummary
-import models.market.EMA
-import models.poloniex.MarketCandle
+import models.market.{EMA, MarketCandle}
 import services.actors.TradeActor.GetLatestMessage
 import services.actors.VolumeTrackerActor.{GetVolume, GetVolumes}
 import services.actors.{CandleManagerActor, ExponentialMovingAverageActor, TradeActor}
@@ -85,12 +83,12 @@ class PoloniexController @Inject()(val database: DBService,
 
       def receive = {
         // send updates from Bitcoin markets only
-        case update: MarketUpdate if update.name.startsWith("BTC") =>
+        case update: MarketUpdate if update.marketName.startsWith("BTC") =>
           val percentChange = update.info.percentChange * 100
           val ud = update.copy(info = update.info.copy(percentChange =
             percentChange.setScale(2, RoundingMode.CEILING)))
           out ! Json.toJson(ud).toString
-        case update: MarketUpdate if update.name == "USDT_BTC" =>
+        case update: MarketUpdate if update.marketName == "USDT_BTC" =>
           out ! Json.toJson(update).toString
       }
     }
@@ -127,11 +125,11 @@ class PoloniexController @Inject()(val database: DBService,
       polo.json.validate[List[MarketUpdate]] match {
         case JsSuccess(tickers, t) =>
           // Bitcoin price
-          val bitcoin = tickers.find( _.name == "USDT_BTC")
+          val bitcoin = tickers.find( _.marketName == "USDT_BTC")
 
           // only care about btc markets
           // order by base volume - btc vol
-          val btcmarkets = tickers.filter(t =>  t.name.startsWith("BTC"))
+          val btcmarkets = tickers.filter(t =>  t.marketName.startsWith("BTC"))
             .sortBy( tick => tick.info.baseVolume).reverse.map(t => {
 
             // change percent format from decimal
