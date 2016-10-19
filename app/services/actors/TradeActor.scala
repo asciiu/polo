@@ -5,7 +5,7 @@ import javax.inject.Inject
 
 import akka.actor.{Actor, ActorLogging}
 import akka.util.Timeout
-import models.market.{EMA, PeriodVolume}
+import models.market.{PeriodVolume}
 import models.poloniex.{MarketMessage, MarketUpdate, PoloniexEventBus}
 import org.joda.time.DateTime
 import play.api.Configuration
@@ -21,7 +21,7 @@ import scala.math.BigDecimal.RoundingMode
 object TradeActor {
   trait TradeMessage
 
-  case class MarketEMA(marketName: String, emaShort: EMA, emaLong: EMA) extends TradeMessage
+  //case class MarketEMA(marketName: String, emaShort: EMA, emaLong: EMA) extends TradeMessage
   case class GetLatestMessage(marketName: String) extends TradeMessage
 }
 
@@ -51,12 +51,12 @@ class TradeActor @Inject()(conf: Configuration)(implicit context: ExecutionConte
 
   override def preStart() = {
     // receive messages from exponential moving average
-    eventBus.subscribe(self, "/ema/update")
+    //eventBus.subscribe(self, "/ema/update")
     eventBus.subscribe(self, "/market/update")
   }
 
   override def postStop() = {
-    eventBus.unsubscribe(self, "/ema/update")
+    //eventBus.unsubscribe(self, "/ema/update")
     eventBus.unsubscribe(self, "/market/update")
   }
 
@@ -77,24 +77,24 @@ class TradeActor @Inject()(conf: Configuration)(implicit context: ExecutionConte
 
     // this needs to receive both computed emas
     // TODO change the EMA actor update alorithm to fix this
-    case MarketEMA(marketName, emaShort, emaLong) => {
-      // are we already watching this market
-      if (emaConditionMet.contains(marketName) && emaShort.ema < emaLong.ema) {
-        emaConditionMet.remove(marketName)
-      } else if (emaShort.ema > emaLong.ema) {
-        // TODO compute the slope from the last two period moving averages
-
-        val vols = marketVols(marketName)
-        if (vols.first != 0 && vols.last - vols.first > 3) {
-          if (!emaConditionMet.contains(marketName)) {
-            emaConditionMet.add(marketName)
-          } else {
-            val delta = (vols.last - vols.first).setScale(2, RoundingMode.DOWN)
-            val time = new DateTime()
-            //println(s"$time - $marketName change in vol: $delta")
-          }
-        }
-      }
-    }
+//    case MarketEMA(marketName, emaShort, emaLong) => {
+//      // are we already watching this market
+//      if (emaConditionMet.contains(marketName) && emaShort.ema < emaLong.ema) {
+//        emaConditionMet.remove(marketName)
+//      } else if (emaShort.ema > emaLong.ema) {
+//        // TODO compute the slope from the last two period moving averages
+//
+//        val vols = marketVols(marketName)
+//        if (vols.first != 0 && vols.last - vols.first > 3) {
+//          if (!emaConditionMet.contains(marketName)) {
+//            emaConditionMet.add(marketName)
+//          } else {
+//            val delta = (vols.last - vols.first).setScale(2, RoundingMode.DOWN)
+//            val time = new DateTime()
+//            //println(s"$time - $marketName change in vol: $delta")
+//          }
+//        }
+//      }
+//    }
   }
 }
