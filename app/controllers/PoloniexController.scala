@@ -31,7 +31,6 @@ import models.poloniex.{MarketUpdate, MarketMessage}
 import services.DBService
 import models.market.MarketCandle
 import services.actors.TradeActor.GetLatestMessage
-import services.actors.VolumeTrackerActor.{GetVolume, GetVolumes}
 import services.actors.CandleManagerActor
 import CandleManagerActor._
 
@@ -43,8 +42,7 @@ class PoloniexController @Inject()(val database: DBService,
                                    @Named("candle-actor") candleActorRef: ActorRef,
                                    @Named("polo-candle-retriever") candleRetrieverActor: ActorRef,
                                    @Named("polo-websocket-client") websocketClient: ActorRef,
-                                   @Named("trade-actor") tradeActor: ActorRef,
-                                   @Named("volume-actor") volumeActor: ActorRef)
+                                   @Named("trade-actor") tradeActor: ActorRef)
                                   (implicit system: ActorSystem,
                                    materializer: Materializer,
                                    context: ExecutionContext,
@@ -180,7 +178,7 @@ class PoloniexController @Inject()(val database: DBService,
     for {
       candles <- (candleActorRef ? GetCandles(marketName)).mapTo[List[MarketCandle]]
       movingAverages <- (candleActorRef ? GetMovingAverages(marketName)).mapTo[List[(Int, List[ExponentialMovingAverage])]]
-      volume24hr <- (volumeActor ? GetVolumes(marketName)).mapTo[List[PeriodVolume]]
+      volume24hr <- (candleActorRef ? GetVolumes(marketName)).mapTo[List[PeriodVolume]]
     } yield {
       val l = candles.map { c =>
         val defaultEMA = ExponentialMovingAverage(c.time, 0, c.close)
@@ -215,7 +213,7 @@ class PoloniexController @Inject()(val database: DBService,
     for {
       candle <- (candleActorRef ? GetLastestCandle(marketName)).mapTo[Option[MarketCandle]]
       averages <- (candleActorRef ? GetMovingAverage(marketName, candle.get.time)).mapTo[List[(Int, BigDecimal)]]
-      volume24hr <- (volumeActor ? GetVolume(marketName, candle.get.time)).mapTo[PeriodVolume]
+      volume24hr <- (candleActorRef ? GetVolume(marketName, candle.get.time)).mapTo[PeriodVolume]
     } yield {
       val df = DateTimeFormat.forPattern("MMM dd HH:mm")
 

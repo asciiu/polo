@@ -7,7 +7,10 @@ import akka.contrib.pattern.ReceivePipeline
 import akka.contrib.pattern.ReceivePipeline.Inner
 import java.time.OffsetDateTime
 import javax.inject.Inject
+
+import models.analytics.Volume24HourTracking
 import play.api.Configuration
+
 import scala.language.postfixOps
 
 // internal
@@ -30,6 +33,8 @@ object CandleManagerActor {
   case object EndCapture extends CandleManagerMessage
   case class GetMovingAverage(marketname: String, time: OffsetDateTime) extends CandleManagerMessage
   case class GetMovingAverages(marketName: String) extends CandleManagerMessage
+  case class GetVolume(marketName: String, time: OffsetDateTime) extends CandleManagerMessage
+  case class GetVolumes(marketName: String) extends CandleManagerMessage
 }
 
 /**
@@ -41,12 +46,11 @@ class CandleManagerActor @Inject()(val database: DBService,
   with ReceivePipeline
   with MarketCandles
   with ExponentialMovingAverages
+  with Volume24HourTracking
   with Archiving {
 
   import CandleManagerActor._
   import PoloniexCandleRetrieverActor._
-  import Misc._
-
 
   // This must execute before the interceptors in the other
   // traits
@@ -111,5 +115,11 @@ class CandleManagerActor @Inject()(val database: DBService,
       */
     case GetMovingAverages(marketName) =>
       sender ! getMovingAverages(marketName)
+
+    case GetVolume(marketName, time) =>
+      sender ! getVolume(marketName, time)
+
+    case GetVolumes(marketName) =>
+      sender ! getVolumes(marketName)
   }
 }
