@@ -1,7 +1,9 @@
 package models
 
 import java.time.OffsetDateTime
+
 import models.market.MarketCandle
+import models.market.MarketStructures.ClosePrice
 import org.scalatest.FlatSpec
 import utils.Misc
 

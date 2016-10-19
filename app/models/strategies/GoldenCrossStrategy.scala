@@ -1,7 +1,7 @@
 package models.strategies
 
 import akka.actor.Actor
-import models.market.MarketExponentialMovingAvgs
+import models.market.MarketExponentialMovingCollection
 import models.poloniex.MarketMessage2
 
 import scala.collection.mutable.ListBuffer
@@ -20,7 +20,7 @@ trait GoldenCrossStrategy {
   }
 
   // marketName -> list of moving averages
-  val averages = scala.collection.mutable.Map[String, List[MarketExponentialMovingAvgs]]()
+  val averages = scala.collection.mutable.Map[String, List[MarketExponentialMovingCollection]]()
 
   val marketWatch = scala.collection.mutable.Set[String]()
   val buyRecords = scala.collection.mutable.Map[String, BuyRecord]()
@@ -40,7 +40,7 @@ trait GoldenCrossStrategy {
   val gainPercentMin = 0.01
   val lossPercentMin = -0.1
 
-  def setAllMarketAverages(marketAverages: Map[String, List[MarketExponentialMovingAvgs]]) = averages ++= marketAverages
+  def setAllMarketAverages(marketAverages: Map[String, List[MarketExponentialMovingCollection]]) = averages ++= marketAverages
 
   def inventoryBalance: BigDecimal = {
     buyRecords.foldLeft(BigDecimal(0.0))( (a,r) => (r._2.price * r._2.quantity) + a)

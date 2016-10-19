@@ -11,6 +11,9 @@ import scala.math.BigDecimal.RoundingMode
 import models.market.MarketStructures.ClosePrice
 
 
+// TODO remove this class this is the old one being used by
+// the ema actor. That actor is going away!
+
 // tracking periods pertains to ema periods that this actor is responsible for tracking
 class ExponentialMovingAverages(val trackingPeriods: List[Int] = List(5,15)) extends LazyLogging {
   // maps (MarketName, NumberOfPeriods) -> List[EMA]

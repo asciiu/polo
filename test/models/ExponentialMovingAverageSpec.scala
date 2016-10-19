@@ -1,13 +1,14 @@
 package models
 
 // external
+import models.market.MarketStructures.ClosePrice
 import org.scalatest._
 import org.scalatest.concurrent.ScalaFutures
 
 import scala.math.BigDecimal.RoundingMode
 
 // internal
-import models.market.{ExponentialMovingAverages, MarketExponentialMovingAvgs}
+import models.market.{MarketExponentialMovingCollection}
 import utils.Misc
 
 
@@ -29,7 +30,7 @@ class ExponentialMovingAverageSpec extends FlatSpec with ScalaFutures with Befor
     val sum = prices.foldLeft(BigDecimal(0.0))( (a, v) => a + v.price )
     val avg = sum / period
 
-    val sevenPeriodAverages = new MarketExponentialMovingAvgs("Test", period, minutes, prices.toList)
+    val sevenPeriodAverages = new MarketExponentialMovingCollection("Test", period, minutes, prices.toList)
     val average = sevenPeriodAverages.movingAverages.head
 
     assert(average.time == prices.head.time)
@@ -44,7 +45,7 @@ class ExponentialMovingAverageSpec extends FlatSpec with ScalaFutures with Befor
     val prices = (for(i <- 0 to period) yield ClosePrice(time.minusMinutes(minutes * i), BigDecimal(i)))
     val sum = prices.foldLeft(BigDecimal(0.0))( (a, v) => a + v.price )
 
-    val sevenPeriodAverages = new MarketExponentialMovingAvgs("Test", period, minutes, prices.toList)
+    val sevenPeriodAverages = new MarketExponentialMovingCollection("Test", period, minutes, prices.toList)
     val averages = sevenPeriodAverages.movingAverages
     val avg = ema(prices.head.price, averages(1).ema, period)
 
@@ -61,7 +62,7 @@ class ExponentialMovingAverageSpec extends FlatSpec with ScalaFutures with Befor
     val prices = (for(i <- 0 to period) yield ClosePrice(time.minusMinutes(minutes * i), BigDecimal(i)))
     val sum = prices.foldLeft(BigDecimal(0.0))( (a, v) => a + v.price )
 
-    val sevenPeriodAverages = new MarketExponentialMovingAvgs("Test", period, minutes, prices.toList)
+    val sevenPeriodAverages = new MarketExponentialMovingCollection("Test", period, minutes, prices.toList)
     for (i <- 1 to 5) {
       val t = Misc.now().plusSeconds(i)
       sevenPeriodAverages.updateAverages(ClosePrice(t, i))
@@ -83,7 +84,7 @@ class ExponentialMovingAverageSpec extends FlatSpec with ScalaFutures with Befor
     val prices = (for(i <- 0 to period) yield ClosePrice(time.minusMinutes(minutes * i), BigDecimal(i)))
     val sum = prices.foldLeft(BigDecimal(0.0))( (a, v) => a + v.price )
 
-    val sevenPeriodAverages = new MarketExponentialMovingAvgs("Test", period, minutes, prices.toList)
+    val sevenPeriodAverages = new MarketExponentialMovingCollection("Test", period, minutes, prices.toList)
     val t = prices.head.time.plusMinutes(minutes+1)
     val price = 1
     sevenPeriodAverages.updateAverages(ClosePrice(t, price))
@@ -105,7 +106,7 @@ class ExponentialMovingAverageSpec extends FlatSpec with ScalaFutures with Befor
     val lastPrice = prices.head.price
     val sum = prices.foldLeft(BigDecimal(0.0))( (a, v) => a + v.price )
 
-    val sevenPeriodAverages = new MarketExponentialMovingAvgs("Test", period, minutes, prices.toList)
+    val sevenPeriodAverages = new MarketExponentialMovingCollection("Test", period, minutes, prices.toList)
     val averages = sevenPeriodAverages.movingAverages
 
     val t = prices.head.time.plusMinutes(minutes * skipped + 3)

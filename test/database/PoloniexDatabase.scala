@@ -1,20 +1,21 @@
 package database
 
+// external
 import akka.NotUsed
 import akka.stream.scaladsl.{Flow, Source}
-import models.db.Tables
-import models.poloniex.MarketMessage2
 import org.scalatest.concurrent.ScalaFutures
-import slick.backend.DatabasePublisher
-
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
+import slick.backend.DatabasePublisher
 
 // internal
 import models.db.Tables.profile.api._
 import models.db.Tables.{PoloniexCandleRow, _}
-import models.market.MarketExponentialMovingAvgs
+import models.market.MarketExponentialMovingCollection
+import models.db.Tables
+import models.market.MarketStructures.ClosePrice
+import models.poloniex.MarketMessage2
 
 /**
   * Methods that make it convenient to access poloniex database
@@ -28,7 +29,7 @@ trait PoloniexDatabase extends Postgres with ScalaFutures {
     * @param periods a list of periods to compute EMAs for: e.g. 7-period ema, 15-period ema
     * @return
     */
-  def exponentialMovingAverages(periods: List[Int] = List(7, 15)): Map[String, List[MarketExponentialMovingAvgs]] = {
+  def exponentialMovingAverages(periods: List[Int] = List(7, 15)): Map[String, List[MarketExponentialMovingCollection]] = {
     // the length of a period is 5 minutes
     val periodMinutes = 5
 
@@ -36,9 +37,9 @@ trait PoloniexDatabase extends Postgres with ScalaFutures {
     val query = PoloniexCandle.filter(candle => candle.cryptoCurrency.startsWith("BTC_") && candle.sessionId === 1)
     val result: Future[Seq[PoloniexCandleRow]] = database.run(query.result)
     // market name -> moving averages computed for all DB candles
-    val marketCandles = scala.collection.mutable.Map[String, List[MarketExponentialMovingAvgs]]()
+    val marketCandles = scala.collection.mutable.Map[String, List[MarketExponentialMovingCollection]]()
 
-    val averages: Future[Map[String, List[MarketExponentialMovingAvgs]]] = result.map { candleRows =>
+    val averages: Future[Map[String, List[MarketExponentialMovingCollection]]] = result.map { candleRows =>
 
       // market name -> candle rows
       val groupByMarket: Map[String, Seq[PoloniexCandleRow]] = candleRows.groupBy(_.cryptoCurrency)
@@ -50,7 +51,7 @@ trait PoloniexDatabase extends Postgres with ScalaFutures {
         val closePrices = sortedRows.map { candleRow => ClosePrice(candleRow.createdAt, candleRow.close) }.toList
 
         val averagesList = for (period <- periods)
-          yield new MarketExponentialMovingAvgs(marketName, period, periodMinutes, closePrices)
+          yield new MarketExponentialMovingCollection(marketName, period, periodMinutes, closePrices)
 
         marketCandles.put(marketName, averagesList)
       }
@@ -65,6 +66,7 @@ trait PoloniexDatabase extends Postgres with ScalaFutures {
   /**
     * Provides a message source to be used in an Akka stream that
     * can stream the messages in the DB.
+    *
     * @return a message source
     */
   def messageSource: Source[Tables.PoloniexMessageRow, NotUsed] = {
@@ -79,6 +81,7 @@ trait PoloniexDatabase extends Postgres with ScalaFutures {
 
   /**
     * Converts a DB PoloniexMessageRow to a MarketMessage
+    *
     * @return a flow that defines input PoloniexMessageRow to output MarketMessage
     */
   def messageFlow: Flow[Tables.PoloniexMessageRow, MarketMessage2, NotUsed] = {

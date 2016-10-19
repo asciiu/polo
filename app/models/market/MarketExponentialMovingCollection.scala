@@ -8,10 +8,6 @@ import scala.math.BigDecimal.RoundingMode
 import scala.collection.mutable.ListBuffer
 import MarketStructures._
 
-object MarketExponentialMovingAvgs{
-
-  case class ExponentialMovingAverage(time: OffsetDateTime, ema: BigDecimal, atPrice: BigDecimal)
-}
 /**
   * Keeps track of the exponential moving averages
   * for each time period.
@@ -24,13 +20,10 @@ object MarketExponentialMovingAvgs{
   *                            as this class. Example, close prices for every 5 minute
   *                            period for the last 24 hour window.
   */
-class MarketExponentialMovingAvgs (val marketName: String,
-                                   val period: Int,
-                                   val periodMinutes: Int,
-                                   historicClosePrices: List[ClosePrice]) {
-
-  import MarketExponentialMovingAvgs._
-
+class MarketExponentialMovingCollection(val marketName: String,
+                                        val period: Int,
+                                        val periodMinutes: Int,
+                                        historicClosePrices: List[ClosePrice]) {
   require(period > 0)
 
   // enough close prices needed to start the
