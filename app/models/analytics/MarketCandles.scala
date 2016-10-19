@@ -1,7 +1,15 @@
 package models.analytics
 
 // external
+import akka.actor.ActorLogging
+import akka.contrib.pattern.ReceivePipeline
+import akka.contrib.pattern.ReceivePipeline.Inner
 import com.typesafe.scalalogging.LazyLogging
+import models.db.Tables
+import models.market.MarketStructures.Candles
+import models.poloniex.MarketUpdate
+import utils.Misc._
+
 import scala.collection.mutable.ListBuffer
 
 // internal
@@ -9,7 +17,19 @@ import models.market.MarketStructures.ClosePrice
 import models.market.MarketCandle
 import utils.Misc
 
-trait MarketCandles extends LazyLogging {
+trait MarketCandles extends ActorLogging {
+
+  this: ReceivePipeline => pipelineInner {
+    case update: MarketUpdate =>
+      updateMarketCandle(update.marketName, ClosePrice(now(), update.info.last))
+
+      Inner(update)
+
+    case mc: Candles =>
+      appendCandles(mc.marketName, mc.candles)
+      Inner(mc)
+  }
+
   val periodMinutes: Int = 5
   val marketCandles = scala.collection.mutable.Map[String, ListBuffer[MarketCandle]]()
 
@@ -35,10 +55,10 @@ trait MarketCandles extends LazyLogging {
         val tail = last24hrCandles.dropWhile( c => c.time.isAfter(candles.last.time) || c.time.isEqual(candles.last.time))
         candles.appendAll(tail)
 
-        logger.info(s"Retrieved candle data for $marketName")
+        log.info(s"Retrieved candle data for $marketName")
 
       case None =>
-        logger.info(s"Set candle data for $marketName")
+        log.info(s"Set candle data for $marketName")
         marketCandles.put(marketName, last24hrCandles.to[ListBuffer])
     }
   }

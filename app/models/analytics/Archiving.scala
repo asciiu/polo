@@ -1,10 +1,17 @@
 package models.analytics
 
 // external
-import java.time.OffsetDateTime
-
+import akka.actor.ActorLogging
+import akka.contrib.pattern.ReceivePipeline
+import akka.contrib.pattern.ReceivePipeline.Inner
 import akka.util.Timeout
-import com.typesafe.scalalogging.LazyLogging
+import java.time.OffsetDateTime
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
+import scala.language.{implicitConversions, postfixOps}
+
+// internal
+import models.market.MarketStructures.Candles
 import models.db.Tables
 import models.db.Tables.profile.api._
 import models.db.Tables.{PoloniexCandleRow, PoloniexMessageRow, PoloniexSessions, PoloniexSessionsRow}
@@ -12,13 +19,31 @@ import models.poloniex.MarketUpdate
 import services.DBService
 import utils.Misc
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration._
-import scala.language.{implicitConversions, postfixOps}
+/**
+  * Provides DB archiving of messages and candles.
+  */
+trait Archiving extends ActorLogging {
 
-import models.market.MarketStructures.Candles
+  this: ReceivePipeline => pipelineInner {
+    case update: MarketUpdate =>
 
-trait Archiving extends LazyLogging {
+      sessionId.map {id =>
+        val newRow = convertUpdate (update, id)
+        database.runAsync ((Tables.PoloniexMessage returning Tables.PoloniexMessage.map (_.id) ) += newRow)
+      }
+
+      Inner(update)
+
+    case candles: Candles =>
+
+      sessionId.map { id =>
+        val newRow = convertCandles(candles, id)
+        val insertStatement = Tables.PoloniexCandle ++= newRow
+        database.runAsync(insertStatement)
+      }
+
+      Inner(candles)
+  }
 
   def database: DBService
   var sessionId: Option[Int] = None
@@ -45,14 +70,14 @@ trait Archiving extends LazyLogging {
     )
   }
 
-  private def beginSession() = {
+  protected def beginSession() = {
     val time = Misc.now()
     val insert = (PoloniexSessions returning PoloniexSessions.map(_.id)) += PoloniexSessionsRow(-1, Some("New session"), time, None)
 
     database.runAsync(insert).map { id => sessionId = Some(id)}
   }
 
-  private def endSession() = {
+  protected def endSession() = {
     sessionId.map { id =>
       val query = for {session <- PoloniexSessions if session.id === id} yield session.endedAt
       val updateAction = query.update(Some(Misc.now()))
@@ -64,21 +89,6 @@ trait Archiving extends LazyLogging {
   private def convertCandles(candles: Candles, sessionId: Int): List[PoloniexCandleRow] = {
     val name = candles.marketName
     candles.candles.map( c => PoloniexCandleRow(-1, sessionId, name, c.open, c.close, c.low, c.high, OffsetDateTime.parse(c.time.toString)))
-  }
-
-  def captureUpdate(update: MarketUpdate) = {
-    sessionId.map {id =>
-      val newRow = convertUpdate (update, id)
-      database.runAsync ((Tables.PoloniexMessage returning Tables.PoloniexMessage.map (_.id) ) += newRow)
-    }
-  }
-
-  def captureCandles(candles: Candles) = {
-    sessionId.map { id =>
-      val newRow = convertCandles(candles, id)
-      val insertStatement = Tables.PoloniexCandle ++= newRow
-      database.runAsync(insertStatement)
-    }
   }
 }
 

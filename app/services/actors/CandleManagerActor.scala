@@ -3,7 +3,11 @@ package services.actors
 // external
 import akka.actor.{Actor, ActorLogging}
 import javax.inject.Inject
+
+import akka.contrib.pattern.ReceivePipeline
+import akka.contrib.pattern.ReceivePipeline.Inner
 import play.api.Configuration
+
 import scala.language.postfixOps
 
 // internal
@@ -23,6 +27,8 @@ object CandleManagerActor {
   case class GetCandles(marketName: String) extends CandleManagerMessage
   case class GetLastestCandle(marketName: String) extends CandleManagerMessage
   case class SetCandles(marketName: String, candles: List[MarketCandle]) extends CandleManagerMessage
+  case object StartCapture extends CandleManagerMessage
+  case object EndCapture extends CandleManagerMessage
 }
 
 /**
@@ -31,12 +37,33 @@ object CandleManagerActor {
 class CandleManagerActor @Inject()(val database: DBService,
                                    conf: Configuration) extends Actor
   with ActorLogging
+  with ReceivePipeline
   with MarketCandles
   with Archiving {
 
   import CandleManagerActor._
   import PoloniexCandleRetrieverActor._
   import Misc._
+
+  pipelineOuter {
+    // need to catch the update messages first so
+    // we can signal if we need to retrieve the candles
+    case update: MarketUpdate =>
+      val marketName = update.marketName
+
+      // only care about BTC markets
+      if (marketName.startsWith("BTC")) {
+
+        if (!marketCandles.contains(marketName)) {
+          // send a message to the retriever to get the candle data from Poloniex
+          // if the 24 hour baseVolume from this update is greater than our threshold
+          if (update.info.baseVolume > baseVolumeRule) {
+            eventBus.publish(MarketEvent("/market/added", QueueMarket(marketName)))
+          }
+        }
+      }
+      Inner(update)
+  }
 
   val eventBus = PoloniexEventBus()
   val baseVolumeRule = conf.getInt("poloniex.candle.baseVolume").getOrElse(500)
@@ -52,46 +79,17 @@ class CandleManagerActor @Inject()(val database: DBService,
     eventBus.unsubscribe(self, "/market/candles")
   }
 
-  def startCapture() = {
-
-
-  }
-
-  def endCapture() = {
-
-  }
-
   def receive: Receive = {
 
-    case update: MarketUpdate =>
-      val marketName = update.marketName
-
-      // archive this update to the db
-      // TODO add message hook to control session
-      captureUpdate(update)
-
-      // only care about BTC markets
-      if (marketName.startsWith("BTC")) {
-
-        if (!marketCandles.contains(marketName)) {
-          // send a message to the retriever to get the candle data from Poloniex
-          // if the 24 hour baseVolume from this update is greater than our threshold
-          if (update.info.baseVolume > baseVolumeRule) {
-            eventBus.publish(MarketEvent("/market/added", QueueMarket(marketName)))
-          }
-        }
-
-        updateMarketCandle(update.marketName, ClosePrice(now(), update.info.last))
-      }
+    case StartCapture =>
+      beginSession()
+    case EndCapture =>
+      endSession()
 
     case GetCandles(marketName) =>
       sender ! getMarketCandles(marketName)
 
     case GetLastestCandle(marketName) =>
       sender ! getLatestCandle(marketName)
-
-    case mc: Candles =>
-      captureCandles(mc)
-      appendCandles(mc.marketName, mc.candles)
   }
 }

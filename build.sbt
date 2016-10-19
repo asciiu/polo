@@ -32,8 +32,9 @@ lazy val root = (project in file("."))
 		libraryDependencies += "com.typesafe.play" %% "play-mailer" % "5.0.0",
 		libraryDependencies += "org.scalatestplus.play" %% "scalatestplus-play" % "1.5.0" % "test",
 		libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0",
-		libraryDependencies += "com.typesafe.akka" %% "akka-stream" % "2.4.11"
-	)
+		libraryDependencies += "com.typesafe.akka" %% "akka-stream" % "2.4.11",
+		libraryDependencies += "com.typesafe.akka" % "akka-contrib_2.11" % "2.4.11"
+)
   .enablePlugins(PlayScala)
   .enablePlugins(SbtWeb)
 
