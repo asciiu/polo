@@ -11,7 +11,6 @@ class CustomModule extends AbstractModule with AkkaGuiceSupport {
   def configure = {
     // for live traffic
     bindActor[CandleManagerActor]("candle-actor")
-    bindActor[ExponentialMovingAverageActor]("ema-actor")
     bindActor[PoloniexCandleRetrieverActor]("polo-candle-retriever")
     bindActor[PoloniexWebSocketClient]("polo-websocket-client")
     bindActor[TradeActor]("trade-actor")

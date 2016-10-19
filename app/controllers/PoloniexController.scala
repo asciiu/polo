@@ -8,6 +8,7 @@ import akka.stream.Materializer
 import javax.inject.{Inject, Named, Singleton}
 
 import jp.t2v.lab.play2.auth.AuthElement
+import models.market.MarketStructures.ExponentialMovingAverage
 import models.poloniex.PoloniexEventBus
 import models.poloniex.trade.PoloniexTradeClient
 import play.api.i18n.{I18nSupport, MessagesApi}
@@ -28,11 +29,10 @@ import models.market.PeriodVolume
 import models.db.AccountRole
 import models.poloniex.{MarketUpdate, MarketMessage}
 import services.DBService
-import models.market.{EMA, MarketCandle}
+import models.market.MarketCandle
 import services.actors.TradeActor.GetLatestMessage
 import services.actors.VolumeTrackerActor.{GetVolume, GetVolumes}
-import services.actors.{CandleManagerActor, ExponentialMovingAverageActor, TradeActor}
-import ExponentialMovingAverageActor._
+import services.actors.CandleManagerActor
 import CandleManagerActor._
 
 @Singleton
@@ -41,7 +41,6 @@ class PoloniexController @Inject()(val database: DBService,
                                    ws: WSClient,
                                    conf: Configuration,
                                    @Named("candle-actor") candleActorRef: ActorRef,
-                                   @Named("ema-actor") movingAveragesActor: ActorRef,
                                    @Named("polo-candle-retriever") candleRetrieverActor: ActorRef,
                                    @Named("polo-websocket-client") websocketClient: ActorRef,
                                    @Named("trade-actor") tradeActor: ActorRef,
@@ -180,10 +179,11 @@ class PoloniexController @Inject()(val database: DBService,
 
     for {
       candles <- (candleActorRef ? GetCandles(marketName)).mapTo[List[MarketCandle]]
-      movingAverages <- (movingAveragesActor ? GetMovingAverages(marketName)).mapTo[List[(Int, List[EMA])]]
+      movingAverages <- (candleActorRef ? GetMovingAverages(marketName)).mapTo[List[(Int, List[ExponentialMovingAverage])]]
       volume24hr <- (volumeActor ? GetVolumes(marketName)).mapTo[List[PeriodVolume]]
     } yield {
       val l = candles.map { c =>
+        val defaultEMA = ExponentialMovingAverage(c.time, 0, c.close)
         Json.arr(
           // TODO UTF offerset should come from client
           // I've subtracted 6 hours(2.16e+7 milliseconds) for denver time for now
@@ -192,8 +192,8 @@ class PoloniexController @Inject()(val database: DBService,
           c.high,
           c.low,
           c.close,
-          movingAverages(0)._2.find( avg => c.time.equals(avg.time)).getOrElse(EMA(c.time, 0)).ema,
-          movingAverages(1)._2.find( avg => c.time.equals(avg.time)).getOrElse(EMA(c.time, 0)).ema,
+          movingAverages(0)._2.find( avg => c.time.equals(avg.time)).getOrElse(defaultEMA).ema,
+          movingAverages(1)._2.find( avg => c.time.equals(avg.time)).getOrElse(defaultEMA).ema,
           volume24hr.find( vol => c.time.equals(vol.time)).getOrElse(PeriodVolume(c.time, 0)).btcVolume.setScale(2, RoundingMode.DOWN)
         )
       }
@@ -214,7 +214,7 @@ class PoloniexController @Inject()(val database: DBService,
     // TODO this will fail if the first future returns a None
     for {
       candle <- (candleActorRef ? GetLastestCandle(marketName)).mapTo[Option[MarketCandle]]
-      averages <- (movingAveragesActor ? GetMovingAverage(marketName, candle.get.time)).mapTo[List[(Int, BigDecimal)]]
+      averages <- (candleActorRef ? GetMovingAverage(marketName, candle.get.time)).mapTo[List[(Int, BigDecimal)]]
       volume24hr <- (volumeActor ? GetVolume(marketName, candle.get.time)).mapTo[PeriodVolume]
     } yield {
       val df = DateTimeFormat.forPattern("MMM dd HH:mm")

@@ -2,6 +2,7 @@ package database
 
 // external
 import akka.actor.{Actor, ActorSystem, Props}
+import akka.contrib.pattern.ReceivePipeline
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl._
 import models.strategies.TheoreticalPerfectStrategy

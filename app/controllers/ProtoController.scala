@@ -15,7 +15,6 @@ import play.api.libs.ws.{WSClient, WSRequest}
 import play.api.mvc.Controller
 import services.DBService
 import models.db.Tables.profile.api._
-import services.actors.ExponentialMovingAverageActor.MarketCandleClosePrices
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}

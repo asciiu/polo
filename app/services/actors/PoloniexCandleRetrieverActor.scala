@@ -17,7 +17,6 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 // internal
 import services.actors.CandleManagerActor.SetCandles
-import services.actors.ExponentialMovingAverageActor._
 import models.market.MarketCandle
 import models.poloniex.{MarketEvent, PoloMarketCandle, PoloniexEventBus}
 
@@ -135,8 +134,8 @@ class PoloniexCandleRetrieverActor @Inject()(ws: WSClient, conf: Configuration) 
                 eventBus.publish(MarketEvent("/market/candles", Candles(marketName, last24HrCandles)))
 
                 // publish closing prices for this market
-                val closingPrices = MarketCandleClosePrices(marketName, last24HrCandles.map( c => ClosePrice(c.time, c.close)))
-                eventBus.publish(MarketEvent("/market/prices", closingPrices))
+                //val closingPrices = MarketCandleClosePrices(marketName, last24HrCandles.map( c => ClosePrice(c.time, c.close)))
+                //eventBus.publish(MarketEvent("/market/prices", closingPrices))
 
               case x =>
                 log.error(s"could not retrieve candles for $marketName: ${x.toString}")

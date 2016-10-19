@@ -1,6 +1,9 @@
 package models.strategies
 
 import akka.actor.Actor
+import akka.contrib.pattern.ReceivePipeline
+import akka.contrib.pattern.ReceivePipeline.Inner
+import models.analytics.ExponentialMovingAverages
 import models.market.MarketEMACollection
 import models.poloniex.MarketMessage2
 
@@ -9,8 +12,9 @@ import scala.math.BigDecimal.RoundingMode
 import models.market.MarketStructures.ClosePrice
 
 
-trait GoldenCrossStrategy {
+trait GoldenCrossStrategy extends ReceivePipeline with ExponentialMovingAverages {
   self: Actor =>
+
   case class BuyRecord(val price: BigDecimal, val quantity: Int, val atVol: BigDecimal)
 
   case class Result(marketName: String, percent: BigDecimal, quantity: Int, atVol: BigDecimal, atCost: BigDecimal, atSale: BigDecimal) {
@@ -20,7 +24,7 @@ trait GoldenCrossStrategy {
   }
 
   // marketName -> list of moving averages
-  val averages = scala.collection.mutable.Map[String, List[MarketEMACollection]]()
+  //val averages = scala.collection.mutable.Map[String, List[MarketEMACollection]]()
 
   val marketWatch = scala.collection.mutable.Set[String]()
   val buyRecords = scala.collection.mutable.Map[String, BuyRecord]()
@@ -40,7 +44,7 @@ trait GoldenCrossStrategy {
   val gainPercentMin = 0.01
   val lossPercentMin = -0.1
 
-  def setAllMarketAverages(marketAverages: Map[String, List[MarketEMACollection]]) = averages ++= marketAverages
+  //def setAllMarketAverages(marketAverages: Map[String, List[MarketEMACollection]]) = averages ++= marketAverages
 
   def inventoryBalance: BigDecimal = {
     buyRecords.foldLeft(BigDecimal(0.0))( (a,r) => (r._2.price * r._2.quantity) + a)
@@ -57,7 +61,7 @@ trait GoldenCrossStrategy {
       val currentPrice = msg.last
 
       val avgsList = averages(marketName)
-      avgsList.foreach(_.updateAverages(ClosePrice(msg.time, currentPrice)))
+      //avgsList.foreach(_.updateAverages(ClosePrice(msg.time, currentPrice)))
 
       val emas = avgsList.map( avgs => (avgs.period, avgs.movingAverages.head.ema)).sortBy(_._1)
 
