@@ -1,11 +1,12 @@
 package models.strategies
 
 import akka.actor.Actor
-import models.market.{ClosePrice, MarketExponentialMovingAvgs}
+import models.market.MarketExponentialMovingAvgs
 import models.poloniex.MarketMessage2
 
 import scala.collection.mutable.ListBuffer
 import scala.math.BigDecimal.RoundingMode
+import models.market.MarketStructures.ClosePrice
 
 
 trait GoldenCrossStrategy {

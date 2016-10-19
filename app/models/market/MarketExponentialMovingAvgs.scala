@@ -6,6 +6,7 @@ import utils.Misc
 
 import scala.math.BigDecimal.RoundingMode
 import scala.collection.mutable.ListBuffer
+import MarketStructures._
 
 object MarketExponentialMovingAvgs{
 

@@ -5,6 +5,7 @@ import akka.actor.{Actor, ActorLogging, Cancellable}
 import java.time.{Instant, OffsetDateTime, ZoneOffset}
 import javax.inject.{Inject, Singleton}
 
+import models.market.MarketStructures.{Candles, ClosePrice}
 import org.joda.time.{DateTime, DateTimeZone}
 import play.api.Configuration
 import play.api.libs.functional.syntax._
@@ -17,7 +18,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 // internal
 import services.actors.CandleManagerActor.SetCandles
 import services.actors.ExponentialMovingAverageActor._
-import models.market.{ClosePrice, MarketCandle}
+import models.market.MarketCandle
 import models.poloniex.{MarketEvent, PoloMarketCandle, PoloniexEventBus}
 
 
@@ -131,7 +132,7 @@ class PoloniexCandleRetrieverActor @Inject()(ws: WSClient, conf: Configuration) 
                   new MarketCandle(cand.date, periodMinutes, cand.open, cand.close, cand.high, cand.low )
                 ).sortBy(_.time).reverse
 
-                eventBus.publish(MarketEvent("/market/candles", SetCandles(marketName, last24HrCandles)))
+                eventBus.publish(MarketEvent("/market/candles", Candles(marketName, last24HrCandles)))
 
                 // publish closing prices for this market
                 val closingPrices = MarketCandleClosePrices(marketName, last24HrCandles.map( c => ClosePrice(c.time, c.close)))

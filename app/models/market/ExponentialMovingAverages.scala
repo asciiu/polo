@@ -8,6 +8,7 @@ import utils.Misc
 
 import scala.collection.mutable.ListBuffer
 import scala.math.BigDecimal.RoundingMode
+import models.market.MarketStructures.ClosePrice
 
 
 // tracking periods pertains to ema periods that this actor is responsible for tracking

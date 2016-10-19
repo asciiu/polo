@@ -7,7 +7,6 @@ import akka.stream.Materializer
 import jp.t2v.lab.play2.auth.AuthElement
 import models.bittrex.AllMarketSummary
 import models.db.{AccountRole, Tables}
-import models.market.ClosePrice
 import models.poloniex.{MarketMessage, MarketUpdate}
 import play.api.Configuration
 import play.api.i18n.{I18nSupport, MessagesApi}

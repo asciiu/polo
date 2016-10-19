@@ -14,7 +14,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 // internal
 import models.db.Tables.profile.api._
 import models.db.Tables.{PoloniexCandleRow, _}
-import models.market.{ClosePrice, MarketExponentialMovingAvgs}
+import models.market.MarketExponentialMovingAvgs
 
 /**
   * Methods that make it convenient to access poloniex database

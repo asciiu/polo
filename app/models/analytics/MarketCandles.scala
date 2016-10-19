@@ -5,7 +5,7 @@ import com.typesafe.scalalogging.LazyLogging
 import scala.collection.mutable.ListBuffer
 
 // internal
-import models.market.ClosePrice
+import models.market.MarketStructures.ClosePrice
 import models.market.MarketCandle
 import utils.Misc
 

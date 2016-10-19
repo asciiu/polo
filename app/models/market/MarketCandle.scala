@@ -3,6 +3,7 @@ package models.market
 import java.time.OffsetDateTime
 
 import utils.Misc
+import MarketStructures.ClosePrice
 
 /**
   * Created by bishop on 10/18/16.

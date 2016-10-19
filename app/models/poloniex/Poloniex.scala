@@ -1,8 +1,6 @@
 package models.poloniex
 
 import java.time.OffsetDateTime
-
-import models.market.ClosePrice
 import utils.Misc
 
 case class MarketUpdate(marketName: String, info: MarketMessage)
@@ -46,65 +44,65 @@ case class PoloMarketCandle(date: OffsetDateTime,
                          weightedAverage: BigDecimal)
 
 
-object MarketCandle {
-  def apply (poloCandle: PoloMarketCandle): MarketCandle = {
-    val candle = MarketCandle(poloCandle.date, 5, poloCandle.open)
-    candle.low = poloCandle.low
-    candle.high = poloCandle.high
-    candle.volumeBtc = poloCandle.volume
-    candle.close = poloCandle.close
-    candle
-  }
+//object MarketCandle {
+//  def apply (poloCandle: PoloMarketCandle): MarketCandle = {
+//    val candle = MarketCandle(poloCandle.date, 5, poloCandle.open)
+//    candle.low = poloCandle.low
+//    candle.high = poloCandle.high
+//    candle.volumeBtc = poloCandle.volume
+//    candle.close = poloCandle.close
+//    candle
+//  }
+//
+//  def apply (candleRow: models.db.Tables.PoloniexCandleRow): MarketCandle = {
+//    val candle = MarketCandle(candleRow.createdAt, 5, candleRow.open)
+//    candle.low = candleRow.lowestAsk
+//    candle.high = candleRow.highestBid
+//    candle.close = candleRow.close
+//    candle
+//  }
+//}
 
-  def apply (candleRow: models.db.Tables.PoloniexCandleRow): MarketCandle = {
-    val candle = MarketCandle(candleRow.createdAt, 5, candleRow.open)
-    candle.low = candleRow.lowestAsk
-    candle.high = candleRow.highestBid
-    candle.close = candleRow.close
-    candle
-  }
-}
-
-case class MarketCandle(time: OffsetDateTime,
-                        timeIntervalMinutes: Int,
-                        var open: BigDecimal) {
-  var low: BigDecimal = 0
-  var high: BigDecimal = 0
-  var close: BigDecimal = 0
-  var volumeBtc: BigDecimal = 0
-
-  def isBuy(): Boolean = {
-    (close - open) > 0
-  }
-
-  def addCandle(candle: MarketCandle): Unit = {
-    // TODO this needs to know if the open time is less
-    open = candle.open
-    if (candle.low < low) low = candle.low
-    if (candle.high > high) high = candle.high
-  }
-
-  def updateStatus(update: MarketMessage): Unit = {
-    if (update.last < low || low == 0) low = update.last
-    if (update.last > high || high == 0) high = update.last
-    close = update.last
-  }
-
-  /**
-    * Assumes the close price time is normalized
-    * @param closePrice
-    */
-  def update(closePrice: ClosePrice) = {
-    if (isTimePeriod(closePrice.time)) {
-      if (closePrice.price < low || low == 0) low = closePrice.price
-      if (closePrice.price > high || high == 0) high = closePrice.price
-      close = closePrice.price
-    }
-  }
-
-  def isTimePeriod(time: OffsetDateTime) : Boolean = {
-    val normalizedTime = Misc.roundDateToMinute(time, timeIntervalMinutes)
-    time.isEqual(normalizedTime)
-  }
-}
+//case class MarketCandle(time: OffsetDateTime,
+//                        timeIntervalMinutes: Int,
+//                        var open: BigDecimal) {
+//  var low: BigDecimal = 0
+//  var high: BigDecimal = 0
+//  var close: BigDecimal = 0
+//  var volumeBtc: BigDecimal = 0
+//
+//  def isBuy(): Boolean = {
+//    (close - open) > 0
+//  }
+//
+//  def addCandle(candle: MarketCandle): Unit = {
+//    // TODO this needs to know if the open time is less
+//    open = candle.open
+//    if (candle.low < low) low = candle.low
+//    if (candle.high > high) high = candle.high
+//  }
+//
+//  def updateStatus(update: MarketMessage): Unit = {
+//    if (update.last < low || low == 0) low = update.last
+//    if (update.last > high || high == 0) high = update.last
+//    close = update.last
+//  }
+//
+//  /**
+//    * Assumes the close price time is normalized
+//    * @param closePrice
+//    */
+//  def update(closePrice: ClosePrice) = {
+//    if (isTimePeriod(closePrice.time)) {
+//      if (closePrice.price < low || low == 0) low = closePrice.price
+//      if (closePrice.price > high || high == 0) high = closePrice.price
+//      close = closePrice.price
+//    }
+//  }
+//
+//  def isTimePeriod(time: OffsetDateTime) : Boolean = {
+//    val normalizedTime = Misc.roundDateToMinute(time, timeIntervalMinutes)
+//    time.isEqual(normalizedTime)
+//  }
+//}
 

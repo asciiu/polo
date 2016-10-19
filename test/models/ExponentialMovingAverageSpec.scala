@@ -7,7 +7,7 @@ import org.scalatest.concurrent.ScalaFutures
 import scala.math.BigDecimal.RoundingMode
 
 // internal
-import models.market.{ClosePrice, ExponentialMovingAverages, MarketExponentialMovingAvgs}
+import models.market.{ExponentialMovingAverages, MarketExponentialMovingAvgs}
 import utils.Misc
 
 

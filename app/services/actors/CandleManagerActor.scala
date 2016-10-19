@@ -3,19 +3,19 @@ package services.actors
 // external
 import akka.actor.{Actor, ActorLogging}
 import javax.inject.Inject
-
-import models.market.ClosePrice
 import play.api.Configuration
-import utils.Misc
-
 import scala.language.postfixOps
 
 // internal
+import utils.Misc
 import models.poloniex.PoloniexEventBus
 import models.poloniex.{MarketEvent, MarketUpdate}
-
+import models.market.MarketStructures.ClosePrice
 import models.market.MarketCandle
+import models.market.MarketStructures.Candles
 import models.analytics.MarketCandles
+import models.analytics.Archiving
+import services.DBService
 
 
 object CandleManagerActor {
@@ -28,7 +28,12 @@ object CandleManagerActor {
 /**
   * This actor is responsible for managing candles for all markets.
   */
-class CandleManagerActor @Inject()(conf: Configuration) extends Actor with ActorLogging with MarketCandles {
+class CandleManagerActor @Inject()(val database: DBService,
+                                   conf: Configuration) extends Actor
+  with ActorLogging
+  with MarketCandles
+  with Archiving {
+
   import CandleManagerActor._
   import PoloniexCandleRetrieverActor._
   import Misc._
@@ -47,10 +52,24 @@ class CandleManagerActor @Inject()(conf: Configuration) extends Actor with Actor
     eventBus.unsubscribe(self, "/market/candles")
   }
 
+  def startCapture() = {
+
+
+  }
+
+  def endCapture() = {
+
+  }
+
   def receive: Receive = {
 
     case update: MarketUpdate =>
       val marketName = update.marketName
+
+      // archive this update to the db
+      // TODO add message hook to control session
+      captureUpdate(update)
+
       // only care about BTC markets
       if (marketName.startsWith("BTC")) {
 
@@ -71,7 +90,8 @@ class CandleManagerActor @Inject()(conf: Configuration) extends Actor with Actor
     case GetLastestCandle(marketName) =>
       sender ! getLatestCandle(marketName)
 
-    case SetCandles(marketName, last24hrCandles) =>
-      appendCandles(marketName, last24hrCandles)
+    case mc: Candles =>
+      captureCandles(mc)
+      appendCandles(mc.marketName, mc.candles)
   }
 }

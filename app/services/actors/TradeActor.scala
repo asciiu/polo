@@ -6,7 +6,7 @@ import javax.inject.Inject
 import akka.actor.{Actor, ActorLogging}
 import akka.util.Timeout
 import models.market.{EMA, PeriodVolume}
-import models.poloniex.{MarketCandle, MarketMessage, MarketUpdate, PoloniexEventBus}
+import models.poloniex.{MarketMessage, MarketUpdate, PoloniexEventBus}
 import org.joda.time.DateTime
 import play.api.Configuration
 
