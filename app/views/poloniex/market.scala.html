@@ -1,6 +1,6 @@
-@import models.poloniex.MarketMessage
+@import models.poloniex.MarketMessage2
 
-@(account: Entity[Account], marketName: String, msg: MarketMessage)(implicit webJarAssets: WebJarAssets, messages: Messages)
+@(account: Entity[Account], marketName: String, msg: MarketMessage2)(implicit webJarAssets: WebJarAssets, messages: Messages)
 
 @scripts = {
     <script type='text/javascript' src='@routes.Assets.at("javascripts/init.js")'></script>

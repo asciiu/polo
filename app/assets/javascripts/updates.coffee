@@ -8,18 +8,18 @@ $ ->
     return
 
   socket.onmessage = (event) ->
-    # Should be of type MarketUpdate in json
+    # Should be of type MarketMessage in json
     market = JSON.parse(event.data)
 
     if (market.name == "USDT_BTC")
-      h1 = $('#'+market.name).html(market.info.last)
+      h1 = $('#'+market.cryptoCurrency).html(market.last)
     else
       # update market.info
-      tr = $('#'+market.name).children('td')
+      tr = $('#'+market.cryptoCurrency).children('td')
 
-      $(tr[1]).html((market.info.last).toFixed(8))
-      $(tr[2]).html(market.info.baseVolume)
-      $(tr[3]).html(market.info.percentChange)
+      $(tr[1]).html((market.last).toFixed(8))
+      $(tr[2]).html(market.baseVolume)
+      $(tr[3]).html(market.percentChange)
 
     return
 

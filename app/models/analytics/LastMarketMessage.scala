@@ -16,19 +16,15 @@ trait LastMarketMessage extends ActorLogging {
 
   this: ReceivePipeline => pipelineInner {
     // TODO remove this
-    case update: MarketUpdate =>
-      recordInfo(update)
-      Inner(update)
-
-      // TODO you need this
     case msg: MarketMessage2 =>
+      recordInfo(msg)
       Inner(msg)
   }
 
-  val marketSummaries = scala.collection.mutable.Map[String, MarketMessage]()
+  val marketSummaries = scala.collection.mutable.Map[String, MarketMessage2]()
 
-  def recordInfo(update: MarketUpdate) = {
-    marketSummaries(update.marketName) = update.info
+  def recordInfo(msg: MarketMessage2) = {
+    marketSummaries(msg.cryptoCurrency) = msg
   }
 
   def getLatestMessage(marketName: String) = marketSummaries.get(marketName)

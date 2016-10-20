@@ -9,7 +9,7 @@ import javax.inject.{Inject, Named, Singleton}
 
 import jp.t2v.lab.play2.auth.AuthElement
 import models.market.MarketStructures.ExponentialMovingAverage
-import models.poloniex.PoloniexEventBus
+import models.poloniex.{MarketMessage2, PoloniexEventBus}
 import models.poloniex.trade.PoloniexTradeClient
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.ws.{WSClient, WSRequest}
@@ -54,6 +54,8 @@ class PoloniexController @Inject()(val database: DBService,
       MarketUpdate(ticker._1, ticker._2.as[MarketMessage])
     }.toList))
 
+  implicit val msgWrite = Json.writes[MarketMessage2]
+
   val tradeClient = new PoloniexTradeClient(
     conf.getString("poloniex.apiKey").getOrElse(""),
     conf.getString("poloniex.secret").getOrElse(""),
@@ -71,18 +73,17 @@ class PoloniexController @Inject()(val database: DBService,
       val eventBus = PoloniexEventBus()
 
       override def preStart() = {
-        eventBus.subscribe(self, "/market/update")
+        eventBus.subscribe(self, PoloniexEventBus.Updates)
       }
 
       def receive = {
         // send updates from Bitcoin markets only
-        case update: MarketUpdate if update.marketName.startsWith("BTC") =>
-          val percentChange = update.info.percentChange * 100
-          val ud = update.copy(info = update.info.copy(percentChange =
-            percentChange.setScale(2, RoundingMode.CEILING)))
+        case msg: MarketMessage2 if msg.cryptoCurrency.startsWith("BTC") =>
+          val percentChange = msg.percentChange * 100
+          val ud = msg.copy(percentChange = percentChange.setScale(2, RoundingMode.CEILING))
           out ! Json.toJson(ud).toString
-        case update: MarketUpdate if update.marketName == "USDT_BTC" =>
-          out ! Json.toJson(update).toString
+        case msg: MarketMessage2 if msg.cryptoCurrency == "USDT_BTC" =>
+          out ! Json.toJson(msg).toString
       }
     }
 
@@ -147,7 +148,7 @@ class PoloniexController @Inject()(val database: DBService,
   def market(marketName: String) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
     implicit val timeout = Timeout(5 seconds)
 
-    (marketActorRef ? GetLatestMessage(marketName)).mapTo[Option[MarketMessage]].map { msg =>
+    (marketActorRef ? GetLatestMessage(marketName)).mapTo[Option[MarketMessage2]].map { msg =>
       msg match {
         case Some(m) =>
           // change percent format from decimal

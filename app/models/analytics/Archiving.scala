@@ -6,6 +6,9 @@ import akka.contrib.pattern.ReceivePipeline
 import akka.contrib.pattern.ReceivePipeline.Inner
 import akka.util.Timeout
 import java.time.OffsetDateTime
+
+import models.poloniex.MarketMessage2
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.language.{implicitConversions, postfixOps}
@@ -25,14 +28,14 @@ import utils.Misc
 trait Archiving extends ActorLogging {
 
   this: ReceivePipeline => pipelineInner {
-    case update: MarketUpdate =>
+    case msg: MarketMessage2 =>
 
       sessionId.map {id =>
-        val newRow = convertUpdate (update, id)
+        val newRow = convertUpdate (msg, id)
         database.runAsync ((Tables.PoloniexMessage returning Tables.PoloniexMessage.map (_.id) ) += newRow)
       }
 
-      Inner(update)
+      Inner(msg)
 
     case candles: Candles =>
 
@@ -50,23 +53,22 @@ trait Archiving extends ActorLogging {
 
   implicit val timeout = Timeout(5 seconds)
 
-  private def convertUpdate(update: MarketUpdate, sessionId: Int): PoloniexMessageRow = {
-    val now = utils.Misc.now()
+  private def convertUpdate(msg: MarketMessage2, sessionId: Int): PoloniexMessageRow = {
     PoloniexMessageRow(
       id = -1,
       sessionId,
-      cryptoCurrency = update.marketName,
-      last = update.info.last,
-      lowestAsk = update.info.lowestAsk,
-      highestBid = update.info.highestBid,
-      percentChange = update.info.percentChange,
-      baseVolume = update.info.baseVolume,
-      quoteVolume = update.info.quoteVolume,
-      isFrozen = if(update.info.isFrozen == "0") false else true,
-      high24hr = update.info.high24hr,
-      low24hr = update.info.low24hr,
-      createdAt = now,
-      updatedAt = now
+      cryptoCurrency = msg.cryptoCurrency,
+      last = msg.last,
+      lowestAsk = msg.lowestAsk,
+      highestBid = msg.highestBid,
+      percentChange = msg.percentChange,
+      baseVolume = msg.baseVolume,
+      quoteVolume = msg.quoteVolume,
+      isFrozen = if(msg.isFrozen == "0") false else true,
+      high24hr = msg.high24hr,
+      low24hr = msg.low24hr,
+      createdAt = msg.time,
+      updatedAt = msg.time
     )
   }
 

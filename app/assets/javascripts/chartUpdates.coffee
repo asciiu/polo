@@ -13,21 +13,21 @@ $ ->
       console.log("no chart")
       return
 
-    # Should be of type MarketUpdate in json
+    # Should be of type MarketMessage in json
     market = JSON.parse(event.data)
 
     # update chart
     name = $('#market-name').html()
 
-    if (market.name == name)
+    if (market.cryptoCurrency == name)
       # update the header stats
-      $('#span-change').html(market.info.percentChange)
-      $('#td-last').html(market.info.last.toFixed(8))
-      $('#td-high').html(market.info.high24hr.toFixed(8))
-      $('#td-low').html(market.info.low24hr.toFixed(8))
+      $('#span-change').html(market.percentChange)
+      $('#td-last').html(market.last.toFixed(8))
+      $('#td-high').html(market.high24hr.toFixed(8))
+      $('#td-low').html(market.low24hr.toFixed(8))
 
       # get latest candle from server
-      route = jsRoutes.controllers.PoloniexController.latestCandle(market.name)
+      route = jsRoutes.controllers.PoloniexController.latestCandle(market.cryptoCurrency)
       $.ajax
         method: route.method
         url: route.url

@@ -17,14 +17,15 @@ trait ExponentialMovingAverages extends ActorLogging {
     case msg: MarketMessage2 =>
       val marketName = msg.cryptoCurrency
       val currentPrice = msg.last
-      val avgsList = averages(marketName)
-      avgsList.foreach(_.updateAverages(ClosePrice(msg.time, currentPrice)))
+      if (averages.contains(marketName)) {
+        averages(marketName).foreach(_.updateAverages(ClosePrice(msg.time, currentPrice)))
+      }
       Inner(msg)
 
-    case update: MarketUpdate =>
-      // TODO this trait accepts marketmessage2
-      //updateMarketCandle(update.marketName, ClosePrice(now(), update.info.last))
-      Inner(update)
+//    case update: MarketUpdate =>
+//      // TODO this trait accepts marketmessage2
+//      //updateMarketCandle(update.marketName, ClosePrice(now(), update.info.last))
+//      Inner(update)
 
     case mc: Candles =>
       val closePrices = mc.candles.map( c => ClosePrice(c.time, c.close))

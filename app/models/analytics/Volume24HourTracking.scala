@@ -21,10 +21,10 @@ import utils.Misc
 trait Volume24HourTracking extends ActorLogging {
 
   this: ReceivePipeline => pipelineInner {
-    // TODO remove this
-    case update: MarketUpdate =>
-      updateVolume(update.marketName, update.info.baseVolume)
-      Inner(update)
+//    // TODO remove this
+//    case update: MarketUpdate =>
+//      updateVolume(update.marketName, update.info.baseVolume)
+//      Inner(update)
 
     case msg: MarketMessage2 =>
       updateVolume(msg.cryptoCurrency, msg.baseVolume)

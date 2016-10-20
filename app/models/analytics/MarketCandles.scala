@@ -7,7 +7,7 @@ import akka.contrib.pattern.ReceivePipeline.Inner
 import com.typesafe.scalalogging.LazyLogging
 import models.db.Tables
 import models.market.MarketStructures.Candles
-import models.poloniex.MarketUpdate
+import models.poloniex.{MarketMessage2, MarketUpdate}
 import utils.Misc._
 
 import scala.collection.mutable.ListBuffer
@@ -20,10 +20,10 @@ import utils.Misc
 trait MarketCandles extends ActorLogging {
 
   this: ReceivePipeline => pipelineInner {
-    case update: MarketUpdate =>
-      updateMarketCandle(update.marketName, ClosePrice(now(), update.info.last))
+    case msg: MarketMessage2 =>
+      updateMarketCandle(msg.cryptoCurrency, ClosePrice(now(), msg.last))
 
-      Inner(update)
+      Inner(msg)
 
     case mc: Candles =>
       appendCandles(mc.marketName, mc.candles)

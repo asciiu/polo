@@ -9,14 +9,15 @@ import java.time.OffsetDateTime
 import javax.inject.Inject
 
 import models.analytics.{LastMarketMessage, Volume24HourTracking}
+import models.poloniex.MarketMessage2
 import play.api.Configuration
 
 import scala.language.postfixOps
 
 // internal
-import utils.Misc
 import models.poloniex.PoloniexEventBus
-import models.poloniex.{MarketEvent, MarketUpdate}
+import models.poloniex.PoloniexEventBus._
+import models.poloniex.{MarketEvent}
 import models.market.MarketCandle
 import models.analytics.MarketCandles
 import models.analytics.Archiving
@@ -59,19 +60,19 @@ class PoloniexMarketActor @Inject()(val database: DBService,
   pipelineOuter {
     // need to catch the update messages first so
     // we can signal if we need to retrieve the candles
-    case update: MarketUpdate =>
-      val marketName = update.marketName
+    case msg: MarketMessage2 =>
+      val marketName = msg.cryptoCurrency
 
       // only care about BTC markets
       if (marketName.startsWith("BTC") && !marketCandles.contains(marketName) &&
-        update.info.baseVolume > baseVolumeRule) {
+        msg.baseVolume > baseVolumeRule) {
 
         // send a message to the retriever to get the candle data from Poloniex
         // if the 24 hour baseVolume from this update is greater than our threshold
-        eventBus.publish(MarketEvent(PoloniexEventBus.PoloniexMarketAdded, QueueMarket(marketName)))
+        eventBus.publish(MarketEvent(NewMarket, QueueMarket(marketName)))
       }
 
-      Inner(update)
+      Inner(msg)
   }
 
   val eventBus = PoloniexEventBus()
@@ -80,13 +81,13 @@ class PoloniexMarketActor @Inject()(val database: DBService,
 
   override def preStart() = {
     log info "subscribed to market updates"
-    eventBus.subscribe(self, PoloniexEventBus.PoloniexUpdate)
-    eventBus.subscribe(self, PoloniexEventBus.PoloniexCandles)
+    eventBus.subscribe(self, Updates)
+    eventBus.subscribe(self, Candles)
   }
 
   override def postStop() = {
-    eventBus.unsubscribe(self, PoloniexEventBus.PoloniexUpdate)
-    eventBus.unsubscribe(self, PoloniexEventBus.PoloniexCandles)
+    eventBus.unsubscribe(self, Updates)
+    eventBus.unsubscribe(self, Candles)
   }
 
   def receive: Receive = {

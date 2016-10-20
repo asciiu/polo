@@ -87,12 +87,12 @@ class PoloniexCandleRetrieverActor @Inject()(ws: WSClient, conf: Configuration) 
   }
 
   override def preStart() = {
-    eventBus.subscribe(self, PoloniexEventBus.PoloniexMarketAdded)
+    eventBus.subscribe(self, PoloniexEventBus.NewMarket)
   }
 
   override def postStop() = {
     stopScheduler()
-    eventBus.unsubscribe(self, PoloniexEventBus.PoloniexMarketAdded)
+    eventBus.unsubscribe(self, PoloniexEventBus.NewMarket)
   }
 
   def receive: Receive = {
@@ -130,7 +130,7 @@ class PoloniexCandleRetrieverActor @Inject()(ws: WSClient, conf: Configuration) 
                   new MarketCandle(cand.date, periodMinutes, cand.open, cand.close, cand.high, cand.low )
                 ).sortBy(_.time).reverse
 
-                eventBus.publish(MarketEvent(PoloniexEventBus.PoloniexCandles, Candles(marketName, last24HrCandles)))
+                eventBus.publish(MarketEvent(PoloniexEventBus.Candles, Candles(marketName, last24HrCandles)))
 
                 // publish closing prices for this market
                 //val closingPrices = MarketCandleClosePrices(marketName, last24HrCandles.map( c => ClosePrice(c.time, c.close)))
