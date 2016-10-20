@@ -14,6 +14,7 @@ import scala.language.postfixOps
 // internal
 import models.analytics.{LastMarketMessage, Volume24HourTracking}
 import models.market.MarketStructures.MarketMessage
+import models.market.MarketStructures.{Candles => Can}
 import models.poloniex.PoloniexEventBus
 import models.poloniex.PoloniexEventBus._
 import models.poloniex.{MarketEvent}
@@ -92,8 +93,7 @@ class PoloniexMarketActor @Inject()(val database: DBService,
   def receive: Receive = {
 
     case StartCapture =>
-      // TODO fix you also need to save the current candles to the DB
-      beginSession()
+      beginSession(marketCandles.map( m => Can(m._1, m._2.toList)).toList)
     case EndCapture =>
       endSession()
 

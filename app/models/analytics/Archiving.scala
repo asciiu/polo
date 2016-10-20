@@ -69,11 +69,22 @@ trait Archiving extends ActorLogging {
     )
   }
 
-  protected def beginSession() = {
+  protected def beginSession(marketCandles: List[Candles]) = {
     val time = Misc.now()
     val insert = (PoloniexSessions returning PoloniexSessions.map(_.id)) += PoloniexSessionsRow(-1, Some("New session"), time, None)
 
-    database.runAsync(insert).map { id => sessionId = Some(id)}
+    database.runAsync(insert).map { id =>
+      log.info(s"capture session initiated (id: $id)")
+      sessionId = Some(id)
+      val newRows = marketCandles.flatMap( candles => convertCandles(candles, id) )
+      val insertStatement = Tables.PoloniexCandle ++= newRows
+
+      // set the session ID after this insert since it could be
+      // potentially very large we want to wait for the DB to finish
+      database.runAsync(insertStatement).map { count =>
+        log.info(s"captured $count candles in DB")
+      }
+    }
   }
 
   protected def endSession() = {
@@ -81,7 +92,10 @@ trait Archiving extends ActorLogging {
       val query = for {session <- PoloniexSessions if session.id === id} yield session.endedAt
       val updateAction = query.update(Some(Misc.now()))
 
-      database.runAsync(updateAction).map(id =>  sessionId = None)
+      database.runAsync(updateAction).map{ count =>
+        sessionId = None
+        log.info(s"capture session ended (id: $id)")
+      }
     }
   }
 
