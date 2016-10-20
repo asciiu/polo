@@ -5,15 +5,14 @@ import akka.actor.{Actor, ActorSystem, Props}
 import akka.contrib.pattern.ReceivePipeline
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl._
-import models.strategies.TheoreticalPerfectStrategy
 import org.scalatest._
-
 import scala.concurrent.{Await, Future, Promise}
 import scala.concurrent.duration._
 
 // internal
-import models.poloniex.{MarketMessage2}
 import models.strategies.GoldenCrossStrategy
+import models.market.MarketStructures.MarketMessage
+import models.strategies.TheoreticalPerfectStrategy
 
 
 class PoloniexTradeSpec extends FlatSpec with PoloniexDatabase with BeforeAndAfter {
@@ -47,7 +46,7 @@ class PoloniexTradeSpec extends FlatSpec with PoloniexDatabase with BeforeAndAft
       }))
 
       // Send Done when complete
-      val sink = Sink.actorRef[MarketMessage2](actor, onCompleteMessage = Done)
+      val sink = Sink.actorRef[MarketMessage](actor, onCompleteMessage = Done)
 
       messageSource
         .via(messageFlow)

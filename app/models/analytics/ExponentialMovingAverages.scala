@@ -6,26 +6,22 @@ import akka.contrib.pattern.ReceivePipeline
 import akka.contrib.pattern.ReceivePipeline.Inner
 import java.time.OffsetDateTime
 
+
 // internal
 import models.market.MarketEMACollection
+import models.market.MarketStructures.MarketMessage
 import models.market.MarketStructures.{ClosePrice, Candles, ExponentialMovingAverage}
-import models.poloniex.{MarketMessage2, MarketUpdate}
 
 trait ExponentialMovingAverages extends ActorLogging {
 
   this: ReceivePipeline => pipelineInner {
-    case msg: MarketMessage2 =>
+    case msg: MarketMessage =>
       val marketName = msg.cryptoCurrency
       val currentPrice = msg.last
       if (averages.contains(marketName)) {
         averages(marketName).foreach(_.updateAverages(ClosePrice(msg.time, currentPrice)))
       }
       Inner(msg)
-
-//    case update: MarketUpdate =>
-//      // TODO this trait accepts marketmessage2
-//      //updateMarketCandle(update.marketName, ClosePrice(now(), update.info.last))
-//      Inner(update)
 
     case mc: Candles =>
       val closePrices = mc.candles.map( c => ClosePrice(c.time, c.close))

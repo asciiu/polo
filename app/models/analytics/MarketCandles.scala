@@ -4,23 +4,18 @@ package models.analytics
 import akka.actor.ActorLogging
 import akka.contrib.pattern.ReceivePipeline
 import akka.contrib.pattern.ReceivePipeline.Inner
-import com.typesafe.scalalogging.LazyLogging
-import models.db.Tables
-import models.market.MarketStructures.Candles
-import models.poloniex.{MarketMessage2, MarketUpdate}
-import utils.Misc._
-
 import scala.collection.mutable.ListBuffer
 
 // internal
 import models.market.MarketStructures.ClosePrice
 import models.market.MarketCandle
-import utils.Misc
+import models.market.MarketStructures.{Candles, MarketMessage}
+import utils.Misc._
 
 trait MarketCandles extends ActorLogging {
 
   this: ReceivePipeline => pipelineInner {
-    case msg: MarketMessage2 =>
+    case msg: MarketMessage =>
       updateMarketCandle(msg.cryptoCurrency, ClosePrice(now(), msg.last))
 
       Inner(msg)
@@ -103,7 +98,7 @@ trait MarketCandles extends ActorLogging {
       case None =>
         if (candleBuffer.nonEmpty) {
           val headCandle = candleBuffer.head
-          val normalizedTime = Misc.roundDateToMinute(closePrice.time, periodMinutes)
+          val normalizedTime = roundDateToMinute(closePrice.time, periodMinutes)
           // were candle periods skipped?
           val skippedCandles = ((normalizedTime.toEpochSecond - headCandle.time.toEpochSecond) / (periodMinutes * 60L)).toInt - 1
           for (i <- 1 to skippedCandles) {

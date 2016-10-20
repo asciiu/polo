@@ -1,7 +1,7 @@
 package models.strategies
 
 import akka.actor.Actor
-import models.poloniex.MarketMessage2
+import models.market.MarketStructures.MarketMessage
 
 /**
   * Created by bishop on 10/17/16.
@@ -15,7 +15,7 @@ trait TheoreticalPerfectStrategy {
 
   // TODO this should perform a perfect by low sell high
   def handleMessageUpdate: Receive = {
-    case msg: MarketMessage2 =>
+    case msg: MarketMessage =>
       val marketName = msg.cryptoCurrency
       val currentPrice = msg.last
 

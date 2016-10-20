@@ -5,14 +5,11 @@ import akka.actor.ActorLogging
 import akka.contrib.pattern.ReceivePipeline
 import akka.contrib.pattern.ReceivePipeline.Inner
 import java.time.OffsetDateTime
-
-import models.poloniex.MarketMessage2
-
 import scala.collection.mutable.ListBuffer
 
 // internal
-import models.poloniex.MarketUpdate
 import models.market.MarketStructures.PeriodVolume
+import models.market.MarketStructures.MarketMessage
 import utils.Misc
 
 /**
@@ -21,12 +18,8 @@ import utils.Misc
 trait Volume24HourTracking extends ActorLogging {
 
   this: ReceivePipeline => pipelineInner {
-//    // TODO remove this
-//    case update: MarketUpdate =>
-//      updateVolume(update.marketName, update.info.baseVolume)
-//      Inner(update)
 
-    case msg: MarketMessage2 =>
+    case msg: MarketMessage =>
       updateVolume(msg.cryptoCurrency, msg.baseVolume)
       Inner(msg)
   }

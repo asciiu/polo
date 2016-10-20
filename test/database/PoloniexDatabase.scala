@@ -15,7 +15,7 @@ import models.db.Tables.{PoloniexCandleRow, _}
 import models.market.MarketEMACollection
 import models.db.Tables
 import models.market.MarketStructures.ClosePrice
-import models.poloniex.MarketMessage2
+import models.market.MarketStructures.MarketMessage
 
 /**
   * Methods that make it convenient to access poloniex database
@@ -84,10 +84,10 @@ trait PoloniexDatabase extends Postgres with ScalaFutures {
     *
     * @return a flow that defines input PoloniexMessageRow to output MarketMessage
     */
-  def messageFlow: Flow[Tables.PoloniexMessageRow, MarketMessage2, NotUsed] = {
+  def messageFlow: Flow[Tables.PoloniexMessageRow, MarketMessage, NotUsed] = {
     // flow input is a message row
     Flow[Tables.PoloniexMessageRow].map { row =>
-      MarketMessage2(
+      MarketMessage(
         row.createdAt,
         row.cryptoCurrency,
         row.last,

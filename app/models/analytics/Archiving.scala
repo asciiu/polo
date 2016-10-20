@@ -6,15 +6,13 @@ import akka.contrib.pattern.ReceivePipeline
 import akka.contrib.pattern.ReceivePipeline.Inner
 import akka.util.Timeout
 import java.time.OffsetDateTime
-
-import models.poloniex.MarketMessage2
-
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.language.{implicitConversions, postfixOps}
 
 // internal
 import models.market.MarketStructures.Candles
+import models.market.MarketStructures.MarketMessage
 import models.db.Tables
 import models.db.Tables.profile.api._
 import models.db.Tables.{PoloniexCandleRow, PoloniexMessageRow, PoloniexSessions, PoloniexSessionsRow}
@@ -28,7 +26,7 @@ import utils.Misc
 trait Archiving extends ActorLogging {
 
   this: ReceivePipeline => pipelineInner {
-    case msg: MarketMessage2 =>
+    case msg: MarketMessage =>
 
       sessionId.map {id =>
         val newRow = convertUpdate (msg, id)
@@ -53,7 +51,7 @@ trait Archiving extends ActorLogging {
 
   implicit val timeout = Timeout(5 seconds)
 
-  private def convertUpdate(msg: MarketMessage2, sessionId: Int): PoloniexMessageRow = {
+  private def convertUpdate(msg: MarketMessage, sessionId: Int): PoloniexMessageRow = {
     PoloniexMessageRow(
       id = -1,
       sessionId,

@@ -5,7 +5,7 @@ import akka.contrib.pattern.ReceivePipeline
 import akka.contrib.pattern.ReceivePipeline.Inner
 import models.analytics.ExponentialMovingAverages
 import models.market.MarketEMACollection
-import models.poloniex.MarketMessage2
+import models.market.MarketStructures.MarketMessage
 
 import scala.collection.mutable.ListBuffer
 import scala.math.BigDecimal.RoundingMode
@@ -55,7 +55,7 @@ trait GoldenCrossStrategy extends ReceivePipeline with ExponentialMovingAverages
   }
 
   def handleMessageUpdate: Receive = {
-    case msg: MarketMessage2 =>
+    case msg: MarketMessage =>
 
       val marketName = msg.cryptoCurrency
       val currentPrice = msg.last

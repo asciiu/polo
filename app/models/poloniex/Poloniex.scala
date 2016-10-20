@@ -18,19 +18,6 @@ case class MarketMessage(id: Int,
                          high24hr: BigDecimal,
                          low24hr: BigDecimal)
 
-// TODO get ride of above
-case class MarketMessage2(time: OffsetDateTime,
-                          cryptoCurrency: String,
-                          last: BigDecimal,
-                          lowestAsk: BigDecimal,
-                          highestBid: BigDecimal,
-                          percentChange: BigDecimal,
-                          baseVolume: BigDecimal,
-                          quoteVolume: BigDecimal,
-                          isFrozen: String,
-                          high24hr: BigDecimal,
-                          low24hr: BigDecimal)
-
 
 //[{"date":1405699200,"high":0.0045388,"low":0.00403001,"open":0.00404545,"close":0.00427592,"volume":44.11655644,
 //"quoteVolume":10259.29079097,"weightedAverage":0.00430015}, ...]

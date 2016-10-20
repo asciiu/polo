@@ -7,14 +7,13 @@ import akka.contrib.pattern.ReceivePipeline
 import akka.contrib.pattern.ReceivePipeline.Inner
 import java.time.OffsetDateTime
 import javax.inject.Inject
-
-import models.analytics.{LastMarketMessage, Volume24HourTracking}
-import models.poloniex.MarketMessage2
 import play.api.Configuration
 
 import scala.language.postfixOps
 
 // internal
+import models.analytics.{LastMarketMessage, Volume24HourTracking}
+import models.market.MarketStructures.MarketMessage
 import models.poloniex.PoloniexEventBus
 import models.poloniex.PoloniexEventBus._
 import models.poloniex.{MarketEvent}
@@ -60,7 +59,7 @@ class PoloniexMarketActor @Inject()(val database: DBService,
   pipelineOuter {
     // need to catch the update messages first so
     // we can signal if we need to retrieve the candles
-    case msg: MarketMessage2 =>
+    case msg: MarketMessage =>
       val marketName = msg.cryptoCurrency
 
       // only care about BTC markets

@@ -4,10 +4,9 @@ package models.analytics
 import akka.actor.ActorLogging
 import akka.contrib.pattern.ReceivePipeline
 import akka.contrib.pattern.ReceivePipeline.Inner
-import models.poloniex.{MarketMessage, MarketMessage2}
 
 // internal
-import models.poloniex.MarketUpdate
+import models.market.MarketStructures.MarketMessage
 
 /**
   * Provides DB archiving of messages and candles.
@@ -15,15 +14,14 @@ import models.poloniex.MarketUpdate
 trait LastMarketMessage extends ActorLogging {
 
   this: ReceivePipeline => pipelineInner {
-    // TODO remove this
-    case msg: MarketMessage2 =>
+    case msg: MarketMessage =>
       recordInfo(msg)
       Inner(msg)
   }
 
-  val marketSummaries = scala.collection.mutable.Map[String, MarketMessage2]()
+  val marketSummaries = scala.collection.mutable.Map[String, MarketMessage]()
 
-  def recordInfo(msg: MarketMessage2) = {
+  def recordInfo(msg: MarketMessage) = {
     marketSummaries(msg.cryptoCurrency) = msg
   }
 
