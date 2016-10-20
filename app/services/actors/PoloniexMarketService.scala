@@ -25,7 +25,7 @@ import models.analytics.ExponentialMovingAverages
 import services.DBService
 
 
-object PoloniexMarketActor {
+object PoloniexMarketService {
   trait CandleManagerMessage
   case class GetCandles(marketName: String) extends CandleManagerMessage
   case class GetLastestCandle(marketName: String) extends CandleManagerMessage
@@ -42,8 +42,8 @@ object PoloniexMarketActor {
 /**
   * This actor is responsible for managing candles for all markets.
   */
-class PoloniexMarketActor @Inject()(val database: DBService,
-                                   conf: Configuration) extends Actor
+class PoloniexMarketService @Inject()(val database: DBService,
+                                      conf: Configuration) extends Actor
   with ActorLogging
   with ReceivePipeline
   with MarketCandles
@@ -52,8 +52,8 @@ class PoloniexMarketActor @Inject()(val database: DBService,
   with LastMarketMessage
   with Archiving {
 
-  import PoloniexMarketActor._
-  import PoloniexCandleRetrieverActor._
+  import PoloniexMarketService._
+  import PoloniexCandleRetrieverService._
 
   // This must execute before the interceptors in the other
   // traits

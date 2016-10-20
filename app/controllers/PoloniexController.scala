@@ -31,17 +31,17 @@ import models.db.AccountRole
 import models.poloniex.{PoloniexMarketUpdate, PoloniexMarketMessage}
 import services.DBService
 import models.market.MarketCandle
-import services.actors.PoloniexMarketActor
-import PoloniexMarketActor._
+import services.actors.PoloniexMarketService
+import PoloniexMarketService._
 
 @Singleton
 class PoloniexController @Inject()(val database: DBService,
                                    val messagesApi: MessagesApi,
                                    ws: WSClient,
                                    conf: Configuration,
-                                   @Named("polo-market") marketActorRef: ActorRef,
-                                   @Named("polo-candle-retriever") candleRetrieverActor: ActorRef,
-                                   @Named("polo-websocket-client") websocketClient: ActorRef)
+                                   @Named("poloniex-market") marketService: ActorRef,
+                                   @Named("poloniex-candles") candleService: ActorRef,
+                                   @Named("poloniex-feed") feedService: ActorRef)
                                   (implicit system: ActorSystem,
                                    materializer: Materializer,
                                    context: ExecutionContext,
@@ -96,12 +96,12 @@ class PoloniexController @Inject()(val database: DBService,
   }
 
   def startCapture() = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
-    marketActorRef ! StartCapture
+    marketService ! StartCapture
     Future.successful(Ok("ok"))
   }
 
   def endCapture() = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
-    marketActorRef ! EndCapture
+    marketService ! EndCapture
     Future.successful(Ok("ok"))
   }
 
@@ -153,7 +153,7 @@ class PoloniexController @Inject()(val database: DBService,
   def market(marketName: String) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
     implicit val timeout = Timeout(5 seconds)
 
-    (marketActorRef ? GetLatestMessage(marketName)).mapTo[Option[Msg]].map { msg =>
+    (marketService ? GetLatestMessage(marketName)).mapTo[Option[Msg]].map { msg =>
       msg match {
         case Some(m) =>
           // change percent format from decimal
@@ -179,9 +179,9 @@ class PoloniexController @Inject()(val database: DBService,
     implicit val timeout = Timeout(5 seconds)
 
     for {
-      candles <- (marketActorRef ? GetCandles(marketName)).mapTo[List[MarketCandle]]
-      movingAverages <- (marketActorRef ? GetMovingAverages(marketName)).mapTo[List[(Int, List[ExponentialMovingAverage])]]
-      volume24hr <- (marketActorRef ? GetVolumes(marketName)).mapTo[List[PeriodVolume]]
+      candles <- (marketService ? GetCandles(marketName)).mapTo[List[MarketCandle]]
+      movingAverages <- (marketService ? GetMovingAverages(marketName)).mapTo[List[(Int, List[ExponentialMovingAverage])]]
+      volume24hr <- (marketService ? GetVolumes(marketName)).mapTo[List[PeriodVolume]]
     } yield {
       val l = candles.map { c =>
         val defaultEMA = ExponentialMovingAverage(c.time, 0, c.close)
@@ -213,9 +213,9 @@ class PoloniexController @Inject()(val database: DBService,
 
     // TODO this will fail if the first future returns a None
     for {
-      candle <- (marketActorRef ? GetLastestCandle(marketName)).mapTo[Option[MarketCandle]]
-      averages <- (marketActorRef ? GetMovingAverage(marketName, candle.get.time)).mapTo[List[(Int, BigDecimal)]]
-      volume24hr <- (marketActorRef ? GetVolume(marketName, candle.get.time)).mapTo[PeriodVolume]
+      candle <- (marketService ? GetLastestCandle(marketName)).mapTo[Option[MarketCandle]]
+      averages <- (marketService ? GetMovingAverage(marketName, candle.get.time)).mapTo[List[(Int, BigDecimal)]]
+      volume24hr <- (marketService ? GetVolume(marketName, candle.get.time)).mapTo[PeriodVolume]
     } yield {
       val df = DateTimeFormat.forPattern("MMM dd HH:mm")
 

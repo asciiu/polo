@@ -20,7 +20,7 @@ import models.market.MarketCandle
 import models.poloniex.{MarketEvent, PoloMarketCandle, PoloniexEventBus}
 
 
-object PoloniexCandleRetrieverActor {
+object PoloniexCandleRetrieverService {
   trait CandleRetrieverMessage
   case class QueueMarket(marketName: String) extends CandleRetrieverMessage
   case object DequeueMarket extends CandleRetrieverMessage
@@ -32,8 +32,8 @@ object PoloniexCandleRetrieverActor {
   * are of 5 minute periods.
   */
 @Singleton
-class PoloniexCandleRetrieverActor @Inject()(ws: WSClient, conf: Configuration) extends Actor with ActorLogging {
-  import PoloniexCandleRetrieverActor._
+class PoloniexCandleRetrieverService @Inject()(ws: WSClient, conf: Configuration) extends Actor with ActorLogging {
+  import PoloniexCandleRetrieverService._
 
   import scala.concurrent.duration._
   import scala.language.postfixOps

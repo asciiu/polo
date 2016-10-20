@@ -14,7 +14,7 @@ import models.market.MarketStructures.MarketMessage
 import models.poloniex.{MarketEvent, PoloniexEventBus}
 import utils.Misc
 
-class PoloniexWebSocketClient @Inject() (conf: Configuration)(implicit context: ExecutionContext, system: ActorSystem) extends Actor with ActorLogging with Scope.Session {
+class PoloniexWebSocketFeedService @Inject()(conf: Configuration)(implicit context: ExecutionContext, system: ActorSystem) extends Actor with ActorLogging with Scope.Session {
   val endpoint = conf.getString("poloniex.websocket").getOrElse("wss://api.poloniex.com")
   val eventBus = PoloniexEventBus()
   private var openSession: Option[Session] = None
