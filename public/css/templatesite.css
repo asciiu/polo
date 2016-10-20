@@ -39,3 +39,7 @@ Copied from https://css-tricks.com/snippets/css/sticky-footer/
 div.markets {
     font-size: 70%;
 }
+
+div.chart {
+    height:80vh;
+}

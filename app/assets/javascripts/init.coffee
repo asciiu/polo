@@ -23,9 +23,9 @@ $ ->
           }, {
               type : 'all',
               count : 1,
-              text : 'All'
+              text : '24h'
           }],
-          selected : 1,
+          selected : 3,
           inputEnabled : false
         }
 
@@ -41,9 +41,9 @@ $ ->
               x: -3
           },
           title: {
-              text: '5 min'
+              text: '5 Minute Candles'
           },
-          height: '60%',
+          height: '90%',
           lineWidth: 2
         }, {
           labels: {
@@ -53,8 +53,8 @@ $ ->
           title: {
               text: '24 Hr Volume'
           },
-          top: '65%',
-          height: '35%',
+          top: '90%',
+          height: '20%',
           offset: 0,
           lineWidth: 2
         }],
