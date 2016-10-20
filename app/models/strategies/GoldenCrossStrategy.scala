@@ -2,14 +2,10 @@ package models.strategies
 
 import akka.actor.Actor
 import akka.contrib.pattern.ReceivePipeline
-import akka.contrib.pattern.ReceivePipeline.Inner
 import models.analytics.ExponentialMovingAverages
-import models.market.MarketEMACollection
 import models.market.MarketStructures.MarketMessage
-
 import scala.collection.mutable.ListBuffer
 import scala.math.BigDecimal.RoundingMode
-import models.market.MarketStructures.ClosePrice
 
 
 trait GoldenCrossStrategy extends ReceivePipeline with ExponentialMovingAverages {
@@ -29,7 +25,7 @@ trait GoldenCrossStrategy extends ReceivePipeline with ExponentialMovingAverages
   val marketWatch = scala.collection.mutable.Set[String]()
   val buyRecords = scala.collection.mutable.Map[String, BuyRecord]()
 
-  val maxBTCTradable: BigDecimal = 1.0
+  var maxBTCTradable: BigDecimal = 1.0
   var balance: BigDecimal = 1.0
   var total: BigDecimal = balance
   var sellCount = 0
@@ -129,6 +125,7 @@ trait GoldenCrossStrategy extends ReceivePipeline with ExponentialMovingAverages
           sellCount += 1
           balance += currentPrice * buyRecord.quantity
           buyRecords.remove(marketName)
+          maxBTCTradable += (currentPrice - buyRecord.price) * buyRecord.quantity
         } else if (percent < lossPercentMin) {
           // cut your losses early if the percent of our original buy price is currently
           // below our loss precent threshold
@@ -141,6 +138,7 @@ trait GoldenCrossStrategy extends ReceivePipeline with ExponentialMovingAverages
           sellCount += 1
           balance += currentPrice * buyRecord.quantity
           buyRecords.remove(marketName)
+          maxBTCTradable += (currentPrice - buyRecord.price) * buyRecord.quantity
         }
       }
   }

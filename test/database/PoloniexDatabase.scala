@@ -22,6 +22,7 @@ import models.market.MarketStructures.MarketMessage
   */
 trait PoloniexDatabase extends Postgres with ScalaFutures {
 
+  val sessionId = 23
   /**
     * This assembles exponential moving averages (EMA) for each candle period for
     * candle data in the DB.
@@ -34,7 +35,7 @@ trait PoloniexDatabase extends Postgres with ScalaFutures {
     val periodMinutes = 5
 
     // only read BTC candles in DB
-    val query = PoloniexCandle.filter(candle => candle.cryptoCurrency.startsWith("BTC_") && candle.sessionId === 1)
+    val query = PoloniexCandle.filter(candle => candle.cryptoCurrency.startsWith("BTC_") && candle.sessionId === sessionId)
     val result: Future[Seq[PoloniexCandleRow]] = database.run(query.result)
     // market name -> moving averages computed for all DB candles
     val marketCandles = scala.collection.mutable.Map[String, List[MarketEMACollection]]()
@@ -71,7 +72,7 @@ trait PoloniexDatabase extends Postgres with ScalaFutures {
     */
   def messageSource: Source[Tables.PoloniexMessageRow, NotUsed] = {
     // only BTC messages sorted by created time
-    val query = Tables.PoloniexMessage.filter(msg => msg.cryptoCurrency.startsWith("BTC_") && msg.sessionId === 1).sortBy(_.createdAt).result
+    val query = Tables.PoloniexMessage.filter(msg => msg.cryptoCurrency.startsWith("BTC_") && msg.sessionId === sessionId).sortBy(_.createdAt).result
     val publisher: DatabasePublisher[Tables.PoloniexMessageRow] = database.stream(
       query.transactionally.withStatementParameters(fetchSize = 1000)
     )
