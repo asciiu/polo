@@ -27,9 +27,10 @@ trait Archiving extends ActorLogging {
   this: ReceivePipeline => pipelineInner {
     case msg: MarketMessage =>
 
-      sessionId.map {id =>
-        val newRow = convertUpdate (msg, id)
-        database.runAsync ((Tables.PoloniexMessage returning Tables.PoloniexMessage.map (_.id) ) += newRow)
+      sessionId.map { id =>
+        val newRow = convertUpdate(msg, id)
+        val insertStatement = Tables.PoloniexMessage += newRow
+        database.runAsync(insertStatement)
       }
 
       Inner(msg)
@@ -50,10 +51,10 @@ trait Archiving extends ActorLogging {
 
   implicit val timeout = Timeout(5 seconds)
 
-  private def convertUpdate(msg: MarketMessage, sessionId: Int): PoloniexMessageRow = {
+  private def convertUpdate(msg: MarketMessage, id: Int): PoloniexMessageRow = {
     PoloniexMessageRow(
       id = -1,
-      sessionId,
+      sessionId = id,
       cryptoCurrency = msg.cryptoCurrency,
       last = msg.last,
       lowestAsk = msg.lowestAsk,
@@ -74,7 +75,7 @@ trait Archiving extends ActorLogging {
     val insert = (PoloniexSessions returning PoloniexSessions.map(_.id)) += PoloniexSessionsRow(-1, Some("New session"), time, None)
 
     database.runAsync(insert).map { id =>
-      log.info(s"capture session initiated (id: $id)")
+      log.info(s"Capture session initiated (id: $id)")
       sessionId = Some(id)
       val newRows = marketCandles.flatMap( candles => convertCandles(candles, id) )
       val insertStatement = Tables.PoloniexCandle ++= newRows
@@ -82,7 +83,7 @@ trait Archiving extends ActorLogging {
       // set the session ID after this insert since it could be
       // potentially very large we want to wait for the DB to finish
       database.runAsync(insertStatement).map { count =>
-        log.info(s"captured $count candles in DB")
+        log.info(s"Captured $count candles in DB")
       }
     }
   }
@@ -94,7 +95,7 @@ trait Archiving extends ActorLogging {
 
       database.runAsync(updateAction).map{ count =>
         sessionId = None
-        log.info(s"capture session ended (id: $id)")
+        log.info(s"Capture session ended (id: $id)")
       }
     }
   }
