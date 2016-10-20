@@ -7,7 +7,7 @@ import akka.stream.Materializer
 import jp.t2v.lab.play2.auth.AuthElement
 import models.bittrex.AllMarketSummary
 import models.db.{AccountRole, Tables}
-import models.poloniex.{MarketMessage, MarketUpdate}
+import models.poloniex.{PoloniexMarketMessage, PoloniexMarketUpdate}
 import play.api.Configuration
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.json.{JsObject, JsSuccess, Json, Reads}
@@ -50,10 +50,10 @@ class ProtoController  @Inject()(val database: DBService,
   def arbiter() = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
     import models.bittrex.Bittrex._
 
-    implicit val marketStatus = Json.reads[MarketMessage]
-    implicit val marketRead: Reads[List[MarketUpdate]] = Reads(js =>
+    implicit val marketStatus = Json.reads[PoloniexMarketMessage]
+    implicit val marketRead: Reads[List[PoloniexMarketUpdate]] = Reads(js =>
       JsSuccess(js.as[JsObject].fieldSet.map { ticker =>
-        MarketUpdate(ticker._1, ticker._2.as[MarketMessage])
+        PoloniexMarketUpdate(ticker._1, ticker._2.as[PoloniexMarketMessage])
       }.toList))
 
     // bittrex markets
@@ -71,7 +71,7 @@ class ProtoController  @Inject()(val database: DBService,
       btrx <- bittrexRequest.get()
     } yield {
 
-      (btrx.json.validate[AllMarketSummary], polo.json.validate[List[MarketUpdate]]) match {
+      (btrx.json.validate[AllMarketSummary], polo.json.validate[List[PoloniexMarketUpdate]]) match {
         case (JsSuccess(bitrxt, t1), JsSuccess(polot, t2)) =>
           // bittrex markets
           val btx = bitrxt.result.map{ b => b.copy(name = b.name.replace("-", "_"))}.filter( b => b.name.startsWith("BTC"))

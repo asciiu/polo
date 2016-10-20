@@ -16,7 +16,6 @@ import models.market.MarketStructures.MarketMessage
 import models.db.Tables
 import models.db.Tables.profile.api._
 import models.db.Tables.{PoloniexCandleRow, PoloniexMessageRow, PoloniexSessions, PoloniexSessionsRow}
-import models.poloniex.MarketUpdate
 import services.DBService
 import utils.Misc
 

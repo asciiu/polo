@@ -28,7 +28,7 @@ import scala.math.BigDecimal.RoundingMode
 import models.market.MarketStructures.PeriodVolume
 import models.market.MarketStructures.{MarketMessage => Msg}
 import models.db.AccountRole
-import models.poloniex.{MarketUpdate, MarketMessage}
+import models.poloniex.{PoloniexMarketUpdate, PoloniexMarketMessage}
 import services.DBService
 import models.market.MarketCandle
 import services.actors.PoloniexMarketActor
@@ -48,11 +48,11 @@ class PoloniexController @Inject()(val database: DBService,
                                    webJarAssets: WebJarAssets)
   extends Controller with AuthConfigTrait with AuthElement with I18nSupport {
 
-  implicit val marketStatus = Json.format[MarketMessage]
-  implicit val marketWrite = Json.writes[MarketUpdate]
-  implicit val marketRead: Reads[List[MarketUpdate]] = Reads(js =>
+  implicit val marketStatus = Json.format[PoloniexMarketMessage]
+  implicit val marketWrite = Json.writes[PoloniexMarketUpdate]
+  implicit val marketRead: Reads[List[PoloniexMarketUpdate]] = Reads(js =>
     JsSuccess(js.as[JsObject].fieldSet.map { ticker =>
-      MarketUpdate(ticker._1, ticker._2.as[MarketMessage])
+      PoloniexMarketUpdate(ticker._1, ticker._2.as[PoloniexMarketMessage])
     }.toList))
 
   implicit val msgWrite = Json.writes[Msg]
@@ -105,10 +105,10 @@ class PoloniexController @Inject()(val database: DBService,
     * Displays all poloniex markets.
     */
   def markets() = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
-    implicit val marketStatus = Json.reads[MarketMessage]
-    implicit val marketRead: Reads[List[MarketUpdate]] = Reads(js =>
+    implicit val marketStatus = Json.reads[PoloniexMarketMessage]
+    implicit val marketRead: Reads[List[PoloniexMarketUpdate]] = Reads(js =>
       JsSuccess(js.as[JsObject].fieldSet.map { ticker =>
-        MarketUpdate(ticker._1, ticker._2.as[MarketMessage])
+        PoloniexMarketUpdate(ticker._1, ticker._2.as[PoloniexMarketMessage])
       }.toList))
 
     // poloniex markets
@@ -117,7 +117,7 @@ class PoloniexController @Inject()(val database: DBService,
         .withRequestTimeout(10000.millis)
 
     poloniexRequest.get().map { polo =>
-      polo.json.validate[List[MarketUpdate]] match {
+      polo.json.validate[List[PoloniexMarketUpdate]] match {
         case JsSuccess(tickers, t) =>
           // Bitcoin price
           val bitcoin = tickers.find( _.marketName == "USDT_BTC")

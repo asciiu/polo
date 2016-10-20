@@ -1,6 +1,6 @@
-@import models.poloniex.MarketUpdate
+@import models.poloniex.PoloniexMarketUpdate
 
-@(account: Entity[Account], btcUpdate: Option[MarketUpdate], updates: List[MarketUpdate])(implicit webJarAssets: WebJarAssets, messages: Messages)
+@(account: Entity[Account], btcUpdate: Option[PoloniexMarketUpdate], updates: List[PoloniexMarketUpdate])(implicit webJarAssets: WebJarAssets, messages: Messages)
 
 @scripts = {
     <script type='text/javascript' src='@routes.Assets.at("javascripts/updates.js")'></script>
