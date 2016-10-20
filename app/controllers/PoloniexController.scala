@@ -77,6 +77,10 @@ class PoloniexController @Inject()(val database: DBService,
         eventBus.subscribe(self, PoloniexEventBus.Updates)
       }
 
+      override def postStop() = {
+        eventBus.unsubscribe(self, PoloniexEventBus.Updates)
+      }
+
       def receive = {
         // send updates from Bitcoin markets only
         case msg: Msg if msg.cryptoCurrency.startsWith("BTC") =>
