@@ -2,7 +2,6 @@ $ ->
   $('#candle-chart').highcharts 'StockChart',
         title: text: 'Test'
         exporting: enabled: false
-
         rangeSelector : {
           buttons : [{
               type : 'hour',
@@ -37,26 +36,26 @@ $ ->
         }
         yAxis: [{
           labels: {
-              align: 'right',
-              x: -3
+              align: 'left',
+              x: 10
           },
           title: {
               text: '5 Minute Candles'
           },
-          height: '90%',
-          lineWidth: 2
+          height: '80%',
+          lineWidth: 1
         }, {
           labels: {
-              align: 'right',
-              x: -3
+              align: 'left',
+              x: 10
           },
           title: {
-              text: '24 Hr Volume'
+              text: '24 Hr Vol'
           },
           top: '90%',
-          height: '20%',
+          height: '10%',
           offset: 0,
-          lineWidth: 2
+          lineWidth: 1
         }],
         series: [ {
           type: 'candlestick'
