@@ -25,7 +25,8 @@ class Application @Inject()(val database: DBService,
       JavaScriptReverseRouter("jsRoutes")(
         PoloniexController.candles,
         PoloniexController.latestCandle,
-        PoloniexController.socket
+        PoloniexController.socket,
+        HistoryController.candles
       )
     ).as("text/javascript")
   }

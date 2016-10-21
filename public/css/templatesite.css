@@ -38,8 +38,11 @@ Copied from https://css-tricks.com/snippets/css/sticky-footer/
 
 div.markets {
     font-size: 70%;
+    overflow: scroll;
+    height:80vh;
 }
 
 div.chart {
     height:80vh;
 }
+

@@ -1,0 +1,31 @@
+
+@(account: Entity[Account], markets: Seq[String])(implicit webJarAssets: WebJarAssets, messages: Messages)
+
+@scripts = {
+  <script type='text/javascript' src='@routes.Assets.at("javascripts/history/chart.js")'></script>
+}
+
+@_template(Some(account), scripts) {
+    <div class="row markets">
+        <div class="columns small-2 markets">
+            <table>
+                <thead>
+                <tr>
+                <th>Market</th>
+                </tr>
+                </thead>
+
+                <tbody>
+                @for(marketName <- markets) {
+                    <tr id="@marketName">
+                      <td>@marketName</td>
+                    </trid>
+                }
+                </tbody>
+            </table>
+        </div>
+        <div class="columns small-10">
+            <div class="chart" id="candle-chart"></div>
+        </div>
+    </div>
+}

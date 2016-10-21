@@ -6,7 +6,7 @@
         <meta charset="utf-8">
         <meta http-equiv="x-ua-compatible" content="ie=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Site</title>
+        <title>Autobot</title>
         <link href="@routes.Assets.at("img/favicon.png")" rel="shortcut icon">
         <link rel='stylesheet' href="@routes.WebJarAssets.at(webJarAssets.locate("foundation.css"))">
         <link rel='stylesheet' href="@routes.Assets.at("css/templatesite.css")">
@@ -25,9 +25,7 @@
                     <ul class="dropdown menu" data-dropdown-menu>
                         @if(account.isDefined) {
                           <li class="menu-text"><a href="@routes.PoloniexController.markets()">Markets</a></li>
-                          <li class="menu-text">
-                              Balance : 00.00
-                          </li>
+                          <li class="menu-text"><a href="@routes.HistoryController.markets()">History</a></li>
                         }
                     </ul>
                 </div>
