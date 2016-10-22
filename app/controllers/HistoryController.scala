@@ -1,32 +1,35 @@
 package controllers
 
-import javax.inject.{Inject, Named}
-
+// external
 import akka.pattern.ask
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.stream.Materializer
 import akka.util.Timeout
 import jp.t2v.lab.play2.auth.AuthElement
-import models.db.{AccountRole, Tables}
-import models.db.Tables._
-import models.db.Tables.profile.api._
-import models.market.MarketCandle
-import models.market.MarketStructures.{Candles, ExponentialMovingAverage}
+import javax.inject.{Inject, Named}
+
 import play.api.Configuration
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.json.Json
-import play.api.mvc.Controller
-import services.DBService
-import services.actors.PoloniexMarketService.{GetMovingAverages, SetCandles}
+import play.api.libs.streams.ActorFlow
+import play.api.mvc.{Controller, WebSocket}
+import services.actors.PlaybackActor
 
-import scala.concurrent.{Await, Future, Promise}
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.implicitConversions
-import views.html.{history => view}
-
-import scala.concurrent.duration.Duration
 import scala.math.BigDecimal.RoundingMode
+
+// internal
+import models.db.AccountRole
+import models.db.Tables._
+import models.db.Tables.profile.api._
+import models.market.MarketCandle
+import models.market.MarketStructures.{ExponentialMovingAverage, MarketMessage}
+import models.poloniex.PoloniexEventBus
+import services.actors.PoloniexMarketService.SetCandles
+import services.DBService
+import views.html.{history => view}
 
 /**
   * All R&D projects should start here.
@@ -41,8 +44,7 @@ import scala.math.BigDecimal.RoundingMode
   */
 class HistoryController  @Inject()(val database: DBService,
                                    val messagesApi: MessagesApi,
-                                   conf: Configuration,
-                                   @Named("poloniex-history") marketService: ActorRef)
+                                   conf: Configuration)
                                    (implicit system: ActorSystem,
                                     materializer: Materializer,
                                     context: ExecutionContext,
@@ -52,6 +54,13 @@ class HistoryController  @Inject()(val database: DBService,
 
   var sessionID = 23
 
+  /**
+    * Sends market updates to all connected clients.
+    */
+  def socket() = WebSocket.accept[String, String] { request =>
+    // each client will be served by this actor
+    ActorFlow.actorRef(out => PlaybackActor.props(out, database))
+  }
   /**
     * Reads captured poloniex data from the DB and replays it in a test trading scenario.
     *
@@ -71,37 +80,38 @@ class HistoryController  @Inject()(val database: DBService,
     Future.successful(Ok(view.markets(loggedIn, List[String]())))
   }
 
-  def candles(marketName: String) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
-    val marketCandles = PoloniexCandle.filter( c => c.sessionId === sessionID && c.cryptoCurrency === marketName).sortBy(_.createdAt)
-
-    database.runAsync(marketCandles.result).flatMap{ candles =>
-      implicit val timeout = Timeout(5 seconds)
-
-      val marketCandles = candles.map(c =>
-        new MarketCandle(c.createdAt, 5, c.open, c.close, c.highestBid, c.lowestAsk)).toList.reverse
-
-      (marketService ? SetCandles(marketName, marketCandles))
-        .mapTo[List[(Int, List[ExponentialMovingAverage])]]
-        .map { ema =>
-
-        val l = candles.map { c =>
-          val time = c.createdAt.toEpochSecond() * 1000L - 2.16e+7
-          val defaultEMA = ExponentialMovingAverage(c.createdAt, BigDecimal(0), 0)
-          Json.arr(
-            // TODO UTF offerset should come from client
-            // I've subtracted 6 hours(2.16e+7 milliseconds) for denver time for now
-            time,
-            c.open,
-            c.highestBid,
-            c.lowestAsk,
-            c.close,
-            ema(0)._2.find(avg => c.createdAt.equals(avg.time)).getOrElse(defaultEMA).ema,
-            ema(1)._2.find(avg => c.createdAt.equals(avg.time)).getOrElse(defaultEMA).ema,
-            0
-          )
-        }
-        Ok(Json.toJson(l))
-      }
-    }
-  }
+//  def candles(marketName: String) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
+//    val marketCandles = PoloniexCandle.filter( c => c.sessionId === sessionID && c.cryptoCurrency === marketName).sortBy(_.createdAt)
+//
+//    database.runAsync(marketCandles.result).flatMap{ candles =>
+//      implicit val timeout = Timeout(5 seconds)
+//
+//      // TODO this should be controlled by socket session
+//      val marketCandles = candles.map(c =>
+//        new MarketCandle(c.createdAt, 5, c.open, c.close, c.highestBid, c.lowestAsk)).toList.reverse
+//
+//      (marketService ? SetCandles(marketName, marketCandles))
+//        .mapTo[List[(Int, List[ExponentialMovingAverage])]]
+//        .map { ema =>
+//
+//        val l = candles.map { c =>
+//          val time = c.createdAt.toEpochSecond() * 1000L - 2.16e+7
+//          val defaultEMA = ExponentialMovingAverage(c.createdAt, BigDecimal(0), 0)
+//          Json.arr(
+//            // TODO UTF offerset should come from client
+//            // I've subtracted 6 hours(2.16e+7 milliseconds) for denver time for now
+//            time,
+//            c.open,
+//            c.highestBid,
+//            c.lowestAsk,
+//            c.close,
+//            ema(0)._2.find(avg => c.createdAt.equals(avg.time)).getOrElse(defaultEMA).ema,
+//            ema(1)._2.find(avg => c.createdAt.equals(avg.time)).getOrElse(defaultEMA).ema,
+//            0
+//          )
+//        }
+//        Ok(Json.toJson(l))
+//      }
+//    }
+//  }
 }

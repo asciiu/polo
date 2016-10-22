@@ -126,9 +126,9 @@ $ ->
         return
 
   name = $('tr')[1].id
-  loadChartData(name)
+  #loadChartData(name)
 
-  $('table > tbody > tr').click (event) ->
-    name = $(this).attr('id')
-    loadChartData(name)
+#  $('table > tbody > tr').click (event) ->
+#    name = $(this).attr('id')
+#    loadChartData(name)
 

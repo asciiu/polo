@@ -26,7 +26,7 @@ class Application @Inject()(val database: DBService,
         PoloniexController.candles,
         PoloniexController.latestCandle,
         PoloniexController.socket,
-        HistoryController.candles
+        HistoryController.socket
       )
     ).as("text/javascript")
   }
