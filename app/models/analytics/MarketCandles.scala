@@ -20,6 +20,9 @@ trait MarketCandles extends ActorLogging {
 
       Inner(msg)
 
+    /**
+      * Candles must be orderd by latest time first!
+      */
     case mc: Candles =>
       appendCandles(mc.marketName, mc.candles)
       Inner(mc)

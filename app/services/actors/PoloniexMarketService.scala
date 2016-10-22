@@ -7,6 +7,8 @@ import akka.contrib.pattern.ReceivePipeline
 import akka.contrib.pattern.ReceivePipeline.Inner
 import java.time.OffsetDateTime
 import javax.inject.Inject
+
+import models.market.MarketStructures.{ClosePrice, ExponentialMovingAverage}
 import play.api.Configuration
 
 import scala.language.postfixOps
@@ -102,6 +104,12 @@ class PoloniexMarketService @Inject()(val database: DBService,
 
     case GetLastestCandle(marketName) =>
       sender ! getLatestCandle(marketName)
+
+    case SetCandles(marketName, candles) =>
+      appendCandles(marketName, candles)
+      val closePrices = candles.map( c => ClosePrice(c.time, c.close))
+      setAverages(marketName, closePrices)
+      sender ! averages(marketName).map( a => (a.period, a.movingAverages.toList))
 
     /**
       * Returns a List[(Int, BigDecimal)] to the sender

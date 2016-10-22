@@ -23,6 +23,9 @@ trait ExponentialMovingAverages extends ActorLogging {
       }
       Inner(msg)
 
+    /**
+      * Assumes that the candles are orderd by latest time first!
+      */
     case mc: Candles =>
       val closePrices = mc.candles.map( c => ClosePrice(c.time, c.close))
       setAverages(mc.marketName, closePrices)
