@@ -20,7 +20,7 @@ trait Volume24HourTracking extends ActorLogging {
   this: ReceivePipeline => pipelineInner {
 
     case msg: MarketMessage =>
-      updateVolume(msg.cryptoCurrency, msg.baseVolume)
+      updateVolume(msg.time, msg.cryptoCurrency, msg.baseVolume)
       Inner(msg)
   }
 
@@ -52,8 +52,7 @@ trait Volume24HourTracking extends ActorLogging {
     * @param marketName
     * @param btc24HrVolume
     */
-  def updateVolume(marketName: String, btc24HrVolume: BigDecimal) = {
-    val time = Misc.currentTimeRoundedDown(5)
+  def updateVolume(time: OffsetDateTime, marketName: String, btc24HrVolume: BigDecimal) = {
 
     periodVolumes.get(marketName) match {
       case Some(volumes) =>

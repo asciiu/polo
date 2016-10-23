@@ -16,7 +16,7 @@ trait MarketCandles extends ActorLogging {
 
   this: ReceivePipeline => pipelineInner {
     case msg: MarketMessage =>
-      updateMarketCandle(msg.cryptoCurrency, ClosePrice(now(), msg.last))
+      updateMarketCandle(msg.cryptoCurrency, ClosePrice(msg.time, msg.last))
 
       Inner(msg)
 

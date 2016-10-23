@@ -4,7 +4,8 @@ import javax.inject.{Inject, Singleton}
 
 import com.google.inject.ImplementedBy
 import play.api.db.slick.DatabaseConfigProvider
-import slick.dbio.{DBIOAction, NoStream}
+import slick.backend.DatabasePublisher
+import slick.dbio.{DBIOAction, NoStream, Streaming}
 import slick.driver.JdbcProfile
 
 import scala.concurrent.duration.Duration
@@ -15,6 +16,8 @@ trait DBService {
   def runAsync[R](a: DBIOAction[R, NoStream, Nothing]): Future[R]
 
   def run[R](a: DBIOAction[R, NoStream, Nothing]): R
+
+  def stream[R](a: DBIOAction[_, Streaming[R], Nothing]): DatabasePublisher[R]
 }
 
 @Singleton
@@ -27,5 +30,9 @@ class DBServiceImpl @Inject()(val dbConfigProvider: DatabaseConfigProvider) exte
 
   def run[R](a: DBIOAction[R, NoStream, Nothing]): R = {
     Await.result(runAsync(a), Duration.Inf)
+  }
+
+  def stream[R](a: DBIOAction[_, Streaming[R], Nothing]): DatabasePublisher[R] = {
+    db.stream(a)
   }
 }

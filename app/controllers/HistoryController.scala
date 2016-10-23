@@ -13,7 +13,7 @@ import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.json.Json
 import play.api.libs.streams.ActorFlow
 import play.api.mvc.{Controller, WebSocket}
-import services.actors.PlaybackActor
+import services.actors.PlaybackService
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
@@ -59,7 +59,7 @@ class HistoryController  @Inject()(val database: DBService,
     */
   def socket() = WebSocket.accept[String, String] { request =>
     // each client will be served by this actor
-    ActorFlow.actorRef(out => PlaybackActor.props(out, database))
+    ActorFlow.actorRef(out => PlaybackService.props(out, database))
   }
   /**
     * Reads captured poloniex data from the DB and replays it in a test trading scenario.
