@@ -38,6 +38,23 @@ $ ->
 
     chart.series[3].setData( vols, true, true)
 
+    buys = candles.map (obj) ->
+     {x: obj[0], y: obj[8]}
+
+    buys = buys.filter (obj) ->
+      obj.y > 0
+
+    chart.series[4].setData(buys, true)
+
+    # SELLS
+    sells = candles.map (obj) ->
+      {x: obj[0], y: obj[9]}
+
+    sells = sells.filter (arr) ->
+      arr.y > 0
+
+    chart.series[5].setData(sells, true)
+
     return
 
   loadChartData = (socket, marketName) ->

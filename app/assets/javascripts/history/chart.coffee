@@ -32,6 +32,29 @@ $ ->
           candlestick: {
             color: 'rgba(255, 102, 102, 0.5)'
             upColor: 'rgba(112, 219, 112, 0.5)'
+          },
+          scatter: {
+            marker: {
+              radius: 5,
+              symbol: 'circle',
+              states: {
+                hover: {
+                  enabled: true,
+                  lineColor: 'rgb(100,100,100)'
+               }
+              }
+            },
+            states: {
+              hover: {
+                marker: {
+                  enabled: false
+                }
+              }
+            },
+            tooltip: {
+              headerFormat: '<b>{series.name}</b><br>',
+              pointFormat: '{point.x} time, {point.y} price'
+            }
           }
         }
         yAxis: [{
@@ -77,6 +100,16 @@ $ ->
           color: 'rgba(153, 214, 255, 0.7)',
           data: [],
           yAxis: 1
+        }, {
+          type: 'scatter',
+          name: 'Buy',
+          color: 'rgba(26, 133, 142, 1)',
+          data: []
+        }, {
+          type: 'scatter',
+          name: 'Sell',
+          color: 'rgba(221, 81, 67, 1)',
+          data: []
         }]
 
   chart = $('#candle-chart').highcharts()

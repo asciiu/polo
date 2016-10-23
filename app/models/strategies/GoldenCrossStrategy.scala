@@ -1,9 +1,12 @@
 package models.strategies
 
+import java.time.OffsetDateTime
+
 import akka.actor.Actor
 import akka.contrib.pattern.ReceivePipeline
 import models.analytics.ExponentialMovingAverages
 import models.market.MarketStructures.MarketMessage
+
 import scala.collection.mutable.ListBuffer
 import scala.math.BigDecimal.RoundingMode
 
@@ -19,6 +22,10 @@ trait GoldenCrossStrategy extends ReceivePipeline with ExponentialMovingAverages
     }
   }
 
+  case class Trade(marketName: String, val time: OffsetDateTime, val price: BigDecimal, val quantity: Int)
+
+  val buyList = scala.collection.mutable.ListBuffer[Trade]()
+  val sellList = scala.collection.mutable.ListBuffer[Trade]()
   // marketName -> list of moving averages
   //val averages = scala.collection.mutable.Map[String, List[MarketEMACollection]]()
 
@@ -93,6 +100,7 @@ trait GoldenCrossStrategy extends ReceivePipeline with ExponentialMovingAverages
         if (!buyRecords.contains(marketName) && balance > cost &&
           msg.baseVolume > baseVolumeAllowable && priceDiff > 0.05) {
 
+          buyList.append(Trade(marketName, msg.time, currentPrice, quantity))
           balance -= cost
           buyCount += 1
           buyRecords(marketName) = BuyRecord(currentPrice, quantity, msg.baseVolume)
@@ -121,6 +129,7 @@ trait GoldenCrossStrategy extends ReceivePipeline with ExponentialMovingAverages
             largestWinRecord = Result(marketName, percent, buyRecord.quantity, buyRecord.atVol, buyRecord.price * buyRecord.quantity, currentPrice*buyRecord.quantity)
           }
 
+          sellList.append(Trade(marketName, msg.time, currentPrice, buyRecord.quantity))
           winCount += 1
           sellCount += 1
           balance += currentPrice * buyRecord.quantity
@@ -134,6 +143,7 @@ trait GoldenCrossStrategy extends ReceivePipeline with ExponentialMovingAverages
             largestLoss = Result(marketName, percent, buyRecord.quantity, buyRecord.atVol, buyRecord.price * buyRecord.quantity, currentPrice*buyRecord.quantity)
           }
 
+          sellList.append(Trade(marketName, msg.time, currentPrice, buyRecord.quantity))
           lossCount += 1
           sellCount += 1
           balance += currentPrice * buyRecord.quantity
@@ -153,5 +163,7 @@ trait GoldenCrossStrategy extends ReceivePipeline with ExponentialMovingAverages
     println(s"Losses: $lossCount")
     println(s"Largest Win: $largestWinRecord")
     println(s"Largest Loss: $largestLoss")
+    println(buyList)
+    println(sellList)
   }
 }

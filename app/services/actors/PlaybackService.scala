@@ -6,8 +6,11 @@ import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.contrib.pattern.ReceivePipeline
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source}
+import models.strategies.GoldenCrossStrategy
 import play.api.libs.json.Json
 import slick.backend.DatabasePublisher
+import utils.Misc
+
 import scala.math.BigDecimal.RoundingMode
 import scala.concurrent.ExecutionContext
 
@@ -36,9 +39,9 @@ class PlaybackService(out: ActorRef, database: DBService)(implicit executionCont
   with ActorLogging
   with ReceivePipeline
   with MarketCandles
-  with ExponentialMovingAverages
   with Volume24HourTracking
-  with LastMarketMessage {
+  with LastMarketMessage
+  with GoldenCrossStrategy {
 
   import PlaybackService._
 
@@ -56,13 +59,11 @@ class PlaybackService(out: ActorRef, database: DBService)(implicit executionCont
     log.info("Session ended!")
   }
 
-  def receive = {
+  def myReceive: Receive = {
     // send updates from Bitcoin markets only
     case Done =>
       sendTCandles(market)
-
-    case msg: MarketMessage =>
-      //sendLatestCandle(market)
+      printResults()
 
     case marketName: String =>
       if (marketName == "play") playbackMessages(market)
@@ -70,8 +71,9 @@ class PlaybackService(out: ActorRef, database: DBService)(implicit executionCont
         sendCandles(marketName)
         market = marketName
       }
-
   }
+
+  def receive = myReceive orElse handleMessageUpdate
 
   def playbackMessages(marketName: String): Unit = {
     val sink = Sink.actorRef[MarketMessage](self, onCompleteMessage = Done)
@@ -134,6 +136,8 @@ class PlaybackService(out: ActorRef, database: DBService)(implicit executionCont
       val marketCandles = sortedReverse.map(c =>
         new MarketCandle(c.createdAt, 5, c.open, c.close, c.highestBid, c.lowestAsk)).toList
 
+      // clear previously stored market candles
+      this.marketCandles.remove(marketName)
       appendCandles(marketName, marketCandles)
 
       val closePrices = sortedReverse.map(c => ClosePrice(c.createdAt, c.close)).toList
@@ -156,6 +160,8 @@ class PlaybackService(out: ActorRef, database: DBService)(implicit executionCont
           c.close,
           ema1,
           ema2,
+          0,
+          0,
           0
         )
       }
@@ -177,10 +183,15 @@ class PlaybackService(out: ActorRef, database: DBService)(implicit executionCont
     val jsCandles = candles.map { c =>
       val time = c.time.toEpochSecond() * 1000L - 2.16e+7
       val defaultEMA = ExponentialMovingAverage(c.time, BigDecimal(0), 0)
+      val defaultTrade = Trade(marketName, c.time, 0, 0)
       val ema1 = movingAverages(0)._2.find( avg => c.time.equals(avg.time)).getOrElse(defaultEMA).ema
       val ema2 = movingAverages(1)._2.find( avg => c.time.equals(avg.time)).getOrElse(defaultEMA).ema
       val vol = vols.find( vol => c.time.equals(vol.time))
         .getOrElse(PeriodVolume(c.time, 0)).btcVolume.setScale(2, RoundingMode.DOWN)
+      val buy = buyList.find( trade => Misc.roundDateToMinute(trade.time, periodMinutes).isEqual(c.time))
+        .getOrElse(defaultTrade).price
+      val sell = sellList.find( trade => Misc.roundDateToMinute(trade.time, periodMinutes).isEqual(c.time))
+        .getOrElse(defaultTrade).price
 
       Json.arr(
         // TODO UTF offerset should come from client
@@ -192,7 +203,9 @@ class PlaybackService(out: ActorRef, database: DBService)(implicit executionCont
         c.close,
         ema1,
         ema2,
-        vol
+        vol,
+        buy,
+        sell
       )
     }
 
