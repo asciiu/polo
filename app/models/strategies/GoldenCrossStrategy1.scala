@@ -11,7 +11,7 @@ import scala.collection.mutable.ListBuffer
 import scala.math.BigDecimal.RoundingMode
 
 
-trait GoldenCrossStrategy extends ReceivePipeline with ExponentialMovingAverages {
+trait GoldenCrossStrategy1 extends ReceivePipeline with ExponentialMovingAverages {
   self: Actor =>
 
   case class BuyRecord(val price: BigDecimal, val quantity: Int, val atVol: BigDecimal)
@@ -48,22 +48,6 @@ trait GoldenCrossStrategy extends ReceivePipeline with ExponentialMovingAverages
   val lossPercentMin = -0.1
 
   //def setAllMarketAverages(marketAverages: Map[String, List[MarketEMACollection]]) = averages ++= marketAverages
-  def reset() = {
-    balance = 1.0
-    total = 1.0
-    sellCount = 0
-    buyCount = 0
-    winCount = 0
-    lossCount = 0
-    largestWinRecord = Result("", 0, 0, 0, 0, 0)
-    largestLoss = Result("", 0, 0, 0, 0, 0)
-    markets.clear()
-    buyList.clear()
-    sellList.clear()
-    marketWatch.clear()
-    buyRecords.clear()
-  }
-  //var flat = false
 
   def inventoryBalance: BigDecimal = {
     buyRecords.foldLeft(BigDecimal(0.0))( (a,r) => (r._2.price * r._2.quantity) + a)
@@ -86,13 +70,12 @@ trait GoldenCrossStrategy extends ReceivePipeline with ExponentialMovingAverages
 
       // ema1 shorter period
       val ema1 = emas.head._2
-      val ema1Prev = avgsList(0).movingAverages(1).ema
       // ema2 longer period
       val ema2 = emas.last._2
 
       // if golden cross (ema short greater than ema long)
       // and the market was put on watch
-      if (ema1 > ema2 && marketWatch.contains(marketName) && ema1 > ema1Prev) {
+      if (ema1 > ema2 && marketWatch.contains(marketName)) {
 
         // if the current 24 hour base volume of this market is greater
         // than the threshold we buy less because these markets
@@ -105,7 +88,7 @@ trait GoldenCrossStrategy extends ReceivePipeline with ExponentialMovingAverages
           else (0.07 * maxBTCTradable / currentPrice).toInt
 
         val cost = currentPrice * quantity
-        //val priceDiff = (currentPrice - msg.low24hr) / msg.low24hr
+        val priceDiff = (currentPrice - msg.low24hr) / msg.low24hr
 
         // can only buy from a market if there isn't an
         // existing share that was purchased
@@ -115,7 +98,7 @@ trait GoldenCrossStrategy extends ReceivePipeline with ExponentialMovingAverages
         // finally the price diff from the 24 hr low in this market must be greater than
         // 5 percent (we do not want to buy from markets on their way down)
         if (!buyRecords.contains(marketName) && balance > cost &&
-          msg.baseVolume > baseVolumeAllowable) {
+          msg.baseVolume > baseVolumeAllowable && priceDiff > 0.05) {
 
           buyList.append(Trade(marketName, msg.time, currentPrice, quantity))
           balance -= cost
@@ -124,13 +107,7 @@ trait GoldenCrossStrategy extends ReceivePipeline with ExponentialMovingAverages
           markets += marketName
           marketWatch -= marketName
         }
-      } else if (ema1 < ema2 && !buyRecords.contains(marketName)) {
-
-        //if (sellList.length == 1 && !flat) {
-        //  flat = true
-        //  println(msg.time)
-        //  println(s"$ema1 $ema2")
-        //}
+      } else if (ema1 < ema2) {
 
         // watch market if the long ema is greater than ema1
         marketWatch += marketName
@@ -147,7 +124,7 @@ trait GoldenCrossStrategy extends ReceivePipeline with ExponentialMovingAverages
         // if the shorter moving average in the previous period is greater
         // than the current moving average this market is loosing buy momentum
         // the percent in price must also be greater than our min threshold
-        if (ema1Prev > ema1Curr && percent > gainPercentMin && (ema1-ema2)/ema2 < 0.005) {
+        if (ema1Prev > ema1Curr && percent > gainPercentMin) {
           if (percent > largestWinRecord.percent) {
             largestWinRecord = Result(marketName, percent, buyRecord.quantity, buyRecord.atVol, buyRecord.price * buyRecord.quantity, currentPrice*buyRecord.quantity)
           }
@@ -186,7 +163,7 @@ trait GoldenCrossStrategy extends ReceivePipeline with ExponentialMovingAverages
     println(s"Losses: $lossCount")
     println(s"Largest Win: $largestWinRecord")
     println(s"Largest Loss: $largestLoss")
-    println(buyList)
-    println(sellList)
+    //println(buyList)
+    //println(sellList)
   }
 }

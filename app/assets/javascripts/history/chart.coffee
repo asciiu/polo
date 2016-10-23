@@ -35,7 +35,7 @@ $ ->
           },
           scatter: {
             marker: {
-              radius: 5,
+              radius: 4,
               symbol: 'circle',
               states: {
                 hover: {
@@ -103,7 +103,7 @@ $ ->
         }, {
           type: 'scatter',
           name: 'Buy',
-          color: 'rgba(26, 133, 142, 1)',
+          color: 'rgba(0, 119, 181, 1)',
           data: []
         }, {
           type: 'scatter',

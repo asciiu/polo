@@ -66,7 +66,10 @@ class PlaybackService(out: ActorRef, database: DBService)(implicit executionCont
       printResults()
 
     case marketName: String =>
-      if (marketName == "play") playbackMessages(market)
+      if (marketName == "play") {
+        reset()
+        playbackMessages(market)
+      }
       else {
         sendCandles(marketName)
         market = marketName
