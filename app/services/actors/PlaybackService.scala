@@ -25,7 +25,7 @@ import services.DBService
 
 
 object PlaybackService{
-  def props(out: ActorRef, database: DBService)(implicit context: ExecutionContext): Props = Props(new PlaybackService(out, database))
+  def props(out: ActorRef, database: DBService, sessionId: Int)(implicit context: ExecutionContext): Props = Props(new PlaybackService(out, database, sessionId))
   case object Done
 }
 
@@ -35,7 +35,7 @@ object PlaybackService{
   * in the HistoryController to serve a browser web
   * socket connection.
   */
-class PlaybackService(out: ActorRef, database: DBService)(implicit executionContext: ExecutionContext) extends Actor
+class PlaybackService(out: ActorRef, database: DBService, sessionId: Int)(implicit executionContext: ExecutionContext) extends Actor
   with ActorLogging
   with ReceivePipeline
   with MarketCandles
@@ -48,7 +48,7 @@ class PlaybackService(out: ActorRef, database: DBService)(implicit executionCont
   implicit lazy val materializer = ActorMaterializer()
 
   // TODO this needs to be parameterized some how
-  val sessionId = 23
+  //val sessionId = 24
   override val periodMinutes = 5
   var market = ""
   var count = 0

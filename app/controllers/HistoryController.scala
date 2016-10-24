@@ -52,32 +52,30 @@ class HistoryController  @Inject()(val database: DBService,
 
   extends Controller with AuthConfigTrait with AuthElement with I18nSupport {
 
-  var sessionID = 23
-
   /**
     * Sends market updates to all connected clients.
     */
-  def socket() = WebSocket.accept[String, String] { request =>
+  def socket(sessionId: Int) = WebSocket.accept[String, String] { request =>
     // each client will be served by this actor
-    ActorFlow.actorRef(out => PlaybackService.props(out, database))
+    ActorFlow.actorRef(out => PlaybackService.props(out, database, sessionId))
   }
   /**
     * Reads captured poloniex data from the DB and replays it in a test trading scenario.
     *
     * @return
     */
-  def markets() = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
+  def markets(sessionId: Int) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
     val marketNames = PoloniexMessage
-      .filter( r => r.sessionId === sessionID && r.cryptoCurrency.startsWith("BTC_"))
+      .filter( r => r.sessionId === sessionId && r.cryptoCurrency.startsWith("BTC_"))
       .groupBy(_.cryptoCurrency).map(_._1)
 
     database.runAsync(marketNames.result).map { names =>
-      Ok(view.markets(loggedIn, names.sorted))
+      Ok(view.markets(loggedIn, sessionId, names.sorted))
     }
   }
 
   def capturedSessions() = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
-    Future.successful(Ok(view.markets(loggedIn, List[String]())))
+    Future.successful(Ok(view.markets(loggedIn, 1, List[String]())))
   }
 
 //  def candles(marketName: String) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>

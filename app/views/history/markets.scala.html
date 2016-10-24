@@ -1,5 +1,5 @@
 
-@(account: Entity[Account], markets: Seq[String])(implicit webJarAssets: WebJarAssets, messages: Messages)
+@(account: Entity[Account], sessionId: Int, markets: Seq[String])(implicit webJarAssets: WebJarAssets, messages: Messages)
 
 @scripts = {
   <script type='text/javascript' src='@routes.Assets.at("javascripts/history/chart.js")'></script>
@@ -8,6 +8,7 @@
 
 @_template(Some(account), scripts) {
     <div class="row">
+        <div hidden id="session-id">@sessionId</div>
         <div class="columns small-2 markets">
             <table>
                 <thead>

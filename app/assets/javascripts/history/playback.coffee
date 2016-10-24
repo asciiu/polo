@@ -127,8 +127,9 @@ $ ->
     return
 
   #########################################################
+  sessionId = $('div#session-id').html()
   # Web socket feed should update the table of tickers
-  socket = new WebSocket('ws://localhost:9001' + jsRoutes.controllers.HistoryController.socket().url)
+  socket = new WebSocket('ws://localhost:9001' + jsRoutes.controllers.HistoryController.socket(sessionId).url)
 
   socket.onopen = (event) ->
     name = $('tr')[1].id

@@ -27,8 +27,8 @@ GET     /assets/*file               controllers.Assets.at(path="/public", file)
 GET     /webjars/*file              controllers.WebJarAssets.at(file)
 
 # Playback controller reads data recorded in DB
-GET     /history/markets            controllers.HistoryController.markets()
-GET     /history/socket             controllers.HistoryController.socket()
+GET     /history/markets            controllers.HistoryController.markets(sessionId: Int)
+GET     /history/socket             controllers.HistoryController.socket(sessionId: Int)
 
 # Poloneix
 GET     /candles/:marketName        controllers.PoloniexController.candles(marketName)
