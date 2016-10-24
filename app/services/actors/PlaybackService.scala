@@ -48,7 +48,6 @@ class PlaybackService(out: ActorRef, database: DBService, sessionId: Int)(implic
   implicit lazy val materializer = ActorMaterializer()
 
   // TODO this needs to be parameterized some how
-  //val sessionId = 24
   override val periodMinutes = 5
   var market = ""
   var count = 0

@@ -41,6 +41,8 @@ trait GoldenCrossStrategy extends ReceivePipeline with ExponentialMovingAverages
   var lossCount = 0
   var largestWinRecord: Result = Result("", 0, 0, 0, 0, 0)
   var largestLoss: Result = Result("", 0, 0, 0, 0, 0)
+  val winningMarkets = ListBuffer[String]()
+  val loosingMarkets = ListBuffer[String]()
   val markets: ListBuffer[String] = ListBuffer[String]()
   val baseVolumeAllowable = 50
   val baseVolumeThreshold = 700
@@ -154,6 +156,7 @@ trait GoldenCrossStrategy extends ReceivePipeline with ExponentialMovingAverages
             largestWinRecord = Result(marketName, percent, buyRecord.quantity, buyRecord.atVol, buyRecord.price * buyRecord.quantity, currentPrice*buyRecord.quantity)
           }
 
+          winningMarkets += marketName
           sellList.append(Trade(marketName, msg.time, currentPrice, buyRecord.quantity))
           winCount += 1
           sellCount += 1
@@ -169,6 +172,7 @@ trait GoldenCrossStrategy extends ReceivePipeline with ExponentialMovingAverages
           }
 
           sellList.append(Trade(marketName, msg.time, currentPrice, buyRecord.quantity))
+          loosingMarkets += marketName
           lossCount += 1
           sellCount += 1
           balance += currentPrice * buyRecord.quantity
@@ -188,7 +192,7 @@ trait GoldenCrossStrategy extends ReceivePipeline with ExponentialMovingAverages
     println(s"Losses: $lossCount")
     println(s"Largest Win: $largestWinRecord")
     println(s"Largest Loss: $largestLoss")
-    println(buyList)
-    println(sellList)
+    println(s"Winning Markets: \n$winningMarkets")
+    println(s"Loosing Markets: \n$loosingMarkets")
   }
 }
