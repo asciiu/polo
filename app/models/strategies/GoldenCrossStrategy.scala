@@ -114,8 +114,7 @@ trait GoldenCrossStrategy extends ReceivePipeline with ExponentialMovingAverages
         // we do not buy from markets that aren't trading at volume
         // finally the price diff from the 24 hr low in this market must be greater than
         // 5 percent (we do not want to buy from markets on their way down)
-        if (!buyRecords.contains(marketName) && balance > cost &&
-          msg.baseVolume > baseVolumeAllowable) {
+        if (!buyRecords.contains(marketName) && balance > cost && quantity > 0) {
 
           buyList.append(Trade(marketName, msg.time, currentPrice, quantity))
           balance -= cost
@@ -124,7 +123,10 @@ trait GoldenCrossStrategy extends ReceivePipeline with ExponentialMovingAverages
           markets += marketName
           marketWatch -= marketName
         }
-      } else if (ema1 < ema2 && !buyRecords.contains(marketName)) {
+      } else if (ema1 < ema2 && !buyRecords.contains(marketName) && msg.baseVolume > baseVolumeAllowable) {
+        // only watch markets when the ema1 < ema2
+        // when I haven't bought into this market
+        // and the base volume must be greater than our threshold
 
         //if (sellList.length == 1 && !flat) {
         //  flat = true
