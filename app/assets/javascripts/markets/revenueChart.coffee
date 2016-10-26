@@ -2,10 +2,10 @@ $ ->
   $.getJSON 'https://www.highcharts.com/samples/data/jsonp.php?filename=usdeur.json&callback=?', (data) ->
     $('#revenue-chart').highcharts
       chart: zoomType: 'x'
-      title: text: 'USD to EUR exchange rate over time'
+      title: text: 'Account Balance'
       subtitle: text: if document.ontouchstart == undefined then 'Click and drag in the plot area to zoom in' else 'Pinch the chart to zoom in'
       xAxis: type: 'datetime'
-      yAxis: title: text: 'Exchange rate'
+      yAxis: title: text: 'BTC Balance'
       legend: enabled: false
       plotOptions: area:
         fillColor:
@@ -30,7 +30,7 @@ $ ->
         threshold: null
       series: [ {
         type: 'area'
-        name: 'USD to EUR'
+        name: 'BTC Balance'
         data: data
       } ]
     return
