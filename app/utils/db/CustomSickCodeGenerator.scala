@@ -100,6 +100,7 @@ object CustomSickCodeGenerator {
 
               //enums
               case "user_role" => "models.db.AccountRole.Value"
+              case "order_type" => "models.db.OrderType.Value"
 
               case "text" => "String"
               case "varchar" => "String"

@@ -1,7 +1,7 @@
 package utils.db
 
 import com.github.tminglei.slickpg._
-import models.db.AccountRole
+import models.db.{AccountRole, OrderType}
 
 trait TetraoPostgresDriver extends ExPostgresDriver
   with PgArraySupport
@@ -28,6 +28,11 @@ trait TetraoPostgresDriver extends ExPostgresDriver
     implicit val lAccountRole = createEnumListJdbcType("account_role", AccountRole)
     implicit val cAccountRole = createEnumColumnExtensionMethodsBuilder(AccountRole)
     implicit val oAccountRole = createEnumOptionColumnExtensionMethodsBuilder(AccountRole)
+
+    implicit val tOrderType = createEnumJdbcType("order_type", OrderType)
+    implicit val lOrderType = createEnumListJdbcType("order_type", OrderType)
+    implicit val cOrderType = createEnumColumnExtensionMethodsBuilder(OrderType)
+    implicit val oOrderType = createEnumOptionColumnExtensionMethodsBuilder(OrderType)
 
     implicit val strListTypeMapper = new SimpleArrayJdbcType[String]("text").to(_.toList)
   }

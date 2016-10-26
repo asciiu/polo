@@ -35,7 +35,7 @@ object PlaybackService{
   * in the HistoryController to serve a browser web
   * socket connection.
   */
-class PlaybackService(out: ActorRef, database: DBService, sessionId: Int)(implicit executionContext: ExecutionContext) extends Actor
+class PlaybackService(out: ActorRef, val database: DBService, sessionId: Int)(implicit executionContext: ExecutionContext) extends Actor
   with ActorLogging
   with ReceivePipeline
   with MarketCandles

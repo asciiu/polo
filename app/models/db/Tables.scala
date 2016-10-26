@@ -1,6 +1,6 @@
 package models.db
 
-// AUTO-GENERATED Slick data model [2016-10-18T00:30:26.233-06:00[America/Denver]]
+// AUTO-GENERATED Slick data model [2016-10-26T15:05:25.131-06:00[America/Denver]]
 
 /** Stand-alone Slick data model for immediate use */
 object Tables extends {
@@ -16,7 +16,7 @@ trait Tables {
   import slick.jdbc.{GetResult => GR}
 
   /** DDL for all tables. Call .create to execute. */
-  lazy val schema: profile.SchemaDescription = Account.schema ++ Message.schema ++ PoloniexCandle.schema ++ PoloniexMessage.schema ++ PoloniexSessions.schema
+  lazy val schema: profile.SchemaDescription = Array(Account.schema, Message.schema, PoloniexCandle.schema, PoloniexMessage.schema, PoloniexOrders.schema, PoloniexSessions.schema).reduceLeft(_ ++ _)
   @deprecated("Use .schema instead of .ddl", "3.0")
   def ddl = schema
 
@@ -134,8 +134,8 @@ trait Tables {
     /** Database column created_at SqlType(timestamptz) */
     val createdAt: Rep[java.time.OffsetDateTime] = column[java.time.OffsetDateTime]("created_at")
 
-    /** Foreign key referencing PoloniexSessions (database name poloniex_candles_new_session_id_fkey) */
-    lazy val poloniexSessionsFk = foreignKey("poloniex_candles_new_session_id_fkey", sessionId, PoloniexSessions)(r => r.id, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
+    /** Foreign key referencing PoloniexSessions (database name poloniex_candles_session_id_fkey) */
+    lazy val poloniexSessionsFk = foreignKey("poloniex_candles_session_id_fkey", sessionId, PoloniexSessions)(r => r.id, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
   }
   /** Collection-like TableQuery object for table PoloniexCandle */
   lazy val PoloniexCandle = new TableQuery(tag => new PoloniexCandle(tag))
@@ -196,11 +196,52 @@ trait Tables {
     /** Database column updated_at SqlType(timestamptz) */
     val updatedAt: Rep[java.time.OffsetDateTime] = column[java.time.OffsetDateTime]("updated_at")
 
-    /** Foreign key referencing PoloniexSessions (database name poloniex_messages_new_session_id_fkey) */
-    lazy val poloniexSessionsFk = foreignKey("poloniex_messages_new_session_id_fkey", sessionId, PoloniexSessions)(r => r.id, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
+    /** Foreign key referencing PoloniexSessions (database name poloniex_messages_session_id_fkey) */
+    lazy val poloniexSessionsFk = foreignKey("poloniex_messages_session_id_fkey", sessionId, PoloniexSessions)(r => r.id, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
   }
   /** Collection-like TableQuery object for table PoloniexMessage */
   lazy val PoloniexMessage = new TableQuery(tag => new PoloniexMessage(tag))
+
+  /** Entity class storing rows of table PoloniexOrders
+   *  @param id Database column id SqlType(serial), AutoInc, PrimaryKey
+   *  @param cryptoCurrency Database column crypto_currency SqlType(text)
+   *  @param price Database column price SqlType(numeric)
+   *  @param quantity Database column quantity SqlType(numeric)
+   *  @param btcTotal Database column btc_total SqlType(numeric)
+   *  @param orderType Database column order_type SqlType(order_type)
+   *  @param createdAt Database column created_at SqlType(timestamptz)
+   *  @param updatedAt Database column updated_at SqlType(timestamptz) */
+  case class PoloniexOrdersRow(id: Int, cryptoCurrency: String, price: scala.math.BigDecimal, quantity: scala.math.BigDecimal, btcTotal: scala.math.BigDecimal, orderType: models.db.OrderType.Value, createdAt: java.time.OffsetDateTime, updatedAt: java.time.OffsetDateTime)
+  /** GetResult implicit for fetching PoloniexOrdersRow objects using plain SQL queries */
+  implicit def GetResultPoloniexOrdersRow(implicit e0: GR[Int], e1: GR[String], e2: GR[scala.math.BigDecimal], e3: GR[models.db.OrderType.Value], e4: GR[java.time.OffsetDateTime]): GR[PoloniexOrdersRow] = GR{
+    prs => import prs._
+    PoloniexOrdersRow.tupled((<<[Int], <<[String], <<[scala.math.BigDecimal], <<[scala.math.BigDecimal], <<[scala.math.BigDecimal], <<[models.db.OrderType.Value], <<[java.time.OffsetDateTime], <<[java.time.OffsetDateTime]))
+  }
+  /** Table description of table poloniex_orders. Objects of this class serve as prototypes for rows in queries. */
+  class PoloniexOrders(_tableTag: Tag) extends Table[PoloniexOrdersRow](_tableTag, "poloniex_orders") {
+    def * = (id, cryptoCurrency, price, quantity, btcTotal, orderType, createdAt, updatedAt) <> (PoloniexOrdersRow.tupled, PoloniexOrdersRow.unapply)
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? = (Rep.Some(id), Rep.Some(cryptoCurrency), Rep.Some(price), Rep.Some(quantity), Rep.Some(btcTotal), Rep.Some(orderType), Rep.Some(createdAt), Rep.Some(updatedAt)).shaped.<>({r=>import r._; _1.map(_=> PoloniexOrdersRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7.get, _8.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+
+    /** Database column id SqlType(serial), AutoInc, PrimaryKey */
+    val id: Rep[Int] = column[Int]("id", O.AutoInc, O.PrimaryKey)
+    /** Database column crypto_currency SqlType(text) */
+    val cryptoCurrency: Rep[String] = column[String]("crypto_currency")
+    /** Database column price SqlType(numeric) */
+    val price: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("price")
+    /** Database column quantity SqlType(numeric) */
+    val quantity: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("quantity")
+    /** Database column btc_total SqlType(numeric) */
+    val btcTotal: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("btc_total")
+    /** Database column order_type SqlType(order_type) */
+    val orderType: Rep[models.db.OrderType.Value] = column[models.db.OrderType.Value]("order_type")
+    /** Database column created_at SqlType(timestamptz) */
+    val createdAt: Rep[java.time.OffsetDateTime] = column[java.time.OffsetDateTime]("created_at")
+    /** Database column updated_at SqlType(timestamptz) */
+    val updatedAt: Rep[java.time.OffsetDateTime] = column[java.time.OffsetDateTime]("updated_at")
+  }
+  /** Collection-like TableQuery object for table PoloniexOrders */
+  lazy val PoloniexOrders = new TableQuery(tag => new PoloniexOrders(tag))
 
   /** Entity class storing rows of table PoloniexSessions
    *  @param id Database column id SqlType(serial), AutoInc, PrimaryKey

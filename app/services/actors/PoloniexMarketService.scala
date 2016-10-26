@@ -9,6 +9,7 @@ import java.time.OffsetDateTime
 import javax.inject.Inject
 
 import models.market.MarketStructures.{ClosePrice, ExponentialMovingAverage}
+import models.strategies.GoldenCrossStrategy
 import play.api.Configuration
 
 import scala.language.postfixOps
@@ -50,10 +51,9 @@ class PoloniexMarketService @Inject()(val database: DBService,
   with ActorLogging
   with ReceivePipeline
   with MarketCandles
-  with ExponentialMovingAverages
   with Volume24HourTracking
   with LastMarketMessage
-  with Archiving {
+  with GoldenCrossStrategy {
 
   import PoloniexMarketService._
   import PoloniexCandleRetrieverService._
@@ -91,9 +91,12 @@ class PoloniexMarketService @Inject()(val database: DBService,
   override def postStop() = {
     eventBus.unsubscribe(self, Updates)
     eventBus.unsubscribe(self, Candles)
+    printResults()
   }
 
-  def receive: Receive = {
+  def receive = myReceive orElse handleMessageUpdate
+
+  def myReceive: Receive = {
     case GetSessionId =>
       sender ! getSessionId
 

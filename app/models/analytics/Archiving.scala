@@ -15,7 +15,8 @@ import models.market.MarketStructures.Candles
 import models.market.MarketStructures.MarketMessage
 import models.db.Tables
 import models.db.Tables.profile.api._
-import models.db.Tables.{PoloniexCandleRow, PoloniexMessageRow, PoloniexSessions, PoloniexSessionsRow}
+import models.db.Tables._
+import models.db.OrderType
 import services.DBService
 import utils.Misc
 
@@ -106,5 +107,11 @@ trait Archiving extends ActorLogging {
   }
 
   def getSessionId = sessionId
+
+  protected def insertOrder(marketName: String, price: BigDecimal, quantity: BigDecimal, orderType: OrderType.Value, time: OffsetDateTime) = {
+    val newRow = PoloniexOrdersRow(-1, marketName, price, quantity, price*quantity, orderType, time, time)
+    val insert = (PoloniexOrders += newRow)
+    database.runAsync(insert)
+  }
 }
 

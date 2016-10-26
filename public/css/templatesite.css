@@ -45,6 +45,7 @@ div.markets {
 div.parent {
     position: relative;
 }
+
 div#run-btn {
     position: absolute;
     top: 0
