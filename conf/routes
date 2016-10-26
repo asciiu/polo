@@ -38,6 +38,7 @@ GET     /markets                    controllers.PoloniexController.markets()
 GET     /market/:marketName         controllers.PoloniexController.market(marketName)
 GET     /capture/start              controllers.PoloniexController.startCapture()
 GET     /capture/end                controllers.PoloniexController.endCapture()
+GET     /capture/isRecording        controllers.PoloniexController.isRecording()
 
 # Research and Development controller
 GET     /arbiter                    controllers.ProtoController.arbiter()

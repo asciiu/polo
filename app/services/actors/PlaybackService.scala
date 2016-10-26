@@ -54,9 +54,7 @@ class PlaybackService(out: ActorRef, database: DBService, sessionId: Int)(implic
 
   override def preStart() = {}
 
-  override def postStop() = {
-    log.info("Session ended!")
-  }
+  override def postStop() = {}
 
   def myReceive: Receive = {
     // send updates from Bitcoin markets only
@@ -128,8 +126,6 @@ class PlaybackService(out: ActorRef, database: DBService, sessionId: Int)(implic
 
   // assum marketName will always exist for now, but this needs error handling
   def sendCandles(marketName: String): Unit = {
-    log.info(s"Setting $marketName candles for new client")
-
     val queryCandles = PoloniexCandle.filter( c => c.sessionId === sessionId && c.cryptoCurrency === marketName).sortBy(_.createdAt)
 
     database.runAsync(queryCandles.result).map { candles =>

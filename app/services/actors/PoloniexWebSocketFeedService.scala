@@ -19,47 +19,15 @@ import models.poloniex.{MarketEvent, PoloniexEventBus}
 import utils.Misc
 
 
-class PoloniexWebSocketFeedService @Inject()(conf: Configuration) extends Actor with ActorLogging {
-  import akka.actor.OneForOneStrategy
-  import akka.actor.SupervisorStrategy._
-  import scala.concurrent.duration._
-
-  val eventBus = PoloniexEventBus()
-  val endpoint = conf.getString("poloniex.websocket").getOrElse("wss://api.poloniex.com")
-  val socketClient = context.actorOf(PoloniexWebSocketClient.props(endpoint))
-
-  override def postStop() = {
-    log info "shutting down"
-    socketClient ! PoisonPill
-  }
-
-  override val supervisorStrategy =
-    OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1 minute) {
-      case e: Exception => {
-        log debug s"$e encountered restart"
-        Restart
-      }
-    }
-
-  def receive: Receive = {
-    case msg: MarketMessage =>
-      eventBus.publish(MarketEvent(PoloniexEventBus.Updates, msg))
-  }
-}
-
-object PoloniexWebSocketClient {
-  def props(url: String) = Props(new PoloniexWebSocketClient(url))
-}
-
-class PoloniexWebSocketClient (endpoint: String) extends Actor
+class PoloniexWebSocketFeedService @Inject()(conf: Configuration)  extends Actor
   with ActorLogging
   with ClientContext {
 
   import Client._
 
   val manager = IO(Wamp)
-  //val endpoint = conf.getString("poloniex.websocket").getOrElse("wss://api.poloniex.com")
-  //val eventBus = PoloniexEventBus()
+  val endpoint = conf.getString("poloniex.websocket").getOrElse("wss://api.poloniex.com")
+  val eventBus = PoloniexEventBus()
 
   override def preStart(): Unit = {
     self ! DoConnect
@@ -106,8 +74,7 @@ class PoloniexWebSocketClient (endpoint: String) extends Actor
         payload.parsed.map { p =>
           processPayload(p.args) match {
             case Some(update) =>
-              //eventBus.publish(MarketEvent(PoloniexEventBus.Updates, update))
-              context.parent ! update
+              eventBus.publish(MarketEvent(PoloniexEventBus.Updates, update))
             case None =>
               log info "received payload arguments not equal to 10"
           }

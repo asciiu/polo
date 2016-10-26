@@ -29,6 +29,7 @@ import services.DBService
 
 object PoloniexMarketService {
   trait CandleManagerMessage
+  case object GetSessionId extends CandleManagerMessage
   case class GetCandles(marketName: String) extends CandleManagerMessage
   case class GetLastestCandle(marketName: String) extends CandleManagerMessage
   case class SetCandles(marketName: String, candles: List[MarketCandle]) extends CandleManagerMessage
@@ -93,6 +94,8 @@ class PoloniexMarketService @Inject()(val database: DBService,
   }
 
   def receive: Receive = {
+    case GetSessionId =>
+      sender ! getSessionId
 
     case StartCapture =>
       beginSession(marketCandles.map( m => Can(m._1, m._2.toList)).toList)

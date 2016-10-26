@@ -17,8 +17,7 @@ lazy val root = (project in file("."))
 	.settings(routesGenerator := InjectedRoutesGenerator)
 	.settings(
 		libraryDependencies += ws,
-		//libraryDependencies += "com.github.angiolep" % "akka-wamp_2.11" % "0.6.1-SNAPSHOT",
-		libraryDependencies += "com.github.angiolep" % "akka-wamp_2.11" % "0.12.0",
+		libraryDependencies += "com.github.angiolep" % "akka-wamp_2.11" % "0.12.0a",
 		libraryDependencies += "com.typesafe.slick" %% "slick" % "3.1.1",
 		libraryDependencies += "com.typesafe.slick" %% "slick-codegen" % "3.1.1",
 		libraryDependencies += "com.github.tminglei" %% "slick-pg" % "0.14.3",

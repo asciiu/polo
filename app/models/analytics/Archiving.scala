@@ -104,5 +104,7 @@ trait Archiving extends ActorLogging {
     val name = candles.marketName
     candles.candles.map( c => PoloniexCandleRow(-1, sessionId, name, c.open, c.close, c.low, c.high, OffsetDateTime.parse(c.time.toString)))
   }
+
+  def getSessionId = sessionId
 }
 

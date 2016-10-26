@@ -95,14 +95,21 @@ class PoloniexController @Inject()(val database: DBService,
     ActorFlow.actorRef(out => Props(new BrowserActor(out)))
   }
 
+  def isRecording() = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
+    implicit val timeout = Timeout(5 seconds)
+    (marketService ? GetSessionId).mapTo[Option[Int]].map { option =>
+      Ok(Json.toJson(option.isDefined))
+    }
+  }
+
   def startCapture() = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
     marketService ! StartCapture
-    Future.successful(Ok("ok"))
+    Future.successful(Ok(Json.toJson(true)))
   }
 
   def endCapture() = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
     marketService ! EndCapture
-    Future.successful(Ok("ok"))
+    Future.successful(Ok(Json.toJson(true)))
   }
 
   /**
