@@ -36,7 +36,7 @@ object PoloniexMarketService {
   case class SetCandles(marketName: String, candles: List[MarketCandle]) extends CandleManagerMessage
   case object StartCapture extends CandleManagerMessage
   case object EndCapture extends CandleManagerMessage
-  case class GetMovingAverage(marketname: String, time: OffsetDateTime) extends CandleManagerMessage
+  case class GetLatestMovingAverages(marketname: String) extends CandleManagerMessage
   case class GetMovingAverages(marketName: String) extends CandleManagerMessage
   case class GetVolume(marketName: String, time: OffsetDateTime) extends CandleManagerMessage
   case class GetVolumes(marketName: String) extends CandleManagerMessage
@@ -53,7 +53,8 @@ class PoloniexMarketService @Inject()(val database: DBService,
   with MarketCandles
   with Volume24HourTracking
   with LastMarketMessage
-  with GoldenCrossStrategy {
+  with GoldenCrossStrategy
+  with Archiving {
 
   import PoloniexMarketService._
   import PoloniexCandleRetrieverService._
@@ -120,8 +121,8 @@ class PoloniexMarketService @Inject()(val database: DBService,
     /**
       * Returns a List[(Int, BigDecimal)] to the sender
       */
-    case GetMovingAverage(marketName, time) =>
-      sender ! getMovingAverage(marketName, time)
+    case GetLatestMovingAverages(marketName) =>
+      sender ! getLatestMovingAverages(marketName)
 
     /**
       * Send to original sender the moving averages of a market.

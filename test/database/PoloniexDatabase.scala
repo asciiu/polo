@@ -22,7 +22,7 @@ import models.market.MarketStructures.MarketMessage
   */
 trait PoloniexDatabase extends Postgres with ScalaFutures {
 
-  val sessionId = 33
+  val sessionId = 1
   /**
     * This assembles exponential moving averages (EMA) for each candle period for
     * candle data in the DB.

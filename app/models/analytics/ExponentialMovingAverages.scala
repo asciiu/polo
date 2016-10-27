@@ -6,6 +6,8 @@ import akka.contrib.pattern.ReceivePipeline
 import akka.contrib.pattern.ReceivePipeline.Inner
 import java.time.OffsetDateTime
 
+import utils.Misc
+
 
 // internal
 import models.market.MarketEMACollection
@@ -52,9 +54,10 @@ trait ExponentialMovingAverages extends ActorLogging {
   /**
     * Returns a List[(Int, BigDecimal)] to the sender
     */
-  def getMovingAverage(marketName: String, time: OffsetDateTime): List[(Int, BigDecimal)] = {
+  def getLatestMovingAverages(marketName: String): List[(Int, BigDecimal)] = {
     averages.get(marketName) match {
-      case Some(avgs) => avgs.map( a => (a.period, a.movingAverages.head.ema))
+      case Some(avgs) =>
+        avgs.map( a => (a.period, a.movingAverages.head.ema))
       case None => List[(Int, BigDecimal)]()
     }
   }

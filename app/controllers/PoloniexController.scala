@@ -122,6 +122,7 @@ class PoloniexController @Inject()(val database: DBService,
         PoloniexMarketUpdate(ticker._1, ticker._2.as[PoloniexMarketMessage])
       }.toList))
 
+    // TODO this request should be factored into to the poloniex models
     // poloniex markets
     val poloniexRequest: WSRequest = ws.url("https://poloniex.com/public?command=returnTicker")
         .withHeaders("Accept" -> "application/json")
@@ -221,7 +222,7 @@ class PoloniexController @Inject()(val database: DBService,
     // TODO this will fail if the first future returns a None
     for {
       candle <- (marketService ? GetLastestCandle(marketName)).mapTo[Option[MarketCandle]]
-      averages <- (marketService ? GetMovingAverage(marketName, candle.get.time)).mapTo[List[(Int, BigDecimal)]]
+      averages <- (marketService ? GetLatestMovingAverages(marketName)).mapTo[List[(Int, BigDecimal)]]
       volume24hr <- (marketService ? GetVolume(marketName, candle.get.time)).mapTo[PeriodVolume]
     } yield {
       val df = DateTimeFormat.forPattern("MMM dd HH:mm")

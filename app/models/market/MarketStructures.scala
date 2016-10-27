@@ -2,6 +2,8 @@ package models.market
 
 import java.time.OffsetDateTime
 
+import models.db
+
 /**
   * Created by bishop on 10/18/16.
   */
@@ -25,4 +27,10 @@ object MarketStructures {
                            isFrozen: String,
                            high24hr: BigDecimal,
                            low24hr: BigDecimal)
+
+  case class Order(time: OffsetDateTime,
+                   marketName: String,
+                   price: BigDecimal,
+                   quantity: BigDecimal,
+                   side: models.db.OrderType.Value)
 }

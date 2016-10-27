@@ -4,30 +4,31 @@ import java.time.OffsetDateTime
 
 import akka.actor.Actor
 import akka.contrib.pattern.ReceivePipeline
-import models.analytics.{Archiving, ExponentialMovingAverages}
-import models.market.MarketStructures.MarketMessage
-import models.db.OrderType
-import services.DBService
 import utils.Misc
-
 import scala.collection.mutable.ListBuffer
 import scala.math.BigDecimal.RoundingMode
 
+// internal
+import models.analytics.{ExponentialMovingAverages, OrderFiller}
+import models.market.MarketStructures.{MarketMessage, Order}
+import models.db.OrderType
 
-trait GoldenCrossStrategy extends ReceivePipeline with ExponentialMovingAverages with Archiving {
+
+trait GoldenCrossStrategy extends ReceivePipeline
+  with ExponentialMovingAverages
+  with OrderFiller {
+
   self: Actor =>
-
-  def database: DBService
 
   case class BuyRecord(val price: BigDecimal, val quantity: Int, val atVol: BigDecimal)
 
-  case class Result(marketName: String, percent: BigDecimal, quantity: Int, atVol: BigDecimal, atCost: BigDecimal, atSale: BigDecimal) {
+  case class Result(marketName: String, percent: BigDecimal, quantity: Int, atBuy: BigDecimal, atSale: BigDecimal) {
     override def toString = {
-      s"$marketName percent: ${(percent*100).setScale(2, RoundingMode.CEILING)}% quantity: $quantity atVol: $atVol atCost: $atCost atSale: $atSale"
+      s"$marketName percent: ${(percent*100).setScale(2, RoundingMode.CEILING)}% quantity: $quantity atBuy: $atBuy atSale: $atSale"
     }
   }
 
-  case class Trade(marketName: String, val time: OffsetDateTime, val price: BigDecimal, val quantity: Int)
+  case class Trade(marketName: String, val time: OffsetDateTime, val price: BigDecimal, val quantity: BigDecimal)
 
   val buyList = scala.collection.mutable.ListBuffer[Trade]()
   val sellList = scala.collection.mutable.ListBuffer[Trade]()
@@ -38,14 +39,13 @@ trait GoldenCrossStrategy extends ReceivePipeline with ExponentialMovingAverages
   val buyRecords = scala.collection.mutable.Map[String, BuyRecord]()
 
   var maxBTCTradable: BigDecimal = 1.0
-  var balance: BigDecimal = 1.0
   var total: BigDecimal = balance
   var sellCount = 0
   var buyCount = 0
   var winCount = 0
   var lossCount = 0
-  var largestWinRecord: Result = Result("", 0, 0, 0, 0, 0)
-  var largestLoss: Result = Result("", 0, 0, 0, 0, 0)
+  var largestWinRecord: Result = Result("", 0, 0, 0, 0)
+  var largestLoss: Result = Result("", 0, 0, 0, 0)
   val winningMarkets = ListBuffer[String]()
   val loosingMarkets = ListBuffer[String]()
   val markets: ListBuffer[String] = ListBuffer[String]()
@@ -62,141 +62,121 @@ trait GoldenCrossStrategy extends ReceivePipeline with ExponentialMovingAverages
     buyCount = 0
     winCount = 0
     lossCount = 0
-    largestWinRecord = Result("", 0, 0, 0, 0, 0)
-    largestLoss = Result("", 0, 0, 0, 0, 0)
+    largestWinRecord = Result("", 0, 0, 0, 0)
+    largestLoss = Result("", 0, 0, 0, 0)
     markets.clear()
     buyList.clear()
     sellList.clear()
     marketWatch.clear()
     buyRecords.clear()
   }
-  //var flat = false
 
-  def inventoryBalance: BigDecimal = {
-    buyRecords.foldLeft(BigDecimal(0.0))( (a,r) => (r._2.price * r._2.quantity) + a)
-  }
-
-  def totalBalance: BigDecimal = {
-    balance + inventoryBalance
-  }
+  def totalBalance: BigDecimal = getTotalBalance
 
   def handleMessageUpdate: Receive = {
     case msg: MarketMessage =>
       val marketName = msg.cryptoCurrency
-      val currentPrice = msg.last
+      val emas = getLatestMovingAverages(marketName).sortBy(_._1).map( _._2 )
 
-      if (averages.contains(marketName)) {
-        val avgsList = averages(marketName)
+      // we must have averages in order to trade
+      if (emas.nonEmpty) {
+        val ema1 = emas.head
+        val ema2 = emas.last
 
-        val emas = avgsList.map(avgs => (avgs.period, avgs.movingAverages.head.ema)).sortBy(_._1)
+        tryBuy(msg, ema1, ema2)
+        trySell(msg, ema1, ema2)
 
-        // ema1 shorter period
-        val ema1 = emas.head._2
-        val ema1Prev = avgsList(0).movingAverages(1).ema
-        // ema2 longer period
-        val ema2 = emas.last._2
-
-        // if golden cross (ema short greater than ema long)
-        // and the market was put on watch
-        if (ema1 > ema2 && marketWatch.contains(marketName) && ema1 > ema1Prev) {
-
-          // if the current 24 hour base volume of this market is greater
-          // than the threshold we buy less because these markets
-          // most likely have already spiked from trading activity
-          // we want to assume less risk in these markets so we buy less
-          val quantity =
-          // 2 percent of tradable BTC shall be purchased
-            if (msg.baseVolume > baseVolumeThreshold) (0.02 * maxBTCTradable / currentPrice).toInt
-            // 7 percent for markets that are less volatile
-            else (0.07 * maxBTCTradable / currentPrice).toInt
-
-          val cost = currentPrice * quantity
-          //val priceDiff = (currentPrice - msg.low24hr) / msg.low24hr
-
-          // can only buy from a market if there isn't an
-          // existing share that was purchased
-          // we also must have enough in our balance to buy
-          // the market 24 base volume must be greater than are minimum base volume allowable so
-          // we do not buy from markets that aren't trading at volume
-          // finally the price diff from the 24 hr low in this market must be greater than
-          // 5 percent (we do not want to buy from markets on their way down)
-          if (!buyRecords.contains(marketName) && balance > cost && quantity > 0) {
-
-            buyList.append(Trade(marketName, msg.time, currentPrice, quantity))
-            balance -= cost
-            buyCount += 1
-            // buy record needs the current time, price, market name, quantity, cost
-            buyRecords(marketName) = BuyRecord(currentPrice, quantity, msg.baseVolume)
-            insertOrder(marketName, currentPrice, quantity, OrderType.buy, Misc.now())
-            markets += marketName
-            marketWatch -= marketName
-          }
-        } else if (ema1 < ema2 && !buyRecords.contains(marketName) && msg.baseVolume > baseVolumeAllowable) {
-          // only watch markets when the ema1 < ema2
-          // when I haven't bought into this market
-          // and the base volume must be greater than our threshold
-
-          //if (sellList.length == 1 && !flat) {
-          //  flat = true
-          //  println(msg.time)
-          //  println(s"$ema1 $ema2")
-          //}
-
-          // watch market if the long ema is greater than ema1
+        // forcast markets that satisfy these conditions
+        val fc1 = ema1 < ema2
+        val fc2 = !onOrder(marketName)
+        val fc3 = msg.baseVolume > baseVolumeAllowable
+        val fc4 = getBalance(marketName) == 0
+        if (fc1 && fc2 && fc3 && fc4) {
+          // begin monitoring this market for entry
           marketWatch += marketName
-        }
-
-        if (buyRecords.contains(marketName)) {
-          // sell when the ema1 for this period is less than the previous ema1
-          val ema1Curr = ema1
-          val ema1Prev = avgsList(0).movingAverages(1).ema
-          val buyRecord = buyRecords(marketName)
-          //val deltaPrice = currentPrice - buyRecord.price
-          val percent = (currentPrice - buyRecord.price) / buyRecord.price
-
-          // if the shorter moving average in the previous period is greater
-          // than the current moving average this market is loosing buy momentum
-          // the percent in price must also be greater than our min threshold
-          if (ema1Prev > ema1Curr && percent > gainPercentMin && (ema1 - ema2) / ema2 < 0.005) {
-            if (percent > largestWinRecord.percent) {
-              largestWinRecord = Result(marketName, percent, buyRecord.quantity, buyRecord.atVol, buyRecord.price * buyRecord.quantity, currentPrice * buyRecord.quantity)
-            }
-
-            insertOrder(marketName, currentPrice, buyRecord.quantity, OrderType.sell, Misc.now())
-            winningMarkets += marketName
-            sellList.append(Trade(marketName, msg.time, currentPrice, buyRecord.quantity))
-            winCount += 1
-            sellCount += 1
-            balance += currentPrice * buyRecord.quantity
-            buyRecords.remove(marketName)
-            maxBTCTradable += (currentPrice - buyRecord.price) * buyRecord.quantity
-          } else if (percent < lossPercentMin) {
-            // cut your losses early if the percent of our original buy price is currently
-            // below our loss precent threshold
-
-            if (percent < largestLoss.percent) {
-              largestLoss = Result(marketName, percent, buyRecord.quantity, buyRecord.atVol, buyRecord.price * buyRecord.quantity, currentPrice * buyRecord.quantity)
-            }
-
-            insertOrder(marketName, currentPrice, buyRecord.quantity, OrderType.sell, Misc.now())
-            sellList.append(Trade(marketName, msg.time, currentPrice, buyRecord.quantity))
-            loosingMarkets += marketName
-            lossCount += 1
-            sellCount += 1
-            balance += currentPrice * buyRecord.quantity
-            buyRecords.remove(marketName)
-            maxBTCTradable += (currentPrice - buyRecord.price) * buyRecord.quantity
-          }
         }
       }
   }
 
+  def tryBuy(msg: MarketMessage, ema1: BigDecimal, ema2: BigDecimal) = {
+    val marketName = msg.cryptoCurrency
+    val currentPrice = msg.last
+    val avgsList = averages(marketName)
+    // ema1 shorter period
+    val ema1Prev = avgsList(0).movingAverages(1).ema
+
+    // if the current 24 hour base volume of this market is greater
+    // than the threshold we buy less because these markets
+    // most likely have already spiked from trading activity
+    // we want to assume less risk in these markets so we buy less
+    val quantity =
+    // 2 percent of tradable BTC shall be purchased
+      if (msg.baseVolume > baseVolumeThreshold) (0.02 * maxBTCTradable / currentPrice).toInt
+      // 7 percent for markets that are less volatile
+      else (0.07 * maxBTCTradable / currentPrice).toInt
+
+    val cost = currentPrice * quantity
+
+    // buy signals
+    val bs1 = ema1 > ema2
+    val bs2 = marketWatch.contains(marketName)
+    val bs3 = ema1 > ema1Prev
+    val bs4 = quantity > 0
+    val bs5 = balance > cost
+    val conditions = List(bs1, bs2, bs3, bs4, bs5)
+
+    // if all buy conditions are true
+    if (conditions.reduce( (c1, c2) => c1 && c2)) {
+      marketWatch -= marketName
+      appendOrder(Order(Misc.now(), marketName, currentPrice, quantity, OrderType.buy))
+      buyList += Trade(marketName, Misc.now(), currentPrice, quantity)
+    }
+  }
+
+  def trySell(msg: MarketMessage, ema1: BigDecimal, ema2: BigDecimal): Unit = {
+    val marketName = msg.cryptoCurrency
+    val currentPrice = msg.last
+    val avgsList = averages(marketName)
+    val quantity = getBalance(marketName)
+    val filledOrder = getLastFilledOrder(marketName)
+
+    if (quantity > 0 && filledOrder.nonEmpty && filledOrder.get.side == OrderType.buy) {
+      // sell when the ema1 for this period is less than the previous ema1
+      val ema1Prev = avgsList(0).movingAverages(1).ema
+      val buyPrice = filledOrder.get.price
+      val percent = (currentPrice - buyPrice) / buyPrice
+
+      // sell signals
+      val sc1 = ema1Prev > ema1
+      val sc2 = percent > gainPercentMin
+      val sc3 = (ema1 - ema2) / ema2 < 0.005
+
+      // if the shorter moving average in the previous period is greater
+      // than the current moving average this market is loosing buy momentum
+      // the percent in price must also be greater than our min threshold
+      if (sc1 && sc2 && sc3) {
+        // create a sell order
+        appendOrder(Order(Misc.now(), marketName, currentPrice, quantity, OrderType.sell))
+        sellList += Trade(marketName, Misc.now(), currentPrice, quantity)
+
+//        if (largestWinRecord.percent < percent) {
+//          largestWinRecord = Result(marketName, percent, quantity, buyPrice*quantity, currentPrice)
+//        }
+      } else if (percent < lossPercentMin) {
+        // cut your losses early if the percent of our original buy price is currently
+        // below our loss precent threshold
+        appendOrder(Order(Misc.now(), marketName, currentPrice, quantity, OrderType.sell))
+        sellList += Trade(marketName, Misc.now(), currentPrice, quantity)
+      }
+    }
+  }
+
   def printResults(): Unit = {
-    println(s"Inventory: $inventoryBalance")
+    //println(s"Inventory: $inventoryBalance")
     println(s"Balance: $balance")
-    println(s"Total: $totalBalance")
-    println(s"Buy: $buyCount")
-    println(s"Sell: $sellCount")
+    println(s"Total: ${getTotalBalance()}")
+    println(s"Buy: $totalBuys")
+    println(s"Sell: $totalSells")
     println(s"Wins: $winCount")
     println(s"Losses: $lossCount")
     println(s"Largest Win: $largestWinRecord")
