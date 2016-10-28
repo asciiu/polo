@@ -32,5 +32,11 @@ object MarketStructures {
                    marketName: String,
                    price: BigDecimal,
                    quantity: BigDecimal,
-                   side: models.db.OrderType.Value)
+                   side: models.db.OrderType.Value,
+                   callback: (Order, OffsetDateTime) => Unit)
+
+  case class Trade(marketName: String,
+                   time: OffsetDateTime,
+                   price: BigDecimal,
+                   quantity: BigDecimal)
 }

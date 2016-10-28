@@ -8,6 +8,7 @@ import akka.contrib.pattern.ReceivePipeline.Inner
 import java.time.OffsetDateTime
 import javax.inject.Inject
 
+import models.analytics.{AccountBalances, KitchenSink, OrderFiller}
 import models.market.MarketStructures.{ClosePrice, ExponentialMovingAverage}
 import models.strategies.GoldenCrossStrategy
 import play.api.Configuration
@@ -50,11 +51,8 @@ class PoloniexMarketService @Inject()(val database: DBService,
                                       conf: Configuration) extends Actor
   with ActorLogging
   with ReceivePipeline
-  with MarketCandles
-  with Volume24HourTracking
-  with LastMarketMessage
-  with GoldenCrossStrategy
-  with Archiving {
+  with Archiving
+  with KitchenSink {
 
   import PoloniexMarketService._
   import PoloniexCandleRetrieverService._
@@ -79,6 +77,7 @@ class PoloniexMarketService @Inject()(val database: DBService,
       Inner(msg)
   }
 
+  val strategy = new GoldenCrossStrategy(this)
   val eventBus = PoloniexEventBus()
   val baseVolumeRule = conf.getInt("poloniex.candle.baseVolume").getOrElse(500)
   override val periodMinutes = 5
@@ -92,12 +91,15 @@ class PoloniexMarketService @Inject()(val database: DBService,
   override def postStop() = {
     eventBus.unsubscribe(self, Updates)
     eventBus.unsubscribe(self, Candles)
-    printResults()
+    strategy.printResults()
   }
 
-  def receive = myReceive orElse handleMessageUpdate
+  def receive = myReceive //orElse handleMessageUpdate
 
   def myReceive: Receive = {
+    case msg: MarketMessage =>
+      strategy.handleMessage(msg)
+
     case GetSessionId =>
       sender ! getSessionId
 

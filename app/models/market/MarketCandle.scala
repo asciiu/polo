@@ -32,6 +32,10 @@ class MarketCandle (timestamp: OffsetDateTime,
     this.low = low
   }
 
+  override def toString() = {
+    s"open: $open close: $close low: $low high: $high"
+  }
+
   var open: BigDecimal = 0
   var low: BigDecimal = 0
   var high: BigDecimal = 0

@@ -4,19 +4,17 @@ package models.analytics
 import akka.actor.ActorLogging
 import akka.contrib.pattern.ReceivePipeline
 import akka.contrib.pattern.ReceivePipeline.Inner
-import models.db.OrderType
-
 import scala.collection.mutable.ListBuffer
 
 // internal
 import models.market.MarketStructures.{MarketMessage}
 import models.market.MarketStructures.Order
-import models.db
+import models.db.OrderType
 
 /**
   * Provides DB archiving of messages and candles.
   */
-trait OrderFiller extends ActorLogging {
+trait OrderFiller extends ActorLogging with AccountBalances {
 
   this: ReceivePipeline => pipelineInner {
     case msg: MarketMessage =>
@@ -26,14 +24,6 @@ trait OrderFiller extends ActorLogging {
 
   // maps a market name to the current orders on trade
   private val tradeOrders = scala.collection.mutable.Map[String,  ListBuffer[Order]]()
-  // place this in a AccountBalance trait
-  var balance = BigDecimal(1.0)
-  var totalBuys = 0
-  var totalSells = 0
-
-  // TODO maybe this belongs elsewhere?
-  private val balancesByMarket = scala.collection.mutable.Map[String, BigDecimal]()
-  private val btcBalancesByMarket = scala.collection.mutable.Map[String, BigDecimal]()
 
   // TODO this belongs in another trait
   private val recentFilledOrdersByMarket = scala.collection.mutable.Map[String, Order]()
@@ -52,10 +42,10 @@ trait OrderFiller extends ActorLogging {
 
     if (order.side == OrderType.buy) {
       // subtract from available balance
-      balance -= (order.price * order.quantity)
+      subtractBTCBalance(order.price * order.quantity)
     } else if (order.side == OrderType.sell) {
       // subtract from available market quantity
-      balancesByMarket(marketName) = balancesByMarket(marketName) - order.quantity
+      subtractMarketBalance(marketName, order.quantity)
     }
   }
 
@@ -89,18 +79,6 @@ trait OrderFiller extends ActorLogging {
     }
   }
 
-  def getBalance(marketName: String): BigDecimal = {
-    balancesByMarket.get(marketName) match {
-      case Some(balance) => balance
-      case None => 0.0
-    }
-  }
-
-  def getTotalBalance(): BigDecimal = {
-    val inventory = btcBalancesByMarket.map(_._2).sum
-    balance + inventory
-  }
-
   def getLastFilledOrder(marketName: String): Option[Order] = {
     recentFilledOrdersByMarket.get(marketName)
   }
@@ -115,16 +93,20 @@ trait OrderFiller extends ActorLogging {
             // this means the order has completely filled
             orders -= o
             recentFilledOrdersByMarket += (marketName -> o)
-            balancesByMarket(marketName) = o.quantity + balancesByMarket.getOrElse(marketName, 0)
-            totalBuys += 1
+
+            addMarketBalance(marketName, o.quantity)
+            o.callback(o, msg.time)
+
+            //totalBuys += 1
+            //buyList += Trade(marketName, msg.time, o.price, o.quantity)
 
           } else if (o.side == OrderType.sell && msg.last > o.price) {
             // the last price was greater than our sell price
             // our sell has completely filled
             orders -= o
             recentFilledOrdersByMarket += (marketName -> o)
-            balance += (o.price * o.quantity)
-            totalSells += 1
+            addBTCBalance(o.price * o.quantity)
+            o.callback(o, msg.time)
           }
         }
       case None => List[Order]()
@@ -132,6 +114,7 @@ trait OrderFiller extends ActorLogging {
 
     // update the balances
     if (balancesByMarket.contains(marketName)) {
+
       btcBalancesByMarket(marketName) = balancesByMarket(marketName) * msg.last
     }
   }

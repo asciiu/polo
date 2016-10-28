@@ -6,6 +6,8 @@ import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.contrib.pattern.ReceivePipeline
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source}
+import models.analytics.{Archiving, KitchenSink, OrderFiller}
+import models.market.MarketStructures.Trade
 import models.strategies.GoldenCrossStrategy
 import play.api.libs.json.Json
 import slick.backend.DatabasePublisher
@@ -38,19 +40,15 @@ object PlaybackService{
 class PlaybackService(out: ActorRef, val database: DBService, sessionId: Int)(implicit executionContext: ExecutionContext) extends Actor
   with ActorLogging
   with ReceivePipeline
-  with MarketCandles
-  with Volume24HourTracking
-  with LastMarketMessage
-  with GoldenCrossStrategy {
+  with KitchenSink {
 
   import PlaybackService._
 
   implicit lazy val materializer = ActorMaterializer()
-
-  // TODO this needs to be parameterized some how
-  override val periodMinutes = 5
   var market = ""
   var count = 0
+
+  val strategy = new GoldenCrossStrategy(this)
 
   override def preStart() = {}
 
@@ -58,13 +56,16 @@ class PlaybackService(out: ActorRef, val database: DBService, sessionId: Int)(im
 
   def myReceive: Receive = {
     // send updates from Bitcoin markets only
+    case msg: MarketMessage =>
+      strategy.handleMessage(msg)
+
     case Done =>
       sendTCandles(market)
-      printResults()
+      strategy.printResults()
 
     case marketName: String =>
       if (marketName == "play") {
-        reset()
+        strategy.reset()
         playbackMessages(market)
       }
       else {
@@ -73,7 +74,7 @@ class PlaybackService(out: ActorRef, val database: DBService, sessionId: Int)(im
       }
   }
 
-  def receive = myReceive orElse handleMessageUpdate
+  def receive = myReceive //orElse handleMessageUpdate
 
   def playbackMessages(marketName: String): Unit = {
     val sink = Sink.actorRef[MarketMessage](self, onCompleteMessage = Done)
