@@ -118,7 +118,7 @@ class PoloniexMarketService @Inject()(val database: DBService,
       appendCandles(marketName, candles)
       val closePrices = candles.map( c => ClosePrice(c.time, c.close))
       setAverages(marketName, closePrices)
-      sender ! averages(marketName).map( a => (a.period, a.movingAverages.toList))
+      sender ! allAverages(marketName).map( a => (a.period, a.emas))
 
     /**
       * Returns a List[(Int, BigDecimal)] to the sender

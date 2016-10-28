@@ -24,8 +24,6 @@ trait OrderFiller extends ActorLogging with AccountBalances {
 
   // maps a market name to the current orders on trade
   private val tradeOrders = scala.collection.mutable.Map[String,  ListBuffer[Order]]()
-
-  // TODO this belongs in another trait
   private val recentFilledOrdersByMarket = scala.collection.mutable.Map[String, Order]()
 
   def appendOrder(order: Order) = {
@@ -63,6 +61,10 @@ trait OrderFiller extends ActorLogging with AccountBalances {
         orders.filter(_.side == OrderType.sell).nonEmpty
       case None => false
     }
+  }
+
+  def openBuyOrders(): List[Order] = {
+    tradeOrders.values.flatten.filter(_.side == OrderType.buy).toList
   }
 
   def onOrder(marketName: String): Boolean = {

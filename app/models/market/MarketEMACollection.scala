@@ -30,7 +30,9 @@ class MarketEMACollection(val marketName: String,
   // initial computation
   require(historicClosePrices.length >= period)
 
-  val movingAverages = ListBuffer[ExponentialMovingAverage]()
+  private val movingAverages = ListBuffer[ExponentialMovingAverage]()
+
+  def emas = movingAverages.toList
 
   setAverages(historicClosePrices)
 

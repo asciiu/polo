@@ -17,9 +17,7 @@ class GoldenCrossStrategy(val context: KitchenSink) extends Strategy {
   val baseVolumeAllowable = 50
   val baseVolumeThreshold = 700
   val gainPercentMin = 0.015
-  val lossPercentMin = -0.1
-
-  def totalBalance: BigDecimal = context.getTotalBalance
+  val lossPercentMin = -0.03
 
   case class Result(marketName: String, percent: BigDecimal, quantity: BigDecimal, atBuy: BigDecimal, atSale: BigDecimal) {
     override def toString = {
@@ -38,17 +36,26 @@ class GoldenCrossStrategy(val context: KitchenSink) extends Strategy {
   val markets: ListBuffer[String] = ListBuffer[String]()
 
   def reset() = {
+    totalBuys = 0
+    totalSells = 0
     winCount = 0
     lossCount = 0
     largestWinRecord = Result("", 0, 0, 0, 0)
     largestLoss = Result("", 0, 0, 0, 0)
     markets.clear()
+    context.buyList.clear()
+    context.sellList.clear()
+  }
+
+  def totalBalance: BigDecimal = {
+    val openOrders = context.openBuyOrders()
+    openOrders.foldLeft( context.getTotalBalance() )( (a, o) => a + (o.price*o.quantity))
   }
 
   def printResults(): Unit = {
     //println(s"Inventory: $inventoryBalance")
     println(s"Balance: ${context.balance}")
-    println(s"Total: ${context.getTotalBalance()}")
+    println(s"Total: $totalBalance")
     println(s"Buy: $totalBuys")
     println(s"Sell: $totalSells")
     println(s"Wins: $winCount")
@@ -86,22 +93,17 @@ class GoldenCrossStrategy(val context: KitchenSink) extends Strategy {
   def tryBuy(msg: MarketMessage, ema1: BigDecimal, ema2: BigDecimal) = {
     val marketName = msg.cryptoCurrency
     val currentPrice = msg.last
-    val avgsList = context.averages(marketName)
+    val avgsList = context.allAverages(marketName)
     // ema1 shorter period
-    val ema1Prev = avgsList(0).movingAverages(1).ema
+    val ema1Prev = avgsList(0).emas(1).ema
     // there should be a candle
     val candle = context.getLatestCandle(marketName)
 
     // TODO perhaps read the order book to determine buy price?
     // for now divide the candle height by 4 and add the
     // delta to the candle low
-    val buyPrice = candle match {
-      case Some(c) =>
-        val half = (c.high - c.low) / 4
-        c.low + half
-      case None =>
-        currentPrice
-    }
+    val buyPrice = (currentPrice - ema2) / 2 + ema2
+    //val buyPrice = currentPrice
 
     // if the current 24 hour base volume of this market is greater
     // than the threshold we buy less because these markets
@@ -139,47 +141,58 @@ class GoldenCrossStrategy(val context: KitchenSink) extends Strategy {
   def incrementSellFill(order: Order, fillTime: OffsetDateTime): Unit = {
     totalSells += 1
     context.sellList += Trade(order.marketName, fillTime, order.price, order.quantity)
+    val buyPrice = context.buyList.filter(_.marketName == order.marketName).last.price
+    val percent = (order.price - buyPrice) / buyPrice
+
+    if (percent > 0)  {
+      winCount += 1
+
+      if (largestWinRecord.percent < percent){
+        val quantity = order.quantity
+        largestWinRecord = Result(order.marketName, percent, order.quantity, buyPrice * quantity, order.price * quantity)
+      }
+    }
+
+    if (percent < 0) {
+      lossCount += 1
+
+      if (largestLoss.percent > percent) {
+        val quantity = order.quantity
+        largestLoss = Result(order.marketName, percent, order.quantity, buyPrice * quantity, order.price * quantity)
+      }
+    }
   }
 
   def trySell(msg: MarketMessage, ema1: BigDecimal, ema2: BigDecimal): Unit = {
     val marketName = msg.cryptoCurrency
     val currentPrice = msg.last
-    val avgsList = context.averages(marketName)
+    val avgsList = context.allAverages(marketName)
     val quantity = context.getMarketBalance(marketName)
-    val filledOrder = context.getLastFilledOrder(marketName)
 
-    if (quantity > 0 && filledOrder.nonEmpty && filledOrder.get.side == OrderType.buy) {
+    if (quantity > 0) {
       // sell when the ema1 for this period is less than the previous ema1
-      val ema1Prev = avgsList(0).movingAverages(1).ema
-      val buyPrice = filledOrder.get.price
+      val ema1Prev = avgsList(0).emas(1).ema
+      val buyOrder = context.buyList.filter(_.marketName == marketName).last
+      val buyPrice = buyOrder.price
       val percent = (currentPrice - buyPrice) / buyPrice
 
       // sell signals
       val sc1 = ema1Prev > ema1
       val sc2 = percent > gainPercentMin
       val sc3 = (ema1 - ema2) / ema2 < 0.005
+      val elapsedMinutes = (msg.time.toEpochSecond - buyOrder.time.toEpochSecond) / 60
 
       // if the shorter moving average in the previous period is greater
       // than the current moving average this market is loosing buy momentum
       // the percent in price must also be greater than our min threshold
-      if (sc1) {
+      if (sc2) {
         // create a sell order
         context.appendOrder(Order(msg.time, marketName, currentPrice, quantity, OrderType.sell, incrementSellFill))
-        //sellList += Trade(marketName, msg.time, currentPrice, quantity)
-        //winCount += 1
 
-        //if (largestWinRecord.percent < percent) {
-        //  largestWinRecord = Result(marketName, percent, quantity, buyPrice*quantity, currentPrice*quantity)
-        //}
-      } else if (percent < lossPercentMin) {
+      } else if (percent < 0 && elapsedMinutes > 300) {
         // cut your losses early if the percent of our original buy price is currently
         // below our loss precent threshold
         context.appendOrder(Order(msg.time, marketName, currentPrice, quantity, OrderType.sell, incrementSellFill))
-        //sellList += Trade(marketName, msg.time, currentPrice, quantity)
-        //lossCount += 1
-        //if (largestLoss.percent > percent) {
-        //  largestLoss = Result(marketName, percent, quantity, buyPrice*quantity, currentPrice*quantity)
-        //}
       }
     }
   }

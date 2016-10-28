@@ -30,7 +30,7 @@ class MarketEMACollectionSpec extends FlatSpec with ScalaFutures with BeforeAndA
     val avg = sum / period
 
     val sevenPeriodAverages = new MarketEMACollection("Test", period, minutes, prices.toList)
-    val average = sevenPeriodAverages.movingAverages.head
+    val average = sevenPeriodAverages.emas.head
 
     assert(average.time == prices.head.time)
     assert(average.ema == avg)
@@ -45,7 +45,7 @@ class MarketEMACollectionSpec extends FlatSpec with ScalaFutures with BeforeAndA
     val sum = prices.foldLeft(BigDecimal(0.0))( (a, v) => a + v.price )
 
     val sevenPeriodAverages = new MarketEMACollection("Test", period, minutes, prices.toList)
-    val averages = sevenPeriodAverages.movingAverages
+    val averages = sevenPeriodAverages.emas
     val avg = ema(prices.head.price, averages(1).ema, period)
 
     assert (averages.length == 2)
@@ -67,7 +67,7 @@ class MarketEMACollectionSpec extends FlatSpec with ScalaFutures with BeforeAndA
       sevenPeriodAverages.updateAverages(ClosePrice(t, i))
     }
 
-    val averages = sevenPeriodAverages.movingAverages
+    val averages = sevenPeriodAverages.emas
     val avg = ema(prices.head.price, averages(1).ema, period)
 
     assert (averages.length <= 3)
@@ -88,7 +88,7 @@ class MarketEMACollectionSpec extends FlatSpec with ScalaFutures with BeforeAndA
     val price = 1
     sevenPeriodAverages.updateAverages(ClosePrice(t, price))
 
-    val averages = sevenPeriodAverages.movingAverages
+    val averages = sevenPeriodAverages.emas
     val avg = ema(price, averages(0).ema, period)
 
     assert (averages.length == 3)
@@ -106,7 +106,7 @@ class MarketEMACollectionSpec extends FlatSpec with ScalaFutures with BeforeAndA
     val sum = prices.foldLeft(BigDecimal(0.0))( (a, v) => a + v.price )
 
     val sevenPeriodAverages = new MarketEMACollection("Test", period, minutes, prices.toList)
-    val averages = sevenPeriodAverages.movingAverages
+    val averages = sevenPeriodAverages.emas
 
     val t = prices.head.time.plusMinutes(minutes * skipped + 3)
     val normalizedTime = Misc.roundDateToMinute(t, minutes)

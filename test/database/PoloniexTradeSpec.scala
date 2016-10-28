@@ -5,14 +5,16 @@ import akka.actor.{Actor, ActorSystem, Props}
 import akka.contrib.pattern.ReceivePipeline
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl._
+import models.analytics.KitchenSink
+import models.strategies.FirstCrossStrategy
 import org.scalatest._
+
 import scala.concurrent.{Await, Future, Promise}
 import scala.concurrent.duration._
 
 // internal
 import models.strategies.GoldenCrossStrategy
 import models.market.MarketStructures.MarketMessage
-import models.strategies.TheoreticalPerfectStrategy
 
 
 class PoloniexTradeSpec extends FlatSpec with PoloniexDatabase with BeforeAndAfter {
@@ -31,17 +33,19 @@ class PoloniexTradeSpec extends FlatSpec with PoloniexDatabase with BeforeAndAft
 
       val promise = Promise[BigDecimal]()
 
-      val actor = system.actorOf(Props(new Actor with GoldenCrossStrategy {
+      val actor = system.actorOf(Props(new Actor with KitchenSink {
+        val strategy = new FirstCrossStrategy(this)
+
         setAllMarketAverages(exponentialMovingAverages(List(3, 17)))
 
-        def receive = handleMessageUpdate orElse myReceive
-
-        def myReceive: Receive = {
+        def receive: Receive = {
+          case msg: MarketMessage =>
+            strategy.handleMessage(msg)
           case Done =>
-            printResults()
+            strategy.printResults()
 
             // complete our future with the final balance
-            promise.success(totalBalance)
+            promise.success(strategy.totalBalance)
         }
       }))
 
