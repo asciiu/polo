@@ -8,16 +8,17 @@ $ ->
     return
 
   socket.onmessage = (event) ->
-    chart = $('#candle-chart').highcharts()
-    if (chart == undefined)
-      console.log("no chart")
-      return
 
     # Should be of type MarketMessage in json
     market = JSON.parse(event.data)
 
     # update chart
     name = $('#market-name').html()
+    chart = $('#candle-chart').highcharts()
+    candles = chart.series[0]
+    ema1 = chart.series[1]
+    ema2 = chart.series[2]
+    vol  = chart.series[3]
 
     if (market.cryptoCurrency == name)
       # update the header stats
@@ -27,42 +28,30 @@ $ ->
       $('#td-low').html(market.low24hr.toFixed(8))
 
       # get latest candle from server
-      route = jsRoutes.controllers.PoloniexController.latestCandle(market.cryptoCurrency)
+      route = jsRoutes.controllers.PoloniexController.latestCandle(name)
       $.ajax
         method: route.method
         url: route.url
         success: (result) ->
-          # if latest candle time matches chart latest candle replace the last candle
-          data = chart.series[0].data
-          candles = chart.series[0]
-          ema1 = chart.series[1]
-          ema2 = chart.series[2]
-          vol  = chart.series[3]
-
-          # last candle in chart data
-          last = data[data.length-1]
-
-          if (last.x == undefined)
-            console.log(last)
-
-          time = last.x
-
           # if there is not candle then there's nothing to report
           if (result.length == 0)
             return
 
+          # last candle in chart data
+          last = candles.data[candles.data.length-1]
+          time = last.x
+
           # is the last.name (the candle period) the same as the result candle period?
-          if (last != undefined && result[0] == time)
+          if (result[0] == time)
             last.update({x: result[0], high: result[2], low: result[3], close: result[4]})
 
             # ema1
             if (result[5] != 0)
-              # update the very latest ema1
-              ema1.data[ema1.data.length-1].update({y:result[5]})
+              ema1.data[ema1.data.length-1].update({y: result[5]})
 
             # ema2
             if (result[6] != 0)
-              ema2.data[ema2.data.length-1].update({y:result[6]})
+              ema2.data[ema2.data.length-1].update({y: result[6]})
 
             # 24 hour volume
             if (vol.data.length == 0)
@@ -71,8 +60,9 @@ $ ->
               vol.data[vol.data.length-1].update({y: result[7]})
 
           # new candle period
-          else if (data.length == 0 || result[0] != time)
-            candles.addPoint(result.slice(0, 4), true, true, true)
+          else if (result[0] != time)
+            candle = result.slice(0, 4)
+            candles.addPoint({x: candle[0], open: candle[1], high: candle[2], low: candle[3], close: candle[4]}, true, true, true)
 
             if (result[5] != 0)
               ema1.addPoint({x: result[0], y:result[5]}, true, true, true)
