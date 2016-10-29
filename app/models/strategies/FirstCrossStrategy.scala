@@ -7,6 +7,12 @@ import models.analytics.KitchenSink
 import models.market.MarketStructures.MarketMessage
 import models.market.MarketStructures.Trade
 
+
+/**
+  * This is a hypothetical scenario using the cross of a shorter and longer
+  * ema. Note: no orders are open in this test.
+  * @param context
+  */
 class FirstCrossStrategy(val context: KitchenSink) extends Strategy {
 
   case class Result(marketName: String, percent: BigDecimal, quantity: Int, atCost: BigDecimal, atSale: BigDecimal) {
