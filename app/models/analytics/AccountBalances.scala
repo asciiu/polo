@@ -5,7 +5,7 @@ package models.analytics
   */
 trait AccountBalances {
 
-  var balance = BigDecimal(1.0)
+  private var balance = BigDecimal(1.0)
 
   val balancesByMarket = scala.collection.mutable.Map[String, BigDecimal]()
   val btcBalancesByMarket = scala.collection.mutable.Map[String, BigDecimal]()
@@ -31,4 +31,7 @@ trait AccountBalances {
     val inventory = btcBalancesByMarket.map(_._2).sum
     balance + inventory
   }
+
+  def setAvailableBalance(amount: BigDecimal) = balance = amount
+  def availableBalance = balance
 }

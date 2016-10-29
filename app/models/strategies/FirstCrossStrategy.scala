@@ -14,13 +14,6 @@ import models.market.MarketStructures.Trade
   * @param context
   */
 class FirstCrossStrategy(val context: KitchenSink) extends Strategy {
-
-  case class Result(marketName: String, percent: BigDecimal, quantity: Int, atCost: BigDecimal, atSale: BigDecimal) {
-    override def toString = {
-      s"$marketName percent: ${(percent*100).setScale(2, RoundingMode.CEILING)}% quantity: $quantity atCost: $atCost atSale: $atSale"
-    }
-  }
-
   case class BuyRecord(val price: BigDecimal, val quantity: Int, val atVol: BigDecimal)
   val buyRecords = scala.collection.mutable.Map[String, BuyRecord]()
 

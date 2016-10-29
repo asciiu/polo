@@ -18,13 +18,6 @@ class GoldenCrossStrategy(val context: KitchenSink) extends Strategy {
   val baseVolumeThreshold = 700
   val gainPercentMin = 0.015
   val lossPercentMin = -0.03
-
-  case class Result(marketName: String, percent: BigDecimal, quantity: BigDecimal, atBuy: BigDecimal, atSale: BigDecimal) {
-    override def toString = {
-      s"$marketName percent: ${(percent*100).setScale(2, RoundingMode.CEILING)}% quantity: $quantity atBuy: $atBuy atSale: $atSale"
-    }
-  }
-
   var totalBuys = 0
   var totalSells = 0
   var winCount = 0
@@ -45,6 +38,7 @@ class GoldenCrossStrategy(val context: KitchenSink) extends Strategy {
     markets.clear()
     context.buyList.clear()
     context.sellList.clear()
+    context.setAvailableBalance(1.0)
   }
 
   def totalBalance: BigDecimal = {
@@ -54,7 +48,7 @@ class GoldenCrossStrategy(val context: KitchenSink) extends Strategy {
 
   def printResults(): Unit = {
     //println(s"Inventory: $inventoryBalance")
-    println(s"Balance: ${context.balance}")
+    println(s"Balance: ${context.availableBalance}")
     println(s"Total: $totalBalance")
     println(s"Buy: $totalBuys")
     println(s"Sell: $totalSells")
@@ -122,7 +116,7 @@ class GoldenCrossStrategy(val context: KitchenSink) extends Strategy {
     val bs2 = marketWatch.contains(marketName)
     val bs3 = ema1 > ema1Prev
     val bs4 = quantity > 0
-    val bs5 = context.balance > cost
+    val bs5 = context.availableBalance > cost
     val conditions = List(bs1, bs2, bs3, bs4, bs5)
 
     // if all buy conditions are true
