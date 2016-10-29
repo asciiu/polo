@@ -54,16 +54,17 @@ trait Volume24HourTracking extends ActorLogging {
     */
   def updateVolume(time: OffsetDateTime, marketName: String, btc24HrVolume: BigDecimal) = {
 
+    val normalizedTime = Misc.roundDateToMinute(time, 5)
+
     periodVolumes.get(marketName) match {
       case Some(volumes) =>
         val lastVolume = volumes.head
 
         // update the latest volume
-        if (lastVolume.time.equals(time)) {
-          volumes.remove(0)
-          volumes.insert(0, PeriodVolume(time, btc24HrVolume))
+        if (lastVolume.time.equals(normalizedTime)) {
+          volumes.update(0, PeriodVolume(normalizedTime, btc24HrVolume))
         } else {
-          volumes.insert(0, PeriodVolume(time, btc24HrVolume))
+          volumes.insert(0, PeriodVolume(normalizedTime, btc24HrVolume))
 
           // limit volumes to 24 hours
           if (volumes.length > 288) {
@@ -73,7 +74,7 @@ trait Volume24HourTracking extends ActorLogging {
         }
       case None =>
         val newBuffer = scala.collection.mutable.ListBuffer.empty[PeriodVolume]
-        newBuffer.append(PeriodVolume(time, btc24HrVolume))
+        newBuffer.append(PeriodVolume(normalizedTime, btc24HrVolume))
         periodVolumes.put(marketName, newBuffer)
         log.debug("can't process new volume because the 24 hour volumes was not set")
     }
