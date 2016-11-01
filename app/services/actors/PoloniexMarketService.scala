@@ -12,7 +12,9 @@ import models.analytics.{AccountBalances, KitchenSink, OrderFiller}
 import models.market.MarketStructures.{ClosePrice, ExponentialMovingAverage}
 import models.strategies.{FirstCrossStrategy, GoldenCrossStrategy}
 import play.api.Configuration
+import play.api.libs.ws.WSClient
 
+import scala.concurrent.ExecutionContext
 import scala.language.postfixOps
 
 // internal
@@ -48,7 +50,8 @@ object PoloniexMarketService {
   * This actor is responsible for managing candles for all markets.
   */
 class PoloniexMarketService @Inject()(val database: DBService,
-                                      conf: Configuration) extends Actor
+                                      ws: WSClient,
+                                      conf: Configuration)(implicit ctx: ExecutionContext) extends Actor
   with ActorLogging
   with ReceivePipeline
   with Archiving
@@ -71,13 +74,18 @@ class PoloniexMarketService @Inject()(val database: DBService,
 
         // send a message to the retriever to get the candle data from Poloniex
         // if the 24 hour baseVolume from this update is greater than our threshold
-        eventBus.publish(MarketEvent(NewMarket, QueueMarket(marketName)))
+        //eventBus.publish(MarketEvent(NewMarket, QueueMarket(marketName)))
+        candleService ! QueueMarket(marketName)
       }
 
       Inner(msg)
   }
 
+  val candleService = context.actorOf(PoloniexCandleRetrieverService.props(ws, conf))
+
+  // TODO this will belong in the market actors when that is fully factored out
   val strategy = new FirstCrossStrategy(this)
+
   val eventBus = PoloniexEventBus()
   val baseVolumeRule = conf.getInt("poloniex.candle.baseVolume").getOrElse(500)
   override val periodMinutes = 5
@@ -85,16 +93,14 @@ class PoloniexMarketService @Inject()(val database: DBService,
   override def preStart() = {
     log info "subscribed to market updates"
     eventBus.subscribe(self, Updates)
-    eventBus.subscribe(self, Candles)
   }
 
   override def postStop() = {
     eventBus.unsubscribe(self, Updates)
-    eventBus.unsubscribe(self, Candles)
-    strategy.printResults()
+    //strategy.printResults()
   }
 
-  def receive = myReceive //orElse handleMessageUpdate
+  def receive = myReceive
 
   def myReceive: Receive = {
     case msg: MarketMessage =>

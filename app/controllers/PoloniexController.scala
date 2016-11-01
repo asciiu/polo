@@ -40,7 +40,6 @@ class PoloniexController @Inject()(val database: DBService,
                                    ws: WSClient,
                                    conf: Configuration,
                                    @Named("poloniex-market") marketService: ActorRef,
-                                   @Named("poloniex-candles") candleService: ActorRef,
                                    @Named("poloniex-feed") feedService: ActorRef)
                                   (implicit system: ActorSystem,
                                    materializer: Materializer,

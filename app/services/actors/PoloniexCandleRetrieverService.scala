@@ -1,7 +1,7 @@
 package services.actors
 
 // external
-import akka.actor.{Actor, ActorLogging, Cancellable}
+import akka.actor.{Actor, ActorLogging, ActorRef, Cancellable, Props}
 import java.time.{Instant, OffsetDateTime, ZoneOffset}
 import javax.inject.{Inject, Singleton}
 
@@ -12,7 +12,9 @@ import play.api.libs.functional.syntax._
 import play.api.libs.json.Reads._
 import play.api.libs.json._
 import play.api.libs.ws.WSClient
+import services.DBService
 
+import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.Implicits.global
 
 // internal
@@ -21,6 +23,10 @@ import models.poloniex.{MarketEvent, PoloMarketCandle, PoloniexEventBus}
 
 
 object PoloniexCandleRetrieverService {
+
+  def props(ws: WSClient, conf: Configuration)(implicit context: ExecutionContext): Props =
+    Props(new PoloniexCandleRetrieverService(ws, conf))
+
   trait CandleRetrieverMessage
   case class QueueMarket(marketName: String) extends CandleRetrieverMessage
   case object DequeueMarket extends CandleRetrieverMessage
@@ -31,8 +37,9 @@ object PoloniexCandleRetrieverService {
   * Retrieves candles for markets within the last 24 hours. All candles
   * are of 5 minute periods.
   */
-@Singleton
-class PoloniexCandleRetrieverService @Inject()(ws: WSClient, conf: Configuration) extends Actor with ActorLogging {
+class PoloniexCandleRetrieverService (ws: WSClient, conf: Configuration)(implicit ctx: ExecutionContext)
+  extends Actor with ActorLogging {
+
   import PoloniexCandleRetrieverService._
 
   import scala.concurrent.duration._
@@ -130,7 +137,8 @@ class PoloniexCandleRetrieverService @Inject()(ws: WSClient, conf: Configuration
                   new MarketCandle(cand.date, periodMinutes, cand.open, cand.close, cand.high, cand.low )
                 ).sortBy(_.time).reverse
 
-                eventBus.publish(MarketEvent(PoloniexEventBus.Candles, Candles(marketName, last24HrCandles)))
+                //eventBus.publish(MarketEvent(PoloniexEventBus.Candles, Candles(marketName, last24HrCandles)))
+                context.parent ! Candles(marketName, last24HrCandles)
 
                 // publish closing prices for this market
                 //val closingPrices = MarketCandleClosePrices(marketName, last24HrCandles.map( c => ClosePrice(c.time, c.close)))
