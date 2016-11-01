@@ -10,7 +10,7 @@ import javax.inject.Inject
 
 import models.analytics.{AccountBalances, KitchenSink, OrderFiller}
 import models.market.MarketStructures.{ClosePrice, ExponentialMovingAverage}
-import models.strategies.GoldenCrossStrategy
+import models.strategies.{FirstCrossStrategy, GoldenCrossStrategy}
 import play.api.Configuration
 
 import scala.language.postfixOps
@@ -77,7 +77,7 @@ class PoloniexMarketService @Inject()(val database: DBService,
       Inner(msg)
   }
 
-  val strategy = new GoldenCrossStrategy(this)
+  val strategy = new FirstCrossStrategy(this)
   val eventBus = PoloniexEventBus()
   val baseVolumeRule = conf.getInt("poloniex.candle.baseVolume").getOrElse(500)
   override val periodMinutes = 5
