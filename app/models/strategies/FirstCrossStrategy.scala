@@ -11,6 +11,7 @@ import models.market.MarketStructures.Trade
 /**
   * This is a hypothetical scenario using the cross of a shorter and longer
   * ema. Note: no orders are open in this test.
+  *
   * @param context
   */
 class FirstCrossStrategy(val context: KitchenSink) extends Strategy {
@@ -47,93 +48,94 @@ class FirstCrossStrategy(val context: KitchenSink) extends Strategy {
   def handleMessage(msg: MarketMessage) = {
       val marketName = msg.cryptoCurrency
       val currentPrice = msg.last
+      val emas = context.getLatestMovingAverages(marketName).sortBy(_._1).map( _._2 )
 
-      val avgsList = context.allAverages(marketName)
-      //avgsList.foreach(_.updateAverages(ClosePrice(msg.time, currentPrice)))
+      if (emas.nonEmpty) {
+        val avgsList = context.allAverages(marketName)
+        //avgsList.foreach(_.updateAverages(ClosePrice(msg.time, currentPrice)))
 
-      val emas = avgsList.map( avgs => (avgs.period, avgs.emas.head.ema)).sortBy(_._1)
+        // ema1 shorter period
+        val ema1 = emas.head
+        // ema2 longer period
+        val ema2 = emas.last
 
-      // ema1 shorter period
-      val ema1 = emas.head._2
-      // ema2 longer period
-      val ema2 = emas.last._2
+        // if golden cross (ema short greater than ema long)
+        // and the market was put on watch
+        if (ema1 > ema2 && marketWatch.contains(marketName)) {
 
-      // if golden cross (ema short greater than ema long)
-      // and the market was put on watch
-      if (ema1 > ema2 && marketWatch.contains(marketName)) {
-
-        // if the current 24 hour base volume of this market is greater
-        // than the threshold we buy less because these markets
-        // most likely have already spiked from trading activity
-        // we want to assume less risk in these markets so we buy less
-        val quantity =
+          // if the current 24 hour base volume of this market is greater
+          // than the threshold we buy less because these markets
+          // most likely have already spiked from trading activity
+          // we want to assume less risk in these markets so we buy less
+          val quantity =
           // 2 percent of tradable BTC shall be purchased
-          if (msg.baseVolume > baseVolumeThreshold) (0.02 * maxBTCTradable / currentPrice).toInt
-          // 7 percent for markets that are less volatile
-          else (0.07 * maxBTCTradable / currentPrice).toInt
+            if (msg.baseVolume > baseVolumeThreshold) (0.02 * maxBTCTradable / currentPrice).toInt
+            // 7 percent for markets that are less volatile
+            else (0.07 * maxBTCTradable / currentPrice).toInt
 
-        val cost = currentPrice * quantity
-        val priceDiff = (currentPrice - msg.low24hr) / msg.low24hr
+          val cost = currentPrice * quantity
+          val priceDiff = (currentPrice - msg.low24hr) / msg.low24hr
 
-        // can only buy from a market if there isn't an
-        // existing share that was purchased
-        // we also must have enough in our balance to buy
-        // the market 24 base volume must be greater than are minimum base volume allowable so
-        // we do not buy from markets that aren't trading at volume
-        // finally the price diff from the 24 hr low in this market must be greater than
-        // 5 percent (we do not want to buy from markets on their way down)
-        if (!buyRecords.contains(marketName) && balance > cost &&
-          msg.baseVolume > baseVolumeAllowable && priceDiff > 0.05) {
+          // can only buy from a market if there isn't an
+          // existing share that was purchased
+          // we also must have enough in our balance to buy
+          // the market 24 base volume must be greater than are minimum base volume allowable so
+          // we do not buy from markets that aren't trading at volume
+          // finally the price diff from the 24 hr low in this market must be greater than
+          // 5 percent (we do not want to buy from markets on their way down)
+          if (!buyRecords.contains(marketName) && balance > cost &&
+            msg.baseVolume > baseVolumeAllowable && priceDiff > 0.05) {
 
-          context.buyList.append(Trade(marketName, msg.time, currentPrice, quantity))
-          balance -= cost
-          totalBuys += 1
-          buyRecords(marketName) = BuyRecord(currentPrice, quantity, msg.baseVolume)
-          markets += marketName
-          marketWatch -= marketName
+            context.buyList.append(Trade(marketName, msg.time, currentPrice, quantity))
+            balance -= cost
+            totalBuys += 1
+            buyRecords(marketName) = BuyRecord(currentPrice, quantity, msg.baseVolume)
+            markets += marketName
+            marketWatch -= marketName
+          }
+        } else if (ema1 < ema2) {
+
+          // watch market if the long ema is greater than ema1
+          marketWatch += marketName
         }
-      } else if (ema1 < ema2) {
 
-        // watch market if the long ema is greater than ema1
-        marketWatch += marketName
-      }
+        if (buyRecords.contains(marketName)) {
+          // sell when the ema1 for this period is less than the previous ema1
+          val ema1Curr = ema1
+          val ema1Prev = avgsList(0).emas(1).ema
+          val buyRecord = buyRecords(marketName)
+          //val deltaPrice = currentPrice - buyRecord.price
+          val percent = (currentPrice - buyRecord.price) / buyRecord.price
 
-      if (buyRecords.contains(marketName)) {
-        // sell when the ema1 for this period is less than the previous ema1
-        val ema1Curr = ema1
-        val ema1Prev = avgsList(0).emas(1).ema
-        val buyRecord = buyRecords(marketName)
-        //val deltaPrice = currentPrice - buyRecord.price
-        val percent = (currentPrice - buyRecord.price) / buyRecord.price
+          // if the shorter moving average in the previous period is greater
+          // than the current moving average this market is loosing buy momentum
+          // the percent in price must also be greater than our min threshold
+          if (ema1Prev > ema1Curr && percent > gainPercentMin) {
+            if (percent > largestWinRecord.percent) {
+              largestWinRecord = Result(marketName, percent, buyRecord.quantity, buyRecord.price * buyRecord.quantity, currentPrice * buyRecord.quantity)
+            }
 
-        // if the shorter moving average in the previous period is greater
-        // than the current moving average this market is loosing buy momentum
-        // the percent in price must also be greater than our min threshold
-        if (ema1Prev > ema1Curr && percent > gainPercentMin) {
-          if (percent > largestWinRecord.percent) {
-            largestWinRecord = Result(marketName, percent, buyRecord.quantity, buyRecord.price * buyRecord.quantity, currentPrice*buyRecord.quantity)
+            context.sellList.append(Trade(marketName, msg.time, currentPrice, buyRecord.quantity))
+            winCount += 1
+            totalSells += 1
+            balance += currentPrice * buyRecord.quantity
+            buyRecords.remove(marketName)
+            maxBTCTradable += (currentPrice - buyRecord.price) * buyRecord.quantity
+          } else if (percent < lossPercentMin) {
+            // cut your losses early if the percent of our original buy price is currently
+            // below our loss precent threshold
+
+            if (percent < largestLoss.percent) {
+              largestLoss = Result(marketName, percent, buyRecord.quantity, buyRecord.price * buyRecord.quantity, currentPrice * buyRecord.quantity)
+            }
+
+            context.sellList.append(Trade(marketName, msg.time, currentPrice, buyRecord.quantity))
+            lossCount += 1
+            totalSells += 1
+            balance += currentPrice * buyRecord.quantity
+            buyRecords.remove(marketName)
+            maxBTCTradable += (currentPrice - buyRecord.price) * buyRecord.quantity
           }
-
-          context.sellList.append(Trade(marketName, msg.time, currentPrice, buyRecord.quantity))
-          winCount += 1
-          totalSells += 1
-          balance += currentPrice * buyRecord.quantity
-          buyRecords.remove(marketName)
-          maxBTCTradable += (currentPrice - buyRecord.price) * buyRecord.quantity
-        } else if (percent < lossPercentMin) {
-          // cut your losses early if the percent of our original buy price is currently
-          // below our loss precent threshold
-
-          if (percent < largestLoss.percent) {
-            largestLoss = Result(marketName, percent, buyRecord.quantity, buyRecord.price * buyRecord.quantity, currentPrice*buyRecord.quantity)
-          }
-
-          context.sellList.append(Trade(marketName, msg.time, currentPrice, buyRecord.quantity))
-          lossCount += 1
-          totalSells += 1
-          balance += currentPrice * buyRecord.quantity
-          buyRecords.remove(marketName)
-          maxBTCTradable += (currentPrice - buyRecord.price) * buyRecord.quantity
         }
       }
   }
