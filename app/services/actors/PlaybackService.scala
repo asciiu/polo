@@ -6,15 +6,8 @@ import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.contrib.pattern.ReceivePipeline
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source}
-import models.analytics.individual.KitchenSink
-import models.analytics.theworks.Volume24HourTracking
-import models.analytics.Archiving
-import models.market.MarketStructures.Trade
-import models.strategies.GoldenCrossStrategy
 import play.api.libs.json.Json
 import slick.backend.DatabasePublisher
-import utils.Misc
-
 import scala.math.BigDecimal.RoundingMode
 import scala.concurrent.ExecutionContext
 
@@ -24,11 +17,17 @@ import models.db.Tables._
 import models.db.Tables.profile.api._
 import models.market.MarketCandle
 import models.market.MarketStructures.{ClosePrice, ExponentialMovingAverage, MarketMessage, PeriodVolume}
+import models.analytics.individual.KitchenSink
+import models.market.MarketStructures.Trade
+import models.strategies.GoldenCrossStrategy
 import services.DBService
+import utils.Misc
 
 
 object PlaybackService{
-  def props(out: ActorRef, database: DBService, sessionId: Int)(implicit context: ExecutionContext): Props = Props(new PlaybackService(out, database, sessionId))
+  def props(out: ActorRef, database: DBService, sessionId: Int)(implicit context: ExecutionContext) =
+    Props(new PlaybackService(out, database, sessionId))
+
   case object Done
 }
 

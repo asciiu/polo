@@ -98,28 +98,32 @@ class MarketEMACollectionSpec extends FlatSpec with ScalaFutures with BeforeAndA
 
   it should "add skipped periods" in {
     val minutes = 5
-    val period = 5
+    val period = 7
     val skipped = 20
     val time = Misc.currentTimeRoundedDown(minutes)
-    val prices = (for(i <- 0 to period) yield ClosePrice(time.minusMinutes(minutes * i), BigDecimal(i)))
+
+    val prices = (0 to period).map(i => ClosePrice(time.minusMinutes(minutes * i), BigDecimal(i)))
     val lastPrice = prices.head.price
     val sum = prices.foldLeft(BigDecimal(0.0))( (a, v) => a + v.price )
 
     val sevenPeriodAverages = new MarketEMACollection("Test", period, minutes, prices.toList)
-    val averages = sevenPeriodAverages.emas
+    val originalAverages = sevenPeriodAverages.emas
 
     val t = prices.head.time.plusMinutes(minutes * skipped + 3)
     val normalizedTime = Misc.roundDateToMinute(t, minutes)
-    var lastEMA = averages.head.ema
 
+    // manually compute the average here
+    var lastEMA = originalAverages.head.ema
     for (i <- 0 until skipped - 1) {
       lastEMA = ema(lastPrice, lastEMA, period).setScale(8, RoundingMode.CEILING)
     }
+
     val price = 1
     lastEMA = ema(price, lastEMA, period).setScale(8, RoundingMode.CEILING)
 
-    val before = averages.length
+    val before = sevenPeriodAverages.emas.length
     sevenPeriodAverages.updateAverages(ClosePrice(t, price))
+    val averages = sevenPeriodAverages.emas
 
     assert ( lastEMA == averages.head.ema)
     assert (averages.length == skipped + before)
