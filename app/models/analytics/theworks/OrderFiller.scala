@@ -1,15 +1,16 @@
-package models.analytics
+package models.analytics.theworks
 
 // external
 import akka.actor.ActorLogging
 import akka.contrib.pattern.ReceivePipeline
 import akka.contrib.pattern.ReceivePipeline.Inner
+import models.analytics.AccountBalances
+
 import scala.collection.mutable.ListBuffer
 
 // internal
-import models.market.MarketStructures.{MarketMessage}
-import models.market.MarketStructures.Order
 import models.db.OrderType
+import models.market.MarketStructures.{MarketMessage, Order}
 
 /**
   * Provides DB archiving of messages and candles.

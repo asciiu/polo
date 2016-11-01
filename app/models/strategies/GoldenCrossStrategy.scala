@@ -7,10 +7,9 @@ import models.neuron.NeuralNet
 import utils.Misc
 
 import scala.collection.mutable.ListBuffer
-import scala.math.BigDecimal.RoundingMode
 
 // internal
-import models.analytics.KitchenSink
+import models.analytics.individual.KitchenSink
 import models.db.OrderType
 import models.market.MarketStructures.{MarketMessage, Order, Trade}
 
@@ -70,8 +69,6 @@ class GoldenCrossStrategy(val context: KitchenSink) extends Strategy {
     println(s"Largest Loss: $largestLoss")
     println(s"Winning Markets: \n$winningMarkets")
     println(s"Loosing Markets: \n$loosingMarkets")
-
-    val candles = context.getMarketCandles(markets(0)).reverse
   }
 
   val lastCrossTime = scala.collection.mutable.Map[String, OffsetDateTime]()
@@ -79,37 +76,36 @@ class GoldenCrossStrategy(val context: KitchenSink) extends Strategy {
   def handleMessage(msg: MarketMessage) = {
     val marketName = msg.cryptoCurrency
     markets += marketName
+    val emas = context.getLatestMovingAverages().map( _._2 )
+    val currentCandle = context.getLatestCandle()
 
-      val emas = context.getLatestMovingAverages(marketName).sortBy(_._1).map( _._2 )
-      val currentCandle = context.getLatestCandle(marketName)
+    // we must have averages in order to trade
+    if (emas.nonEmpty && currentCandle.nonEmpty) {
+      val ema1 = emas.head
+      val ema2 = emas.last
+      val candle = currentCandle.get
 
-      // we must have averages in order to trade
-      if (emas.nonEmpty && currentCandle.nonEmpty) {
-        val ema1 = emas.head
-        val ema2 = emas.last
-        val candle = currentCandle.get
+      // these values need to be tracked
+      // so we can fill in the target values for this moment
+      // at a later time
+      val in1 = msg.last
+      val in2 = msg.time
 
-        // these values need to be tracked
-        // so we can fill in the target values for this moment
-        // at a later time
-        val in1 = msg.last
-        val in2 = msg.time
+      // inputs
+      val i1 = ema1 - ema2
+      val i2 = (msg.last - msg.low24hr) / msg.low24hr
+      val i3 = (msg.last - msg.high24hr) / msg.high24hr
+      // candle low
+      val i4 = (msg.last - candle.low) / candle.low
+      // 24 hour percent change
+      val i5 = msg.percentChange
 
-        // inputs
-        val i1 = ema1 - ema2
-        val i2 = (msg.last - msg.low24hr) / msg.low24hr
-        val i3 = (msg.last - msg.high24hr) / msg.high24hr
-        // candle low
-        val i4 = (msg.last - candle.low) / candle.low
-        // 24 hour percent change
-        val i5 = msg.percentChange
+      val inputs = Array(i1, i2, i3, i4, i5)
 
-        val inputs = Array(i1, i2, i3, i4, i5)
+      val thing = Watchamacallit(in2, in1, inputs)
 
-        val thing = Watchamacallit(in2, in1, inputs)
-
-        // neural network should determine
-        // going up by 1% yes or no within 10 - 15 minutes
+      // neural network should determine
+      // going up by 1% yes or no within 10 - 15 minutes
 
 //        thingy.get(marketName) match {
 //          case Some(buffer) =>
@@ -138,17 +134,18 @@ class GoldenCrossStrategy(val context: KitchenSink) extends Strategy {
 
         // what price to trade at
 
-      }
+    }
   }
 
   def tryBuy(msg: MarketMessage, ema1: BigDecimal, ema2: BigDecimal) = {
     val marketName = msg.cryptoCurrency
     val currentPrice = msg.last
-    val avgsList = context.allAverages(marketName)
+    //val avgsList = context.allAverages(marketName)
+    val avgsList = context.getMovingAverages()
     // ema1 shorter period
-    val ema1Prev = avgsList(0).emas(1).ema
+    val ema1Prev = avgsList.head._2(1).ema
     // there should be a candle
-    val candle = context.getLatestCandle(marketName)
+    val candle = context.getLatestCandle()
 
     // TODO perhaps read the order book to determine buy price?
     // for now divide the candle height by 4 and add the
@@ -217,12 +214,12 @@ class GoldenCrossStrategy(val context: KitchenSink) extends Strategy {
   def trySell(msg: MarketMessage, ema1: BigDecimal, ema2: BigDecimal): Unit = {
     val marketName = msg.cryptoCurrency
     val currentPrice = msg.last
-    val avgsList = context.allAverages(marketName)
+    val avgsList = context.getMovingAverages()
     val quantity = context.getMarketBalance(marketName)
 
     if (quantity > 0) {
       // sell when the ema1 for this period is less than the previous ema1
-      val ema1Prev = avgsList(0).emas(1).ema
+      val ema1Prev = avgsList.head._2(1).ema
       val buyOrder = context.buyList.filter(_.marketName == marketName).last
       val buyPrice = buyOrder.price
       val percent = (currentPrice - buyPrice) / buyPrice

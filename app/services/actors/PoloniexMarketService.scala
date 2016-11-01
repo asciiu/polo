@@ -2,30 +2,30 @@ package services.actors
 
 // external
 
-import akka.actor.{Actor, ActorLogging}
+import akka.actor.{Actor, ActorLogging, ActorRef}
 import akka.contrib.pattern.ReceivePipeline
 import akka.contrib.pattern.ReceivePipeline.Inner
 import java.time.OffsetDateTime
 import javax.inject.Inject
 
-import models.analytics.{AccountBalances, KitchenSink, OrderFiller}
-import models.market.MarketStructures.{ClosePrice, ExponentialMovingAverage}
+import models.analytics.theworks.{ExponentialMovingAverages, MarketCandles, Volume24HourTracking}
+import models.analytics.AccountBalances
+import models.market.MarketStructures.{Candles, ClosePrice, ExponentialMovingAverage}
 import models.strategies.{FirstCrossStrategy, GoldenCrossStrategy}
 import play.api.Configuration
+import play.api.libs.ws.WSClient
 
+import scala.concurrent.ExecutionContext
 import scala.language.postfixOps
 
 // internal
-import models.analytics.{LastMarketMessage, Volume24HourTracking}
 import models.market.MarketStructures.MarketMessage
 import models.market.MarketStructures.{Candles => Can}
 import models.poloniex.PoloniexEventBus
 import models.poloniex.PoloniexEventBus._
 import models.poloniex.{MarketEvent}
 import models.market.MarketCandle
-import models.analytics.MarketCandles
 import models.analytics.Archiving
-import models.analytics.ExponentialMovingAverages
 import services.DBService
 
 
@@ -45,101 +45,103 @@ object PoloniexMarketService {
 }
 
 /**
-  * This actor is responsible for managing candles for all markets.
+  * This actor is reponsible for managing all poloniex markets. New
+  * actors for each market should be created here.
   */
 class PoloniexMarketService @Inject()(val database: DBService,
-                                      conf: Configuration) extends Actor
-  with ActorLogging
-  with ReceivePipeline
-  with Archiving
-  with KitchenSink {
+                                      ws: WSClient,
+                                      conf: Configuration)(implicit ctx: ExecutionContext) extends Actor
+  with ActorLogging {
 
   import PoloniexMarketService._
   import PoloniexCandleRetrieverService._
+  import MarketService._
 
-  // This must execute before the interceptors in the other
-  // traits
-  pipelineOuter {
-    // need to catch the update messages first so
-    // we can signal if we need to retrieve the candles
-    case msg: MarketMessage =>
-      val marketName = msg.cryptoCurrency
+  val candleService = context.actorOf(PoloniexCandleRetrieverService.props(ws, conf))
+  val markets = scala.collection.mutable.Map[String, ActorRef]()
 
-      // only care about BTC markets
-      if (marketName.startsWith("BTC") && !marketCandles.contains(marketName) &&
-        msg.baseVolume > baseVolumeRule) {
+  // TODO this will belong in the market actors when that is fully factored out
+  //val strategy = new FirstCrossStrategy(this)
 
-        // send a message to the retriever to get the candle data from Poloniex
-        // if the 24 hour baseVolume from this update is greater than our threshold
-        eventBus.publish(MarketEvent(NewMarket, QueueMarket(marketName)))
-      }
-
-      Inner(msg)
-  }
-
-  val strategy = new FirstCrossStrategy(this)
   val eventBus = PoloniexEventBus()
   val baseVolumeRule = conf.getInt("poloniex.candle.baseVolume").getOrElse(500)
-  override val periodMinutes = 5
 
   override def preStart() = {
     log info "subscribed to market updates"
     eventBus.subscribe(self, Updates)
-    eventBus.subscribe(self, Candles)
   }
 
   override def postStop() = {
     eventBus.unsubscribe(self, Updates)
-    eventBus.unsubscribe(self, Candles)
-    strategy.printResults()
+    //strategy.printResults()
   }
 
-  def receive = myReceive //orElse handleMessageUpdate
+  def receive = myReceive
 
   def myReceive: Receive = {
+    case mc: Candles =>
+      markets(mc.marketName) ! mc
+
     case msg: MarketMessage =>
-      strategy.handleMessage(msg)
+      val marketName = msg.cryptoCurrency
+
+      // only care about BTC markets
+      if (marketName.startsWith("BTC") && !markets.contains(marketName) &&
+        msg.baseVolume > baseVolumeRule) {
+
+        // fire up a new actor per market
+        markets += marketName -> context.actorOf(MarketService.props(marketName, database))
+
+        // send a message to the retriever to get the candle data from Poloniex
+        // if the 24 hour baseVolume from this update is greater than our threshold
+        //eventBus.publish(MarketEvent(NewMarket, QueueMarket(marketName)))
+        candleService ! QueueMarket(marketName)
+      }
+
+      if (markets.contains(marketName)) {
+        markets(marketName) ! msg
+      }
 
     case GetSessionId =>
-      sender ! getSessionId
+      //sender ! getSessionId
 
+    // TODO send the session id to the actors
+      // and have the actors archive the candles
     case StartCapture =>
-      beginSession(marketCandles.map( m => Can(m._1, m._2.toList)).toList)
+      //beginSession(marketCandles.map( m => Can(m._1, m._2.toList)).toList)
     case EndCapture =>
-      endSession()
+      //endSession()
 
     case GetCandles(marketName) =>
-      sender ! getMarketCandles(marketName)
+      markets(marketName) ! SendCandles(sender)
+      //sender ! getMarketCandles(marketName)
 
     case GetLastestCandle(marketName) =>
-      sender ! getLatestCandle(marketName)
+      markets(marketName) ! SendLatestCandle(sender)
+      //sender ! getLatestCandle(marketName)
 
     case SetCandles(marketName, candles) =>
-      appendCandles(marketName, candles)
-      val closePrices = candles.map( c => ClosePrice(c.time, c.close))
-      setAverages(marketName, closePrices)
-      sender ! allAverages(marketName).map( a => (a.period, a.emas))
+//      appendCandles(marketName, candles)
+//      val closePrices = candles.map( c => ClosePrice(c.time, c.close))
+//      setAverages(marketName, closePrices)
+//      sender ! allAverages(marketName).map( a => (a.period, a.emas))
 
-    /**
-      * Returns a List[(Int, BigDecimal)] to the sender
-      */
     case GetLatestMovingAverages(marketName) =>
-      sender ! getLatestMovingAverages(marketName)
+      markets(marketName) ! SendLatestMovingAverages(sender)
+      //sender ! getLatestMovingAverages(marketName)
 
-    /**
-      * Send to original sender the moving averages of a market.
-      * retunrs a List[(Int, List[ExponentialMovingAverage])]
-      */
     case GetMovingAverages(marketName) =>
-      sender ! getMovingAverages(marketName)
+      markets(marketName) ! SendMovingAverages(sender)
+      //sender ! getMovingAverages(marketName)
 
     case GetVolume(marketName, time) =>
-      sender ! getVolume(marketName, time)
+      markets(marketName) ! SendVolume(sender, time)
+      //sender ! getVolume(marketName, time)
 
     case GetVolumes(marketName) =>
-      sender ! getVolumes(marketName)
+      markets(marketName) ! SendVolumes(sender)
 
     case GetLatestMessage(marketName) =>
-      sender ! getLatestMessage(marketName)
+      markets(marketName) ! SendLatestMessage(sender)
   }
 }

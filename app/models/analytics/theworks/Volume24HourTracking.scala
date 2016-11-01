@@ -1,16 +1,14 @@
-package models.analytics
+package models.analytics.theworks
 
-// external
+import java.time.OffsetDateTime
+
 import akka.actor.ActorLogging
 import akka.contrib.pattern.ReceivePipeline
 import akka.contrib.pattern.ReceivePipeline.Inner
-import java.time.OffsetDateTime
-import scala.collection.mutable.ListBuffer
-
-// internal
-import models.market.MarketStructures.PeriodVolume
-import models.market.MarketStructures.MarketMessage
+import models.market.MarketStructures.{MarketMessage, PeriodVolume}
 import utils.Misc
+
+import scala.collection.mutable.ListBuffer
 
 /**
   * Provides DB archiving of messages and candles.
@@ -80,4 +78,3 @@ trait Volume24HourTracking extends ActorLogging {
     }
   }
 }
-

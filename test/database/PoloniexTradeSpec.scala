@@ -5,7 +5,7 @@ import akka.actor.{Actor, ActorSystem, Props}
 import akka.contrib.pattern.ReceivePipeline
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl._
-import models.analytics.KitchenSink
+import models.analytics.theworks.KitchenSink
 import models.strategies.FirstCrossStrategy
 import org.scalatest._
 

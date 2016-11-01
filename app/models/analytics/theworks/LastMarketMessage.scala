@@ -1,15 +1,12 @@
-package models.analytics
+package models.analytics.theworks
 
-// external
 import akka.actor.ActorLogging
 import akka.contrib.pattern.ReceivePipeline
 import akka.contrib.pattern.ReceivePipeline.Inner
-
-// internal
 import models.market.MarketStructures.MarketMessage
 
 /**
-  * Provides DB archiving of messages and candles.
+  * Created by bishop on 11/1/16.
   */
 trait LastMarketMessage extends ActorLogging {
 
@@ -27,4 +24,3 @@ trait LastMarketMessage extends ActorLogging {
 
   def getLatestMessage(marketName: String) = marketSummaries.get(marketName)
 }
-

@@ -1,16 +1,14 @@
-package models.analytics
+package models.analytics.theworks
 
-// external
 import akka.actor.ActorLogging
 import akka.contrib.pattern.ReceivePipeline
 import akka.contrib.pattern.ReceivePipeline.Inner
+import models.market.MarketCandle
+import models.market.MarketStructures.{Candles, ClosePrice, MarketMessage}
+import utils.Misc._
+
 import scala.collection.mutable.ListBuffer
 
-// internal
-import models.market.MarketStructures.ClosePrice
-import models.market.MarketCandle
-import models.market.MarketStructures.{Candles, MarketMessage}
-import utils.Misc._
 
 trait MarketCandles extends ActorLogging {
 

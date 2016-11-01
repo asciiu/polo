@@ -1,8 +1,9 @@
-package models.analytics
+package models.analytics.theworks
 
 import akka.contrib.pattern.ReceivePipeline
-import scala.collection.mutable.ListBuffer
 import models.market.MarketStructures.Trade
+
+import scala.collection.mutable.ListBuffer
 
 
 trait KitchenSink extends ReceivePipeline

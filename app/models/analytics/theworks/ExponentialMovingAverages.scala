@@ -1,18 +1,14 @@
-package models.analytics
+package models.analytics.theworks
 
 // external
 import akka.actor.ActorLogging
 import akka.contrib.pattern.ReceivePipeline
 import akka.contrib.pattern.ReceivePipeline.Inner
-import java.time.OffsetDateTime
-
-import utils.Misc
 
 
 // internal
 import models.market.MarketEMACollection
-import models.market.MarketStructures.MarketMessage
-import models.market.MarketStructures.{ClosePrice, Candles, ExponentialMovingAverage}
+import models.market.MarketStructures.{Candles, ClosePrice, ExponentialMovingAverage, MarketMessage}
 
 trait ExponentialMovingAverages extends ActorLogging {
 

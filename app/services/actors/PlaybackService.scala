@@ -6,13 +6,8 @@ import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.contrib.pattern.ReceivePipeline
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source}
-import models.analytics.{Archiving, KitchenSink, OrderFiller}
-import models.market.MarketStructures.Trade
-import models.strategies.GoldenCrossStrategy
 import play.api.libs.json.Json
 import slick.backend.DatabasePublisher
-import utils.Misc
-
 import scala.math.BigDecimal.RoundingMode
 import scala.concurrent.ExecutionContext
 
@@ -20,14 +15,19 @@ import scala.concurrent.ExecutionContext
 import models.db.Tables
 import models.db.Tables._
 import models.db.Tables.profile.api._
-import models.analytics.{ExponentialMovingAverages, LastMarketMessage, MarketCandles, Volume24HourTracking}
 import models.market.MarketCandle
 import models.market.MarketStructures.{ClosePrice, ExponentialMovingAverage, MarketMessage, PeriodVolume}
+import models.analytics.individual.KitchenSink
+import models.market.MarketStructures.Trade
+import models.strategies.GoldenCrossStrategy
 import services.DBService
+import utils.Misc
 
 
 object PlaybackService{
-  def props(out: ActorRef, database: DBService, sessionId: Int)(implicit context: ExecutionContext): Props = Props(new PlaybackService(out, database, sessionId))
+  def props(out: ActorRef, database: DBService, sessionId: Int)(implicit context: ExecutionContext) =
+    Props(new PlaybackService(out, database, sessionId))
+
   case object Done
 }
 
@@ -45,36 +45,40 @@ class PlaybackService(out: ActorRef, val database: DBService, sessionId: Int)(im
   import PlaybackService._
 
   implicit lazy val materializer = ActorMaterializer()
-  var market = ""
+
+  val marketName = "Variable"
+  var myMarket = ""
   var count = 0
 
   val strategy = new GoldenCrossStrategy(this)
 
-  override def preStart() = {}
+  override def preStart() = {
+    log.info("Started a playback session")
+  }
 
-  override def postStop() = {}
+  override def postStop() = {
+    log.info("Ended a playback session")
+  }
 
-  def myReceive: Receive = {
+  def receive: Receive = {
     // send updates from Bitcoin markets only
     case msg: MarketMessage =>
       strategy.handleMessage(msg)
 
     case Done =>
+      sendTCandles(myMarket)
       strategy.printResults()
-      sendTCandles(market)
 
-    case marketName: String =>
-      if (marketName == "play") {
+    case name: String =>
+      if (name == "play") {
         strategy.reset()
-        playbackMessages(market)
+        playbackMessages(myMarket)
       }
       else {
-        sendCandles(marketName)
-        market = marketName
+        sendCandles(name)
+        myMarket = name
       }
   }
-
-  def receive = myReceive //orElse handleMessageUpdate
 
   def playbackMessages(marketName: String): Unit = {
     val sink = Sink.actorRef[MarketMessage](self, onCompleteMessage = Done)
@@ -132,22 +136,22 @@ class PlaybackService(out: ActorRef, val database: DBService, sessionId: Int)(im
     database.runAsync(queryCandles.result).map { candles =>
       val sortedReverse = candles.reverse
 
-      val marketCandles = sortedReverse.map(c =>
+      val sortedCandles = sortedReverse.map(c =>
         new MarketCandle(c.createdAt, 5, c.open, c.close, c.highestBid, c.lowestAsk)).toList
 
       // clear previously stored market candles
-      this.marketCandles.remove(marketName)
-      appendCandles(marketName, marketCandles)
+      marketCandles.clear()
+      appendCandles(sortedCandles)
 
       val closePrices = sortedReverse.map(c => ClosePrice(c.createdAt, c.close)).toList
-      setAverages(marketName, closePrices)
-      val movingAverages = getMovingAverages(marketName)
+      setAverages(closePrices)
+      val movingAverages = getMovingAverages()
 
       val jsCandles = candles.map { c =>
         val time = c.createdAt.toEpochSecond() * 1000L - 2.16e+7
         val defaultEMA = ExponentialMovingAverage(c.createdAt, BigDecimal(0), 0)
-        val ema1 = movingAverages(0)._2.find( avg => c.createdAt.equals(avg.time)).getOrElse(defaultEMA).ema
-        val ema2 = movingAverages(1)._2.find( avg => c.createdAt.equals(avg.time)).getOrElse(defaultEMA).ema
+        val ema1 = movingAverages.head._2.find( avg => c.createdAt.equals(avg.time)).getOrElse(defaultEMA).ema
+        val ema2 = movingAverages.last._2.find( avg => c.createdAt.equals(avg.time)).getOrElse(defaultEMA).ema
 
         Json.arr(
           // TODO UTF offerset should come from client
@@ -175,16 +179,17 @@ class PlaybackService(out: ActorRef, val database: DBService, sessionId: Int)(im
   }
 
   def sendTCandles(marketName: String) = {
-    val candles = getMarketCandles(marketName)
-    val movingAverages = getMovingAverages(marketName)
-    val vols = getVolumes(marketName)
+    //val candles = getMarketCandles()
+    val candles = getCandles()
+    val movingAverages = getMovingAverages()
+    val vols = getVolumes()
 
     val jsCandles = candles.map { c =>
       val time = c.time.toEpochSecond() * 1000L - 2.16e+7
       val defaultEMA = ExponentialMovingAverage(c.time, BigDecimal(0), 0)
       val defaultTrade = Trade(marketName, c.time, 0, 0)
-      val ema1 = movingAverages(0)._2.find( avg => c.time.equals(avg.time)).getOrElse(defaultEMA).ema
-      val ema2 = movingAverages(1)._2.find( avg => c.time.equals(avg.time)).getOrElse(defaultEMA).ema
+      val ema1 = movingAverages.head._2.find( avg => c.time.equals(avg.time)).getOrElse(defaultEMA).ema
+      val ema2 = movingAverages.last._2.find( avg => c.time.equals(avg.time)).getOrElse(defaultEMA).ema
       val vol = vols.find( vol => c.time.equals(vol.time))
         .getOrElse(PeriodVolume(c.time, 0)).btcVolume.setScale(2, RoundingMode.DOWN)
       val buy = buyList.find( trade => Misc.roundDateToMinute(trade.time, periodMinutes).isEqual(c.time))
