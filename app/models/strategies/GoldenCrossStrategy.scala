@@ -2,10 +2,9 @@ package models.strategies
 
 import java.time.OffsetDateTime
 import scala.collection.mutable.ListBuffer
-import scala.math.BigDecimal.RoundingMode
 
 // internal
-import models.analytics.KitchenSink
+import models.analytics.individual.KitchenSink
 import models.db.OrderType
 import models.market.MarketStructures.{MarketMessage, Order, Trade}
 
@@ -62,7 +61,7 @@ class GoldenCrossStrategy(val context: KitchenSink) extends Strategy {
 
   def handleMessage(msg: MarketMessage) = {
       val marketName = msg.cryptoCurrency
-      val emas = context.getLatestMovingAverages(marketName).sortBy(_._1).map( _._2 )
+      val emas = context.getLatestMovingAverages().map( _._2 )
 
       // we must have averages in order to trade
       if (emas.nonEmpty) {
@@ -87,11 +86,12 @@ class GoldenCrossStrategy(val context: KitchenSink) extends Strategy {
   def tryBuy(msg: MarketMessage, ema1: BigDecimal, ema2: BigDecimal) = {
     val marketName = msg.cryptoCurrency
     val currentPrice = msg.last
-    val avgsList = context.allAverages(marketName)
+    //val avgsList = context.allAverages(marketName)
+    val avgsList = context.getMovingAverages()
     // ema1 shorter period
-    val ema1Prev = avgsList(0).emas(1).ema
+    val ema1Prev = avgsList.head._2(1).ema
     // there should be a candle
-    val candle = context.getLatestCandle(marketName)
+    val candle = context.getLatestCandle()
 
     // TODO perhaps read the order book to determine buy price?
     // for now divide the candle height by 4 and add the
@@ -160,12 +160,12 @@ class GoldenCrossStrategy(val context: KitchenSink) extends Strategy {
   def trySell(msg: MarketMessage, ema1: BigDecimal, ema2: BigDecimal): Unit = {
     val marketName = msg.cryptoCurrency
     val currentPrice = msg.last
-    val avgsList = context.allAverages(marketName)
+    val avgsList = context.getMovingAverages()
     val quantity = context.getMarketBalance(marketName)
 
     if (quantity > 0) {
       // sell when the ema1 for this period is less than the previous ema1
-      val ema1Prev = avgsList(0).emas(1).ema
+      val ema1Prev = avgsList.head._2(1).ema
       val buyOrder = context.buyList.filter(_.marketName == marketName).last
       val buyPrice = buyOrder.price
       val percent = (currentPrice - buyPrice) / buyPrice

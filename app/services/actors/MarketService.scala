@@ -4,10 +4,13 @@ package services.actors
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.contrib.pattern.ReceivePipeline
 import java.time.OffsetDateTime
+
+import models.analytics.individual.KitchenSink
+
 import scala.concurrent.ExecutionContext
 
 // internal
-import models.analytics.{Archiving, KitchenSink2}
+import models.analytics.Archiving
 import models.market.MarketStructures._
 import services.DBService
 
@@ -27,7 +30,7 @@ object MarketService {
 class MarketService(val marketName: String, val database: DBService) extends Actor
   with ActorLogging
   with ReceivePipeline
-  with KitchenSink2
+  with KitchenSink
   with Archiving {
 
   import MarketService._

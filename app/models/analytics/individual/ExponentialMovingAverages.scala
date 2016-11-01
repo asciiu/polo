@@ -1,17 +1,15 @@
-package models.analytics
+package models.analytics.individual
 
-// external
 import akka.actor.ActorLogging
 import akka.contrib.pattern.ReceivePipeline
 import akka.contrib.pattern.ReceivePipeline.Inner
-import services.actors.MarketService
-
-
-// internal
 import models.market.MarketEMACollection
 import models.market.MarketStructures.{Candles, ClosePrice, ExponentialMovingAverage, MarketMessage}
 
-trait ExponentialMovingAverages2 extends ActorLogging {
+/**
+  * Created by bishop on 11/1/16.
+  */
+trait ExponentialMovingAverages extends ActorLogging {
 
   this: ReceivePipeline => pipelineInner {
     case msg: MarketMessage =>
@@ -59,6 +57,7 @@ trait ExponentialMovingAverages2 extends ActorLogging {
 
   /**
     * Returns the latest ema for each period.
+    *
     * @return map of period to ema for that period
     */
   def getLatestMovingAverages(): Map[Int, BigDecimal] = {

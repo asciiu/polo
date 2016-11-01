@@ -8,7 +8,8 @@ import akka.contrib.pattern.ReceivePipeline.Inner
 import java.time.OffsetDateTime
 import javax.inject.Inject
 
-import models.analytics.{AccountBalances, KitchenSink, OrderFiller}
+import models.analytics.theworks.{ExponentialMovingAverages, MarketCandles, Volume24HourTracking}
+import models.analytics.AccountBalances
 import models.market.MarketStructures.{Candles, ClosePrice, ExponentialMovingAverage}
 import models.strategies.{FirstCrossStrategy, GoldenCrossStrategy}
 import play.api.Configuration
@@ -18,16 +19,13 @@ import scala.concurrent.ExecutionContext
 import scala.language.postfixOps
 
 // internal
-import models.analytics.{LastMarketMessage, Volume24HourTracking}
 import models.market.MarketStructures.MarketMessage
 import models.market.MarketStructures.{Candles => Can}
 import models.poloniex.PoloniexEventBus
 import models.poloniex.PoloniexEventBus._
 import models.poloniex.{MarketEvent}
 import models.market.MarketCandle
-import models.analytics.MarketCandles
 import models.analytics.Archiving
-import models.analytics.ExponentialMovingAverages
 import services.DBService
 
 

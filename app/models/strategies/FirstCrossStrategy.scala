@@ -1,9 +1,9 @@
 package models.strategies
 
+import models.analytics.theworks.KitchenSink
+
 import scala.collection.mutable.ListBuffer
 import scala.math.BigDecimal.RoundingMode
-
-import models.analytics.KitchenSink
 import models.market.MarketStructures.MarketMessage
 import models.market.MarketStructures.Trade
 
@@ -14,7 +14,7 @@ import models.market.MarketStructures.Trade
   *
   * @param context
   */
-class FirstCrossStrategy(val context: KitchenSink) extends Strategy {
+class FirstCrossStrategy(val context: KitchenSink) extends GrandfatherStrategy {
   case class BuyRecord(val price: BigDecimal, val quantity: Int, val atVol: BigDecimal)
   val buyRecords = scala.collection.mutable.Map[String, BuyRecord]()
 
