@@ -187,7 +187,7 @@ class PoloniexController @Inject()(val database: DBService,
 
     for {
       candles <- (marketService ? GetCandles(marketName)).mapTo[List[MarketCandle]]
-      movingAverages <- (marketService ? GetMovingAverages(marketName)).mapTo[List[(Int, List[ExponentialMovingAverage])]]
+      movingAverages <- (marketService ? GetMovingAverages(marketName)).mapTo[Map[Int, List[ExponentialMovingAverage]]]
       volume24hr <- (marketService ? GetVolumes(marketName)).mapTo[List[PeriodVolume]]
     } yield {
       val l = candles.map { c =>
@@ -200,8 +200,8 @@ class PoloniexController @Inject()(val database: DBService,
           c.high,
           c.low,
           c.close,
-          movingAverages(0)._2.find( avg => c.time.equals(avg.time)).getOrElse(defaultEMA).ema,
-          movingAverages(1)._2.find( avg => c.time.equals(avg.time)).getOrElse(defaultEMA).ema,
+          movingAverages.head._2.find( avg => c.time.equals(avg.time)).getOrElse(defaultEMA).ema,
+          movingAverages.last._2.find( avg => c.time.equals(avg.time)).getOrElse(defaultEMA).ema,
           volume24hr.find( vol => c.time.equals(vol.time)).getOrElse(PeriodVolume(c.time, 0)).btcVolume.setScale(2, RoundingMode.DOWN)
         )
       }
@@ -221,13 +221,13 @@ class PoloniexController @Inject()(val database: DBService,
     // TODO this will fail if the first future returns a None
     for {
       candle <- (marketService ? GetLastestCandle(marketName)).mapTo[Option[MarketCandle]]
-      averages <- (marketService ? GetLatestMovingAverages(marketName)).mapTo[List[(Int, BigDecimal)]]
+      averages <- (marketService ? GetLatestMovingAverages(marketName)).mapTo[Map[Int, BigDecimal]]
       volume24hr <- (marketService ? GetVolume(marketName, candle.get.time)).mapTo[PeriodVolume]
     } yield {
       val df = DateTimeFormat.forPattern("MMM dd HH:mm")
 
       val info = candle match {
-        case Some(c) if averages.length == 2 =>
+        case Some(c) if averages.keySet.size == 2 =>
             Json.arr(
               // TODO UTF offerset should come from client
               c.time.toEpochSecond() * 1000L - 2.16e+7,
@@ -235,8 +235,8 @@ class PoloniexController @Inject()(val database: DBService,
               c.high,
               c.low,
               c.close,
-              averages(0)._2,
-              averages(1)._2,
+              averages.head._2,
+              averages.last._2,
               volume24hr.btcVolume.setScale(2, RoundingMode.DOWN)
             )
         case _ =>
