@@ -1,6 +1,11 @@
 package models.strategies
 
 import java.time.OffsetDateTime
+
+import models.market.MarketCandle
+import models.neuron.NeuralNet
+import utils.Misc
+
 import scala.collection.mutable.ListBuffer
 import scala.math.BigDecimal.RoundingMode
 
@@ -11,6 +16,10 @@ import models.market.MarketStructures.{MarketMessage, Order, Trade}
 
 
 class GoldenCrossStrategy(val context: KitchenSink) extends Strategy {
+
+  case class Watchamacallit(time: OffsetDateTime, price: BigDecimal, inputs: Array[BigDecimal], var targetPercent: BigDecimal = 0)
+  val thingy = scala.collection.mutable.Map[String, ListBuffer[Watchamacallit]]()
+
 
   val marketWatch = scala.collection.mutable.Set[String]()
   val maxBTCTradable: BigDecimal = 1.0
@@ -27,6 +36,8 @@ class GoldenCrossStrategy(val context: KitchenSink) extends Strategy {
   val winningMarkets = ListBuffer[String]()
   val loosingMarkets = ListBuffer[String]()
   val markets: ListBuffer[String] = ListBuffer[String]()
+
+  val neuralNet = new NeuralNet(Array(3, 4, 2))
 
   def reset() = {
     totalBuys = 0
@@ -47,6 +58,7 @@ class GoldenCrossStrategy(val context: KitchenSink) extends Strategy {
   }
 
   def printResults(): Unit = {
+    // get all highs in candles
     //println(s"Inventory: $inventoryBalance")
     println(s"Balance: ${context.availableBalance}")
     println(s"Total: $totalBalance")
@@ -58,29 +70,74 @@ class GoldenCrossStrategy(val context: KitchenSink) extends Strategy {
     println(s"Largest Loss: $largestLoss")
     println(s"Winning Markets: \n$winningMarkets")
     println(s"Loosing Markets: \n$loosingMarkets")
+
+    val candles = context.getMarketCandles(markets(0)).reverse
   }
 
+  val lastCrossTime = scala.collection.mutable.Map[String, OffsetDateTime]()
+
   def handleMessage(msg: MarketMessage) = {
-      val marketName = msg.cryptoCurrency
+    val marketName = msg.cryptoCurrency
+    markets += marketName
+
       val emas = context.getLatestMovingAverages(marketName).sortBy(_._1).map( _._2 )
+      val currentCandle = context.getLatestCandle(marketName)
 
       // we must have averages in order to trade
-      if (emas.nonEmpty) {
+      if (emas.nonEmpty && currentCandle.nonEmpty) {
         val ema1 = emas.head
         val ema2 = emas.last
+        val candle = currentCandle.get
 
-        tryBuy(msg, ema1, ema2)
-        trySell(msg, ema1, ema2)
+        // these values need to be tracked
+        // so we can fill in the target values for this moment
+        // at a later time
+        val in1 = msg.last
+        val in2 = msg.time
 
-        // forecast markets that satisfy these conditions
-        val fc1 = ema1 < ema2
-        val fc2 = !context.onOrder(marketName)
-        val fc3 = msg.baseVolume > baseVolumeAllowable
-        val fc4 = context.getMarketBalance(marketName) == 0
-        if (fc1 && fc2 && fc3 && fc4) {
-          // begin monitoring this market for entry
-          marketWatch += marketName
-        }
+        // inputs
+        val i1 = ema1 - ema2
+        val i2 = (msg.last - msg.low24hr) / msg.low24hr
+        val i3 = (msg.last - msg.high24hr) / msg.high24hr
+        // candle low
+        val i4 = (msg.last - candle.low) / candle.low
+        // 24 hour percent change
+        val i5 = msg.percentChange
+
+        val inputs = Array(i1, i2, i3, i4, i5)
+
+        val thing = Watchamacallit(in2, in1, inputs)
+
+        // neural network should determine
+        // going up by 1% yes or no within 10 - 15 minutes
+
+//        thingy.get(marketName) match {
+//          case Some(buffer) =>
+//            buffer.append(thing)
+//
+//            // next we need to update the thing from 5 minutes ago
+//            val time = msg.time.minusMinutes(15)
+//            buffer.filter( t => t.time.isBefore(time) && t.targetPercent == 0).foreach{ t =>
+//              val percent = msg.last - t.price / t.price
+//              t.targetPercent = percent
+//              buffer -= t
+//            }
+//
+//          case None =>
+//            thingy += marketName -> ListBuffer(thing)
+//        }
+
+
+        // TODO add the message count in this period
+
+
+        // buy or sell
+
+        // buy or sell
+        // max percent gain per day
+
+        // what price to trade at
+
       }
   }
 

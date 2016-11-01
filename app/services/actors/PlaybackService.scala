@@ -60,8 +60,8 @@ class PlaybackService(out: ActorRef, val database: DBService, sessionId: Int)(im
       strategy.handleMessage(msg)
 
     case Done =>
-      sendTCandles(market)
       strategy.printResults()
+      sendTCandles(market)
 
     case marketName: String =>
       if (marketName == "play") {
