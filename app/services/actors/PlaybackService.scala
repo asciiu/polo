@@ -72,6 +72,7 @@ class PlaybackService(out: ActorRef, val database: DBService, sessionId: Int)(im
     case name: String =>
       if (name == "play") {
         strategy.reset()
+        strategy.train()
         playbackMessages(myMarket)
       }
       else {

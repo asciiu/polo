@@ -16,6 +16,7 @@ trait Strategy {
   def handleMessage(msg: MarketMessage)
   def printResults()
   def reset()
+  def train()
 
   case class Result(marketName: String, percent: BigDecimal, quantity: BigDecimal, atBuy: BigDecimal, atSale: BigDecimal) {
     override def toString = {

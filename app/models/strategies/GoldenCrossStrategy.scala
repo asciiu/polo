@@ -19,7 +19,6 @@ class GoldenCrossStrategy(val context: KitchenSink) extends Strategy {
   case class Watchamacallit(time: OffsetDateTime, price: BigDecimal, inputs: Array[BigDecimal], var targetPercent: BigDecimal = 0)
   val thingy = scala.collection.mutable.Map[String, ListBuffer[Watchamacallit]]()
 
-
   val marketWatch = scala.collection.mutable.Set[String]()
   val maxBTCTradable: BigDecimal = 1.0
   val baseVolumeAllowable = 50
@@ -36,7 +35,7 @@ class GoldenCrossStrategy(val context: KitchenSink) extends Strategy {
   val loosingMarkets = ListBuffer[String]()
   val markets: ListBuffer[String] = ListBuffer[String]()
 
-  val neuralNet = new NeuralNet(Array(3, 4, 2))
+  val neuralNet = new NeuralNet(Array(4, 5, 1))
 
   def reset() = {
     totalBuys = 0
@@ -49,6 +48,26 @@ class GoldenCrossStrategy(val context: KitchenSink) extends Strategy {
     context.buyList.clear()
     context.sellList.clear()
     context.setAvailableBalance(1.0)
+    context.resetAllBalances()
+    context.cancelOrders()
+  }
+
+  def train() = {
+    val candles = context.getCandles()
+    val data = (0 until candles.length-5).map { i =>
+      val pack5 = candles.slice(i, i + 5)
+
+      pack5.map( c => (c.close-c.open)/(c.open))
+    }.toList
+
+    (0 to 2000).foreach { i =>
+      data.foreach { s =>
+        val inputs = s.take(s.length - 1).map(_.toDouble).toArray
+        val output = Array(s.last.toDouble)
+        neuralNet.feedForward(inputs)
+        neuralNet.backProp(output)
+      }
+    }
   }
 
   def totalBalance: BigDecimal = {
@@ -71,69 +90,20 @@ class GoldenCrossStrategy(val context: KitchenSink) extends Strategy {
     println(s"Loosing Markets: \n$loosingMarkets")
   }
 
-  val lastCrossTime = scala.collection.mutable.Map[String, OffsetDateTime]()
+  var onOrder = false
 
   def handleMessage(msg: MarketMessage) = {
     val marketName = msg.cryptoCurrency
-    markets += marketName
-    val emas = context.getLatestMovingAverages().map( _._2 )
-    val currentCandle = context.getLatestCandle()
+    val balance = context.getMarketBalance(marketName)
 
-    // we must have averages in order to trade
-    if (emas.nonEmpty && currentCandle.nonEmpty) {
-      val ema1 = emas.head
-      val ema2 = emas.last
-      val candle = currentCandle.get
+    val inputs = context.marketCandles.take(4).reverse.map(c => (c.close-c.open)/c.open).map(_.toDouble).toArray
+    neuralNet.feedForward(inputs)
+    val result = neuralNet.getResults().head
 
-      // these values need to be tracked
-      // so we can fill in the target values for this moment
-      // at a later time
-      val in1 = msg.last
-      val in2 = msg.time
-
-      // inputs
-      val i1 = ema1 - ema2
-      val i2 = (msg.last - msg.low24hr) / msg.low24hr
-      val i3 = (msg.last - msg.high24hr) / msg.high24hr
-      // candle low
-      val i4 = (msg.last - candle.low) / candle.low
-      // 24 hour percent change
-      val i5 = msg.percentChange
-
-      val inputs = Array(i1, i2, i3, i4, i5)
-
-      val thing = Watchamacallit(in2, in1, inputs)
-
-      // neural network should determine
-      // going up by 1% yes or no within 10 - 15 minutes
-
-//        thingy.get(marketName) match {
-//          case Some(buffer) =>
-//            buffer.append(thing)
-//
-//            // next we need to update the thing from 5 minutes ago
-//            val time = msg.time.minusMinutes(15)
-//            buffer.filter( t => t.time.isBefore(time) && t.targetPercent == 0).foreach{ t =>
-//              val percent = msg.last - t.price / t.price
-//              t.targetPercent = percent
-//              buffer -= t
-//            }
-//
-//          case None =>
-//            thingy += marketName -> ListBuffer(thing)
-//        }
-
-
-        // TODO add the message count in this period
-
-
-        // buy or sell
-
-        // buy or sell
-        // max percent gain per day
-
-        // what price to trade at
-
+    if (result > 0.01 && !context.onOrder(marketName)) {
+      context.appendOrder(Order(msg.time, marketName, msg.last, 10, OrderType.buy, incrementBuyFill))
+    } else if (result < -0.01 && context.getMarketBalance(marketName) > 0) {
+      context.appendOrder(Order(msg.time, marketName, msg.last, balance, OrderType.sell, incrementSellFill))
     }
   }
 

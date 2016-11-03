@@ -56,6 +56,10 @@ trait OrderFiller extends ActorLogging with AccountBalances {
     }
   }
 
+  def cancelOrders() = {
+    tradeOrders.clear()
+  }
+
   def onSellOrder(marketName: String): Boolean = {
     tradeOrders.get(marketName) match {
       case Some(orders) if orders.nonEmpty =>

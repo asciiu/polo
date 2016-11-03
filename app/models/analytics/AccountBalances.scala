@@ -33,5 +33,8 @@ trait AccountBalances {
   }
 
   def setAvailableBalance(amount: BigDecimal) = balance = amount
+  def resetAllBalances() = {
+    btcBalancesByMarket.clear()
+  }
   def availableBalance = balance
 }
