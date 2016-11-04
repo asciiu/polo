@@ -1,17 +1,39 @@
 $ ->
+  ########################################################################
+  # selectPointsByDrag - selects candle data via drag and draws a
+  # rectangle around graph region. This should be invoked after
+  # a drag event. Refer to the chart events.
+  ########################################################################
   selectPointsByDrag = (e) ->
-    # Select points
-    series = @series[0]
-    Highcharts.each series.points, (point) ->
-      if point.x >= e.xAxis[0].min and point.x <= e.xAxis[0].max
-        point.select true, true
+    points = @series[0].points.filter (point) ->
+      point.x >= e.xAxis[0].min and point.x <= e.xAxis[0].max
 
+    points.forEach (point) ->
+      point.select(true, true)
+
+    open = points[0].open
+    close = points[points.length-1].close
+
+    # percent change in this selected period
+    percent = (close - open) / open
+    # lowest value
+    low = Math.min.apply(null, (points.map (p) -> p.low))
+    # highest value
+    high = Math.max.apply(null, (points.map (p) -> p.high))
+
+    console.log('percent: ' + percent + ' high: ' + high + ' low: ' + low + ' close: ' + close)
+
+    # series 0 will be the first series - candle - of our chart
+    #Highcharts.each @series[0].points, (point) ->
+    #  if point.x >= e.xAxis[0].min and point.x <= e.xAxis[0].max
+    #    point.select true, true
+
+    # min and max of selection area
     xMin = chart.xAxis[0].translate((e.xAxis[0]||chart.xAxis[0]).min)
     xMax = chart.xAxis[0].translate((e.xAxis[0]||chart.xAxis[0]).max)
     yMin = chart.yAxis[0].translate((e.yAxis[0]||chart.yAxis[0]).min)
     yMax = chart.yAxis[0].translate((e.yAxis[0]||chart.yAxis[0]).max)
 
-    console.log(chart.plotHeight)
     rectangle.attr({
       x: xMin + chart.plotLeft,
       y: chart.plotTop,
@@ -21,18 +43,26 @@ $ ->
 
     # Fire a custom event
     #Highcharts.fireEvent this, 'selectedpoints', points: @getSelectedPoints()
-    return false
-    # Don't zoom
 
-  ###*
-  # The handler for a custom event, fired from selection event
-  ###
+    # return false to cancel zoom
+    return false
+
+
+  ########################################################################
+  # selectPointsByDrag - selects candle data via drag and draws a
+  # rectangle around graph region
+  ########################################################################
   selectedPoints = (e) ->
     console.log('toast')
     # Show a label
     #toast this, '<b>' + e.points.length + ' points selected.</b>' + '<br>Click on empty space to deselect.'
     return
 
+
+  ########################################################################
+  # selectPointsByDrag - selects candle data via drag and draws a
+  # rectangle around graph region
+  ########################################################################
   unselectByClick = (event) ->
     points = @getSelectedPoints()
     if points.length > 0
@@ -43,10 +73,41 @@ $ ->
 
     return
 
+
+  mouseOver = (event) ->
+    console.log('here')
+
+  ########################################################################
+  # selectPointsByDrag - selects candle data via drag and draws a
+  # rectangle around graph region
+  ########################################################################
   Highcharts.stockChart 'candle-chart', {
     title: text: 'Captured Data'
     exporting: enabled: false
-    tooltip: enabled: false
+
+    tooltip: {
+      enabled: true,
+      positioner: (labelWidth, labelHeight, point) ->
+        return { x: chart.plotWidth - labelWidth + chart.plotLeft, y: 39 }
+      shadow: false,
+      borderWidth: 0,
+      backgroundColor: 'rgba(255,255,255,0.8)',
+      formatter: () ->
+        x = this.x
+        point = this.points.find (p) -> x == p.x
+        point = point.point
+
+        open = point.open.toFixed(8)
+        high = point.high.toFixed(8)
+        low = point.low.toFixed(8)
+        close = point.close.toFixed(8)
+
+        s = '<b>O: '  + open + ' H: ' + high + ' L: ' + low + ' C: ' + close + '</b>'
+
+        return s
+      shared: true
+    }
+
     chart: {
       events: {
         click: unselectByClick
@@ -88,7 +149,7 @@ $ ->
           select: {
             color: 'rgba(255,255,255, 1.0)'
           }
-        }
+        },
       },
       candlestick: {
         color: 'rgba(255, 102, 102, .7)'
@@ -123,13 +184,21 @@ $ ->
     yAxis: [{
       labels: {
           align: 'left',
-          x: 10
-      },
-      title: {
-          text: '5 Minute Candles'
+          x: 5,
+          padding: 0,
+          format: '{value:.4f}'
       },
       height: '80%',
       lineWidth: 1
+      crosshair: {
+        snap: false,
+        label: {
+          align: 'left',
+          enabled: true,
+          format: '{value:.4f}',
+          padding: 4
+        }
+      }
     }, {
       labels: {
           align: 'left',

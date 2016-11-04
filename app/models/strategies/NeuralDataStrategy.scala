@@ -129,7 +129,7 @@ class NeuralDataStrategy(val context: KitchenSink) extends Strategy {
       if (results.filter(_ > .90).length == 1 &&
       results.filter(_.abs < .01).length == outputs-1) {
         println(results.deep.mkString(" "))
-        context.sellList.append(Trade(marketName, set.head.time, set.head.open, 1))
+        //context.sellList.append(Trade(marketName, set.head.time, set.head.open, 1))
         //println(percentGain)
       }
     }
