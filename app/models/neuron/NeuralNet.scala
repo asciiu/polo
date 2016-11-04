@@ -58,7 +58,7 @@ class NeuralNet(val typology: Array[Int]) {
     val outputLayer = layers.last
 
     // must have enough vals for each output neuron minus the bias neuron
-    require (targetVals.length == outputLayer.neurons.length - 1)
+    require (targetVals.length == outputLayer.neurons.length-1)
 
     error = 0.0
 

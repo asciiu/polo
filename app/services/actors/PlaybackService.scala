@@ -19,7 +19,7 @@ import models.market.MarketCandle
 import models.market.MarketStructures.{ClosePrice, ExponentialMovingAverage, MarketMessage, PeriodVolume}
 import models.analytics.individual.KitchenSink
 import models.market.MarketStructures.Trade
-import models.strategies.GoldenCrossStrategy
+import models.strategies.NeuralDataStrategy
 import services.DBService
 import utils.Misc
 
@@ -50,7 +50,12 @@ class PlaybackService(out: ActorRef, val database: DBService, sessionId: Int)(im
   var myMarket = ""
   var count = 0
 
-  val strategy = new GoldenCrossStrategy(this)
+  // TODO this will eventually exercise some trade strategy based upon pattern
+  // recognition
+  //val strategy = new GoldenCrossStrategy(this)
+  val strategy = new NeuralDataStrategy(this)
+
+
 
   override def preStart() = {
     log.info("Started a playback session")
@@ -63,22 +68,27 @@ class PlaybackService(out: ActorRef, val database: DBService, sessionId: Int)(im
   def receive: Receive = {
     // send updates from Bitcoin markets only
     case msg: MarketMessage =>
-      strategy.handleMessage(msg)
+      //strategy.handleMessage(msg)
 
     case Done =>
+      analyzeCandles()
       sendTCandles(myMarket)
-      strategy.printResults()
+      //strategy.printResults()
 
     case name: String =>
+      // TODO there is better way to do this
       if (name == "play") {
         strategy.reset()
-        strategy.train()
+        //strategy.train()
         playbackMessages(myMarket)
-      }
-      else {
-        sendCandles(name)
+      } else {
         myMarket = name
+        sendCandles(name)
       }
+  }
+
+  def analyzeCandles(): Unit = {
+    strategy.createDataFromCandles(myMarket)
   }
 
   def playbackMessages(marketName: String): Unit = {

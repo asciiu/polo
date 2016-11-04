@@ -11,7 +11,7 @@ import javax.inject.Inject
 import models.analytics.theworks.{ExponentialMovingAverages, MarketCandles, Volume24HourTracking}
 import models.analytics.AccountBalances
 import models.market.MarketStructures.{Candles, ClosePrice, ExponentialMovingAverage}
-import models.strategies.{FirstCrossStrategy, GoldenCrossStrategy}
+import models.strategies.{FirstCrossStrategy}
 import play.api.Configuration
 import play.api.libs.ws.WSClient
 

@@ -72,9 +72,11 @@ trait ExponentialMovingAverages extends ActorLogging {
     * Returns the moving averages for this market.
     *
     * @return a map of period to exponential moving averages for that period
+    *         list of ExponentialMovingAverages are ordered with most recent first
     */
   def getMovingAverages(): Map[Int, List[ExponentialMovingAverage]] = {
     if (averages.nonEmpty) {
+
       averages.map(a => a.period -> a.emas).toMap
     } else {
       Map.empty[Int, List[ExponentialMovingAverage]]

@@ -28,6 +28,16 @@ object MarketStructures {
                            high24hr: BigDecimal,
                            low24hr: BigDecimal)
 
+  /**
+    * Represents an Order.
+    * @param time
+    * @param marketName
+    * @param price
+    * @param quantity
+    * @param side
+    * @param callback a callback function that is invoked when the order is filled.
+    *                 example: def incrementSellFill(order: Order, fillTime: OffsetDateTime)
+    */
   case class Order(time: OffsetDateTime,
                    marketName: String,
                    price: BigDecimal,
