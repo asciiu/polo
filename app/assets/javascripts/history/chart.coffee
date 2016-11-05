@@ -15,13 +15,13 @@ $ ->
     close = points[points.length-1].close
 
     # percent change in this selected period
-    percent = (close - open) / open
+    percent = ((close - open) / open) * 100
     # lowest value
     low = Math.min.apply(null, (points.map (p) -> p.low))
     # highest value
     high = Math.max.apply(null, (points.map (p) -> p.high))
 
-    console.log('percent: ' + percent + ' high: ' + high + ' low: ' + low + ' close: ' + close)
+    str = 'C: ' + percent.toFixed(2) + ' %<br/>H: ' + high.toFixed(8) + '<br/>L: ' + low.toFixed(8)
 
     # series 0 will be the first series - candle - of our chart
     #Highcharts.each @series[0].points, (point) ->
@@ -33,6 +33,12 @@ $ ->
     xMax = chart.xAxis[0].translate((e.xAxis[0]||chart.xAxis[0]).max)
     yMin = chart.yAxis[0].translate((e.yAxis[0]||chart.yAxis[0]).min)
     yMax = chart.yAxis[0].translate((e.yAxis[0]||chart.yAxis[0]).max)
+
+    chart.lbl.attr({
+      text: str,
+      x: xMin + chart.plotLeft,
+      y: chart.plotTop,
+    })
 
     rectangle.attr({
       x: xMin + chart.plotLeft,
@@ -82,16 +88,27 @@ $ ->
   # rectangle around graph region
   ########################################################################
   Highcharts.stockChart 'candle-chart', {
-    title: text: 'Captured Data'
-    exporting: enabled: false
 
+    title: {
+      text: 'Captured Data'
+      style: {
+        font: 'bold 16px "Trebuchet MS", Verdana, sans-serif'
+        color: '#FFF'
+      }
+    }
+
+    exporting: enabled: false
+    credits: enabled: false
     tooltip: {
+      style: {
+        color: '#FFF'
+      }
       enabled: true,
       positioner: (labelWidth, labelHeight, point) ->
         return { x: chart.plotWidth - labelWidth + chart.plotLeft, y: 39 }
       shadow: false,
       borderWidth: 0,
-      backgroundColor: 'rgba(255,255,255,0.8)',
+      backgroundColor: 'rgba(30, 43, 52, 1.0)'
       formatter: () ->
         x = this.x
         point = this.points.find (p) -> x == p.x
@@ -101,8 +118,9 @@ $ ->
         high = point.high.toFixed(8)
         low = point.low.toFixed(8)
         close = point.close.toFixed(8)
+        date = Highcharts.dateFormat('%b %e %Y %H:%M', new Date(this.x))
 
-        s = '<b>O: '  + open + ' H: ' + high + ' L: ' + low + ' C: ' + close + '</b>'
+        s = '<b>'+date + ' O:</b> '  + open + ' <b>H:</b> ' + high + '<b> L:</b> ' + low + '<b> C: </b>' + close
 
         return s
       shared: true
@@ -115,7 +133,13 @@ $ ->
         selectedpoints: selectedPoints
       }
       zoomType: 'xy'
+      backgroundColor: 'rgba(30, 43, 52, 1.0)'
+      style: {
+        fontFamily: 'monospace',
+        color: "#FFF"
+      }
     }
+
     rangeSelector : {
       buttons : [{
           type : 'hour',
@@ -147,15 +171,20 @@ $ ->
         allowPointSelect: true,
         states: {
           select: {
-            color: 'rgba(255,255,255, 1.0)'
+            color: 'rgba(255, 255, 255, 0.0)'
           }
-        },
+        }
+        point: {
+          events: {
+            select: (e) ->
+          }
+        }
       },
       candlestick: {
-        color: 'rgba(255, 102, 102, .7)'
+        color: 'rgba(255, 102, 102, 1)'
         lineColor: 'rgba(255, 102, 102, 1)'
-        upColor: 'rgba(112, 219, 112, .7)'
-        upLineColor: 'rgba(112, 219, 112, 1)'
+        upColor: 'rgba(112, 219, 112, 1)'
+        upLineColor: 'rgba(112, 219, 112, 1.0)'
       },
       scatter: {
         marker: {
@@ -188,15 +217,18 @@ $ ->
           padding: 0,
           format: '{value:.4f}'
       },
+      gridLineWidth: 0,
+      minorGridLineWidth: 0,
+
       height: '80%',
-      lineWidth: 1
       crosshair: {
         snap: false,
         label: {
           align: 'left',
           enabled: true,
           format: '{value:.4f}',
-          padding: 4
+          padding: 4,
+          backgroundColor: 'rgba(22, 122, 198, 0.7)'
         }
       }
     }, {
@@ -251,6 +283,13 @@ $ ->
   rectangle = chart.renderer.rect(0,0,0,0,0).css({
       stroke: 'null',
       strokeWidth: '.5',
-      fill: 'rgba(179, 224, 255, 0.5)'
+      fill: 'rgba(22, 122, 198, 0.4)'
   }).add();
+
+  chart.lbl = chart.renderer.label('Hi', 0, 0, null, null, null, true).css({
+    textAlign: 'center'
+    fontSize: '8pt'
+    color: 'rgba(255, 255, 255,0.8)'
+  }).add()
+
 

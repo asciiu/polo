@@ -1,11 +1,35 @@
 $ ->
   $.getJSON 'https://www.highcharts.com/samples/data/jsonp.php?filename=usdeur.json&callback=?', (data) ->
     $('#revenue-chart').highcharts
-      chart: zoomType: 'x'
-      title: text: 'Account Balance'
+
+      credits: enabled: false
+
+      exporting: enabled: false
+
+      chart: {
+        zoomType: 'x'
+        backgroundColor: 'rgba(30, 43, 52, 1.0)'
+        style: {
+          fontFamily: 'monospace',
+          color: "#FFF"
+        }
+      }
+
+      title: {
+        text: 'Account Balance'
+        style: {
+          font: 'bold 16px "Trebuchet MS", Verdana, sans-serif'
+          color: '#FFF'
+        }
+      }
+
       subtitle: text: if document.ontouchstart == undefined then 'Click and drag in the plot area to zoom in' else 'Pinch the chart to zoom in'
       xAxis: type: 'datetime'
-      yAxis: title: text: 'BTC Balance'
+      yAxis: {
+        title: text: 'BTC Balance'
+        gridLineWidth: 0,
+        minorGridLineWidth: 0
+      }
       legend: enabled: false
       plotOptions: area:
         fillColor:

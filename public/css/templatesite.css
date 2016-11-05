@@ -55,3 +55,29 @@ div.chart {
     height:90vh;
 }
 
+body {
+    background-color: rgba(30, 43, 52, 1.0);
+}
+
+table, tr, tbody, thead, th {
+    background-color: rgba(30, 43, 52, 1.0);
+    color: #FFF;
+}
+
+table tbody tr:nth-child(even) {
+    background-color: rgba(30, 43, 52, 1.0);
+}
+
+.highcharts-button, .highcharts-button-normal, .highcharts-button-box {
+    background-color: rgba(30, 43, 52, 1.0);
+}
+
+.highcharts-range-selector-buttons .highcharts-button {
+    background-color: rgba(30, 43, 52, 1.0);
+}
+
+.highcharts-background {
+    background-color: rgba(30, 43, 52, 1.0);
+}
+
+

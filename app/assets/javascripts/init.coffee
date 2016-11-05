@@ -1,4 +1,6 @@
 $ ->
+
+
   name = $('#market-name').html()
 
   # update chart
@@ -32,8 +34,53 @@ $ ->
         {x: obj[0], y: obj[7]}
 
       $('#candle-chart').highcharts 'StockChart',
-             title: text: name
+             title: {
+               text: name
+               style: {
+                 font: 'bold 16px "Trebuchet MS", Verdana, sans-serif'
+                 color: '#FFF'
+               }
+             }
+
              exporting: enabled: false
+
+             credits: enabled: false
+
+             tooltip: {
+               style: {
+                 color: '#FFF'
+               }
+               enabled: true,
+               positioner: (labelWidth, labelHeight, point) ->
+                 return { x: 0, y: 0 }
+               shadow: false,
+               borderWidth: 0,
+               backgroundColor: 'rgba(30, 43, 52, 1.0)'
+               formatter: () ->
+                 x = this.x
+                 point = this.points.find (p) -> x == p.x
+                 point = point.point
+
+                 open = point.open.toFixed(8)
+                 high = point.high.toFixed(8)
+                 low = point.low.toFixed(8)
+                 close = point.close.toFixed(8)
+                 date = Highcharts.dateFormat('%b %e %Y %H:%M', new Date(this.x))
+
+                 s = '<b>'+date + ' O:</b> '  + open + ' <b>H:</b> ' + high + '<b> L:</b> ' + low + '<b> C: </b>' + close
+
+                 return s
+               shared: true
+             }
+
+             chart: {
+               backgroundColor: 'rgba(30, 43, 52, 1.0)'
+               style: {
+                 fontFamily: 'monospace',
+                 color: "#FFF"
+               }
+             }
+
              rangeSelector : {
                buttons : [{
                    type : 'hour',
@@ -62,20 +109,31 @@ $ ->
 
              plotOptions: {
                candlestick: {
-                 color: 'rgba(255, 102, 102, 0.5)'
-                 upColor: 'rgba(112, 219, 112, 0.5)'
+                 color: 'rgba(255, 102, 102, .7)'
+                 lineColor: 'rgba(255, 102, 102, 1)'
+                 upColor: 'rgba(112, 219, 112, .7)'
+                 upLineColor: 'rgba(112, 219, 112, 1)'
                }
              }
              yAxis: [{
+               gridLineWidth: 0,
+               minorGridLineWidth: 0,
                labels: {
                    align: 'left',
-                   x: 10
-               },
-               title: {
-                   text: '5 Minute Candles'
+                   x: 10,
+                   format: '{value:.8f}'
                },
                height: '80%',
-               lineWidth: 1
+               crosshair: {
+                 snap: false,
+                 label: {
+                   align: 'left',
+                   enabled: true,
+                   format: '{value:.8f}',
+                   padding: 4,
+                   backgroundColor: 'rgba(22, 122, 198, 0.7)'
+                 }
+               }
              }, {
                labels: {
                    align: 'left',
