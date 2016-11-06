@@ -5,6 +5,7 @@ import akka.actor.ActorLogging
 import akka.contrib.pattern.ReceivePipeline
 import akka.contrib.pattern.ReceivePipeline.Inner
 import models.market.MarketStructures.BollingerBandPoint
+import utils.Misc
 
 import scala.collection.mutable.ListBuffer
 
@@ -19,7 +20,14 @@ trait Bollinger extends ActorLogging {
 
   this: ReceivePipeline => pipelineInner {
     case msg: MarketMessage =>
-      averages.foreach(_.updateAverages(ClosePrice(msg.time, msg.last)))
+      val cp = ClosePrice(msg.time, msg.last)
+      averages.foreach(_.updateAverages(cp))
+
+      if (closePrices.head.time.equals(Misc.roundDateToMinute(msg.time, periodMinutes))) {
+        closePrices.update(0, cp)
+      } else {
+        closePrices.append(cp)
+      }
       Inner(msg)
 
     /**
@@ -73,7 +81,24 @@ trait Bollinger extends ActorLogging {
   def getLatestPoints(): Option[BollingerBandPoint] = {
     if (averages.nonEmpty) {
       val avg = averages.head.emas.head
-      Some(BollingerBandPoint(avg.time, avg.ema, avg.ema * (1+percent), avg.ema * (1-percent)))
+
+      val time1 = avg.time.minusMinutes(periodMinutes * (centerAverageperiods.head+1))
+      val prices = closePrices.filter{ p =>
+        p.time.isAfter(time1) && p.time.isBefore(avg.time.plusMinutes(periodMinutes))
+      }
+
+      // based on formula
+      // Upper Band = Period avg + (10-day standard deviation of price x 2)
+      // Lower Band = Period avg - (10-day standard deviation of price x 2)
+      val mean = prices.map(_.price).sum / prices.length
+      val sum = prices.map( p => (p.price - mean) * (p.price - mean)).sum
+      val mean2 = sum / prices.length
+      val std = Math.sqrt(mean2.toDouble)
+
+      val upper = avg.ema + 2 * std
+      val lower = avg.ema - 2 * std
+
+      Some(BollingerBandPoint(avg.time, avg.ema, upper, lower))
     } else {
       None
     }

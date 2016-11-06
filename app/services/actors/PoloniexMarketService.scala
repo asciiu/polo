@@ -43,6 +43,7 @@ object PoloniexMarketService {
   case class GetVolumes(marketName: String) extends CandleManagerMessage
   case class GetLatestMessage(marketName: String) extends CandleManagerMessage
   case class GetBands(marketName: String)
+  case class GetLatestBands(marketName: String)
 }
 
 /**
@@ -147,5 +148,8 @@ class PoloniexMarketService @Inject()(val database: DBService,
 
     case GetBands(marketName) =>
       markets(marketName) ! SendBollingerBands(sender)
+
+    case GetLatestBands(marketName) =>
+      markets(marketName) ! SendLatestBollingerBands(sender)
   }
 }
