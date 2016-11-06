@@ -41,4 +41,24 @@ $ ->
 
       chart.series[3].setData(vols, true, true)
 
+      centers = result.map (obj, index) ->
+        {x: obj[0], y: obj[8]}
+
+      centers = centers.filter (obj) ->
+        obj.y > 0
+      chart.series[4].setData(centers, true, true)
+
+      upper = result.map (obj, index) ->
+        {x: obj[0], y: obj[9]}
+      upper = upper.filter (obj) ->
+        obj.y > 0
+      chart.series[5].setData(upper, true, true)
+
+      lower = result.map (obj, index) ->
+        {x: obj[0], y: obj[10]}
+      lower = lower.filter (obj) ->
+        obj.y > 0
+      chart.series[6].setData(lower, true, true)
+
+
       return

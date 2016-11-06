@@ -15,6 +15,7 @@ object MarketStructures {
   case class CandleClosePrices(marketName: String, closePrices: List[ClosePrice])
   case class EMA(time: OffsetDateTime, ema: BigDecimal)
   case class PeriodVolume(time: OffsetDateTime, btcVolume: BigDecimal)
+  case class BollingerBandPoint(time: OffsetDateTime, center: BigDecimal, upper: BigDecimal, lower: BigDecimal)
 
   case class MarketMessage(time: OffsetDateTime,
                            cryptoCurrency: String,

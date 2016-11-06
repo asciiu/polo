@@ -8,7 +8,7 @@ import akka.stream.Materializer
 import javax.inject.{Inject, Named, Singleton}
 
 import jp.t2v.lab.play2.auth.AuthElement
-import models.market.MarketStructures.ExponentialMovingAverage
+import models.market.MarketStructures.{BollingerBandPoint, ExponentialMovingAverage}
 import models.poloniex.PoloniexEventBus
 import models.poloniex.trade.PoloniexTradeClient
 import play.api.i18n.{I18nSupport, MessagesApi}
@@ -18,6 +18,7 @@ import play.api.libs.json._
 import play.api.libs.streams.ActorFlow
 import play.api.Configuration
 import org.joda.time.format.DateTimeFormat
+import services.actors.PoloniexMarketService.GetBands
 
 import scala.language.postfixOps
 import scala.concurrent.{ExecutionContext, Future}
@@ -189,9 +190,13 @@ class PoloniexController @Inject()(val database: DBService,
       candles <- (marketService ? GetCandles(marketName)).mapTo[List[MarketCandle]]
       movingAverages <- (marketService ? GetMovingAverages(marketName)).mapTo[Map[Int, List[ExponentialMovingAverage]]]
       volume24hr <- (marketService ? GetVolumes(marketName)).mapTo[List[PeriodVolume]]
+      bollingers <- (marketService ? GetBands(marketName)).mapTo[List[BollingerBandPoint]]
     } yield {
       val l = candles.map { c =>
         val defaultEMA = ExponentialMovingAverage(c.time, 0, c.close)
+        val bands = bollingers.find(b => c.time.equals(b.time)).getOrElse(BollingerBandPoint(c.time, 0, 0, 0))
+
+
         Json.arr(
           // TODO UTF offerset should come from client
           // I've subtracted 6 hours(2.16e+7 milliseconds) for denver time for now
@@ -202,7 +207,10 @@ class PoloniexController @Inject()(val database: DBService,
           c.close,
           movingAverages.head._2.find( avg => c.time.equals(avg.time)).getOrElse(defaultEMA).ema,
           movingAverages.last._2.find( avg => c.time.equals(avg.time)).getOrElse(defaultEMA).ema,
-          volume24hr.find( vol => c.time.equals(vol.time)).getOrElse(PeriodVolume(c.time, 0)).btcVolume.setScale(2, RoundingMode.DOWN)
+          volume24hr.find( vol => c.time.equals(vol.time)).getOrElse(PeriodVolume(c.time, 0)).btcVolume.setScale(2, RoundingMode.DOWN),
+          bands.center,
+          bands.upper,
+          bands.lower
         )
       }
 

@@ -267,14 +267,19 @@ $ ->
       data: [],
       yAxis: 1
     }, {
-      type: 'scatter',
-      name: 'Buy',
-      color: 'rgba(0, 119, 181, 1)',
+      name: 'center'
+      color: 'rgba(255, 255, 255, 1)',
+      lineWidth: 1,
       data: []
     }, {
-      type: 'scatter',
-      name: 'Sell',
-      color: 'rgba(221, 81, 67, 1)',
+      name: 'upper'
+      color: 'rgba(255, 255, 255, 0.6)',
+      lineWidth: 1,
+      data: []
+    }, {
+      name: 'lower'
+      color: 'rgba(255, 255, 255, 0.6)',
+      lineWidth: 1,
       data: []
     }]
   }

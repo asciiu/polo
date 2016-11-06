@@ -14,7 +14,8 @@ trait KitchenSink extends ReceivePipeline
   with LastMarketMessage
   with MarketCandles
   with OrderFiller
-  with Volume24HourTracking  {
+  with Volume24HourTracking
+  with Bollinger {
 
   // TODO this should be configurable
   override val periodMinutes = 5

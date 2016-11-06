@@ -25,6 +25,7 @@ object MarketService {
   case class SendVolume(out: ActorRef, time: OffsetDateTime)
   case class SendVolumes(out: ActorRef)
   case class SendLatestMessage(out: ActorRef)
+  case class SendBollingerBands(out: ActorRef)
 }
 
 class MarketService(val marketName: String, val database: DBService) extends Actor
@@ -67,6 +68,9 @@ class MarketService(val marketName: String, val database: DBService) extends Act
 
     case SendLatestMessage(out) =>
       out ! getLatestMessage()
+
+    case SendBollingerBands(out) =>
+      out ! getAllPoints()
   }
 }
 
