@@ -3,6 +3,7 @@
 @(account: Entity[Account], marketName: String, msg: MarketMessage)(implicit webJarAssets: WebJarAssets, messages: Messages)
 
 @scripts = {
+    <script type='text/javascript' src='@routes.Assets.at("javascripts/charts/candle.js")'></script>
     <script type='text/javascript' src='@routes.Assets.at("javascripts/init.js")'></script>
     <script type='text/javascript' src='@routes.Assets.at("javascripts/chartUpdates.js")'></script>
 }
@@ -11,7 +12,7 @@
 @_template(Some(account), scripts) {
     <div class="row column markets">
         <div hidden id="market-name">@marketName</div>
-        <div class="large-7 columns chart" id="candle-chart"></div>
+        <div class="large-10 columns chart" id="candle-chart"></div>
         <div class="row">
            <table>
               <thead>

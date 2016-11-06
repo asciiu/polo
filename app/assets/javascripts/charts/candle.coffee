@@ -84,17 +84,12 @@ $ ->
 
     return
 
-
-  mouseOver = (event) ->
-    console.log('here')
-
   ########################################################################
   # Create chart
   ########################################################################
   Highcharts.stockChart 'candle-chart', {
-
     title: {
-      text: 'Captured Data'
+      text: 'Hello'
       style: {
         font: 'bold 16px "Trebuchet MS", Verdana, sans-serif'
         color: '#FFF'
@@ -103,6 +98,7 @@ $ ->
 
     exporting: enabled: false
     credits: enabled: false
+
     tooltip: {
       style: {
         color: '#FFF'
@@ -219,7 +215,7 @@ $ ->
           align: 'left',
           x: 5,
           padding: 0,
-          format: '{value:.4f}'
+          format: '{value:.8f}'
       },
       gridLineWidth: 0,
       minorGridLineWidth: 0,
@@ -230,7 +226,7 @@ $ ->
         label: {
           align: 'left',
           enabled: true,
-          format: '{value:.4f}',
+          format: '{value:.8f}',
           padding: 4,
           backgroundColor: 'rgba(22, 122, 198, 0.7)'
         }
@@ -283,7 +279,6 @@ $ ->
     }]
   }
 
-
   chart = $('#candle-chart').highcharts()
   rectangle = chart.renderer.rect(0,0,0,0,0).css({
       stroke: 'null',
@@ -291,10 +286,9 @@ $ ->
       fill: 'rgba(22, 122, 198, 0.4)'
   }).add();
 
-  chart.lbl = chart.renderer.label('Hi', 0, 0, null, null, null, true).css({
+  chart.lbl = chart.renderer.label('', 0, 0, null, null, null, true).css({
     textAlign: 'center'
     fontSize: '8pt'
     color: 'rgba(255, 255, 255,0.8)'
   }).add()
-
 
