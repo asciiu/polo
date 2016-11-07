@@ -21,13 +21,7 @@ trait Bollinger extends ActorLogging {
   this: ReceivePipeline => pipelineInner {
     case msg: MarketMessage =>
       val cp = ClosePrice(msg.time, msg.last)
-      averages.foreach(_.updateAverages(cp))
-
-      if (closePrices.head.time.equals(Misc.roundDateToMinute(msg.time, periodMinutes))) {
-        closePrices.update(0, cp)
-      } else {
-        closePrices.append(cp)
-      }
+      updateBands(cp)
       Inner(msg)
 
     /**
@@ -36,24 +30,19 @@ trait Bollinger extends ActorLogging {
     case mc: Candles =>
       val cp = mc.candles.map( c => ClosePrice(c.time, c.close))
       closePrices ++= cp
-      computeCenterAverages(cp)
+      computeBands(cp)
       Inner(mc)
   }
 
-  private val upperband = ListBuffer[BigDecimal]()
+  private val zeBands = ListBuffer[BollingerBandPoint]()
 
   // these are the system defaults but can be overridden
-  val centerAverageperiods: List[Int] = List(10)
+  val periodInAverage = 10
   val closePrices = ListBuffer[ClosePrice]()
   val periodMinutes = 5
   val percent: BigDecimal = 0.04
   // to be defined
   val marketName: String
-
-  // list of ema collections
-  private val averages = scala.collection.mutable.ListBuffer[MarketEMACollection]()
-
-  def setAllCenterAverages(marketAverages: List[MarketEMACollection]) = averages ++= marketAverages
 
   /**
     * Sets all averages for each period as a collection of exponential
@@ -65,12 +54,50 @@ trait Bollinger extends ActorLogging {
     *                    period for the last 24 hour window.
     * @return
     */
-  def computeCenterAverages(closePrices: List[ClosePrice]) = {
+  def computeBands(closePrices: List[ClosePrice]) = {
     // create a new collection for specific periods
-    val newAverages = for (period <- centerAverageperiods)
-      yield new MarketEMACollection(marketName, period, periodMinutes, closePrices)
+    val periodPrices = closePrices.sliding(periodInAverage).toList
 
-    averages ++= newAverages
+    for (prices <- periodPrices) {
+      val mean = prices.map(_.price).sum / periodInAverage
+      val sum = prices.map( p => (p.price - mean) * (p.price - mean)).sum
+      val mean2 = sum / prices.length
+      val std = Math.sqrt(mean2.toDouble)
+
+      val upper = mean + 2 * std
+      val lower = mean - 2 * std
+      val time = prices.head.time
+
+      zeBands.append(BollingerBandPoint(time, mean, upper, lower))
+    }
+  }
+
+  private def updateBands(price: ClosePrice) = {
+    if (closePrices.length > 0) {
+      val normalTime = Misc.roundDateToMinute(price.time, periodMinutes)
+      if (closePrices.head.time.equals(normalTime)) {
+        closePrices.update(0, price)
+      } else {
+        closePrices.append(price)
+      }
+
+      val prices = closePrices.take(periodInAverage)
+      val mean = prices.map(_.price).sum / periodInAverage
+      val sumSqr = prices.map( p => (p.price - mean) * (p.price - mean)).sum
+      val mean2 = sumSqr / prices.length
+      val std = Math.sqrt(mean2.toDouble)
+
+      val upper = mean + 2 * std
+      val lower = mean - 2 * std
+      val time = prices.head.time
+      val band = BollingerBandPoint(time, mean, upper, lower)
+
+      if (closePrices.head.time.equals(normalTime)) {
+        zeBands.update(0, band)
+      } else {
+        zeBands.insert(0, band)
+      }
+    }
   }
 
   /**
@@ -79,29 +106,7 @@ trait Bollinger extends ActorLogging {
     * @return map of period to ema for that period
     */
   def getLatestPoints(): Option[BollingerBandPoint] = {
-    if (averages.nonEmpty) {
-      val avg = averages.head.emas.head
-
-      val time1 = avg.time.minusMinutes(periodMinutes * (centerAverageperiods.head+1))
-      val prices = closePrices.filter{ p =>
-        p.time.isAfter(time1) && p.time.isBefore(avg.time.plusMinutes(periodMinutes))
-      }
-
-      // based on formula
-      // Upper Band = Period avg + (10-day standard deviation of price x 2)
-      // Lower Band = Period avg - (10-day standard deviation of price x 2)
-      val mean = prices.map(_.price).sum / prices.length
-      val sum = prices.map( p => (p.price - mean) * (p.price - mean)).sum
-      val mean2 = sum / prices.length
-      val std = Math.sqrt(mean2.toDouble)
-
-      val upper = avg.ema + 2 * std
-      val lower = avg.ema - 2 * std
-
-      Some(BollingerBandPoint(avg.time, avg.ema, upper, lower))
-    } else {
-      None
-    }
+    zeBands.headOption
   }
 
   /**
@@ -111,29 +116,6 @@ trait Bollinger extends ActorLogging {
     *         list of ExponentialMovingAverages are ordered with most recent first
     */
   def getAllPoints(): List[BollingerBandPoint] = {
-    if (averages.nonEmpty) {
-      val emas = averages.head.emas
-      emas.map { avg =>
-        val center = avg.ema
-        val time1 = avg.time.minusMinutes(periodMinutes * (centerAverageperiods.head+1))
-        val prices = closePrices.filter{ p =>
-          p.time.isAfter(time1) && p.time.isBefore(avg.time.plusMinutes(periodMinutes))
-        }
-
-        // based on formula
-        // Upper Band = Period avg + (10-day standard deviation of price x 2)
-        // Lower Band = Period avg - (10-day standard deviation of price x 2)
-        val mean = prices.map(_.price).sum / prices.length
-        val sum = prices.map( p => (p.price - mean) * (p.price - mean)).sum
-        val mean2 = sum / prices.length
-        val std = Math.sqrt(mean2.toDouble)
-
-        val upper = center + 2 * std
-        val lower = center - 2 * std
-        BollingerBandPoint(avg.time, center, upper, lower)
-      }
-    } else {
-      List.empty[BollingerBandPoint]
-    }
+    zeBands.toList
   }
 }
