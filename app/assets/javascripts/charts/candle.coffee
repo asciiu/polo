@@ -162,7 +162,7 @@ $ ->
           count : 1,
           text : '24h'
       }],
-      selected : 4,
+      selected : 3,
       inputEnabled : false
     }
 

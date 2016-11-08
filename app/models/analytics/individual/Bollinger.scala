@@ -45,8 +45,7 @@ trait Bollinger extends ActorLogging {
   val marketName: String
 
   /**
-    * Sets all averages for each period as a collection of exponential
-    * moving averages.
+    * Sets all averages for each period as a collection of simple moving averages.
     *
     * @param closePrices assumes the close prices are sorted with most recent
     *                    close period first and that all close prices have the same periodMinutes
@@ -75,10 +74,13 @@ trait Bollinger extends ActorLogging {
   private def updateBands(price: ClosePrice) = {
     if (closePrices.length > 0) {
       val normalTime = Misc.roundDateToMinute(price.time, periodMinutes)
-      if (closePrices.head.time.equals(normalTime)) {
-        closePrices.update(0, price)
+
+      val isUpdate = if (closePrices.head.time.equals(normalTime)) {
+        closePrices.update(0, price.copy(time = normalTime))
+        true
       } else {
-        closePrices.append(price)
+        closePrices.insert(0, price.copy(time = normalTime))
+        false
       }
 
       val prices = closePrices.take(periodInAverage)
@@ -92,7 +94,7 @@ trait Bollinger extends ActorLogging {
       val time = prices.head.time
       val band = BollingerBandPoint(time, mean, upper, lower)
 
-      if (closePrices.head.time.equals(normalTime)) {
+      if (isUpdate) {
         zeBands.update(0, band)
       } else {
         zeBands.insert(0, band)
