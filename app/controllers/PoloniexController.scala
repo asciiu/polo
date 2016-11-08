@@ -19,6 +19,7 @@ import play.api.libs.streams.ActorFlow
 import play.api.Configuration
 import org.joda.time.format.DateTimeFormat
 import services.actors.PoloniexMarketService.GetBands
+import services.actors.TropicThunderService
 
 import scala.language.postfixOps
 import scala.concurrent.{ExecutionContext, Future}
@@ -68,31 +69,7 @@ class PoloniexController @Inject()(val database: DBService,
     * Sends market updates to all connected clients.
     */
   def socket() = WebSocket.accept[String, String] { request =>
-
-    // each client will be served by this actor
-    class BrowserActor(out: ActorRef) extends Actor {
-      val eventBus = PoloniexEventBus()
-
-      override def preStart() = {
-        eventBus.subscribe(self, PoloniexEventBus.Updates)
-      }
-
-      override def postStop() = {
-        eventBus.unsubscribe(self, PoloniexEventBus.Updates)
-      }
-
-      def receive = {
-        // send updates from Bitcoin markets only
-        case msg: Msg if msg.cryptoCurrency.startsWith("BTC") =>
-          val percentChange = msg.percentChange * 100
-          val ud = msg.copy(percentChange = percentChange.setScale(2, RoundingMode.CEILING))
-          out ! Json.toJson(ud).toString
-        case msg: Msg if msg.cryptoCurrency == "USDT_BTC" =>
-          out ! Json.toJson(msg).toString
-      }
-    }
-
-    ActorFlow.actorRef(out => Props(new BrowserActor(out)))
+    ActorFlow.actorRef(out => TropicThunderService.props(out, database))
   }
 
   def isRecording() = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
