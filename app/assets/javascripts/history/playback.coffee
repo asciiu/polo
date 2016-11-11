@@ -38,22 +38,41 @@ $ ->
 
     chart.series[3].setData( vols, true, true)
 
+    centers = candles.map (obj, index) ->
+      {x: obj[0], y: obj[8]}
+
+    centers = centers.filter (obj) ->
+      obj.y > 0
+    chart.series[4].setData(centers, true, true)
+
+    upper = candles.map (obj, index) ->
+      {x: obj[0], y: obj[9]}
+    upper = upper.filter (obj) ->
+      obj.y > 0
+    chart.series[5].setData(upper, true, true)
+
+    lower = candles.map (obj, index) ->
+      {x: obj[0], y: obj[10]}
+    lower = lower.filter (obj) ->
+      obj.y > 0
+    chart.series[6].setData(lower, true, true)
+
     buys = candles.map (obj) ->
-     {x: obj[0], y: obj[8]}
+     {x: obj[0], y: obj[11]}
 
     buys = buys.filter (obj) ->
       obj.y > 0
 
-    chart.series[4].setData(buys, true)
+    chart.series[7].setData(buys, true)
 
     # SELLS
     sells = candles.map (obj) ->
-      {x: obj[0], y: obj[9]}
+      {x: obj[0], y: obj[12]}
 
     sells = sells.filter (arr) ->
       arr.y > 0
 
-    chart.series[5].setData(sells, true)
+    chart.series[8].setData(sells, true)
 
     return
 
@@ -79,6 +98,9 @@ $ ->
     ema1 = chart.series[1]
     ema2 = chart.series[2]
     vol  = chart.series[3]
+    avg  = chart.series[4]
+    upper = chart.series[5]
+    lower = chart.series[6]
 
     # last candle in chart data
     last = data[data.length-1]
@@ -108,6 +130,18 @@ $ ->
       else
         vol.data[vol.data.length-1].update({y: result[7]})
 
+      # avg
+      if (result[8] != 0)
+        avg.data[avg.data.length-1].update({y: result[8]})
+
+      # ema2
+      if (result[9] != 0)
+        upper.data[upper.data.length-1].update({y: result[9]})
+
+      # ema1
+      if (result[10] != 0)
+        lower.data[lower.data.length-1].update({y: result[10]})
+
     # new candle period
     else if (data.length == 0 || result[0] != time)
       candles.addPoint(result.slice(0, 4), true, true, true)
@@ -118,11 +152,20 @@ $ ->
       if (result[6] != 0)
         ema2.addPoint({x: result[0], y:result[6]}, true, true, true)
 
+      if (result[8] != 0)
+        avg.addPoint({x: result[0], y:result[8]}, true, true, true)
+      if (result[9] != 0)
+        upper.addPoint({x: result[0], y:result[9]}, true, true, true)
+      if (result[10] != 0)
+        lower.addPoint({x: result[0], y:result[10]}, true, true, true)
+
       # limit data to 288 values
       if (vol.data.length < 288)
         vol.addPoint({x: result[0], y:result[7]}, true, false, true)
       else
         vol.addPoint({x: result[0], y:result[7]}, true, true, true)
+
+
 
     return
 

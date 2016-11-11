@@ -6,8 +6,11 @@ import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.contrib.pattern.ReceivePipeline
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source}
+import models.market.MarketStructures.BollingerBandPoint
 import play.api.libs.json.Json
+import services.actors.PoloniexMarketService.GetBands
 import slick.backend.DatabasePublisher
+
 import scala.math.BigDecimal.RoundingMode
 import scala.concurrent.ExecutionContext
 
@@ -155,14 +158,20 @@ class PlaybackService(out: ActorRef, val database: DBService, sessionId: Int)(im
       appendCandles(sortedCandles)
 
       val closePrices = sortedReverse.map(c => ClosePrice(c.createdAt, c.close)).toList
+      resetAverages()
       setAverages(closePrices)
       val movingAverages = getMovingAverages()
+
+      reset()
+      computeBands(closePrices)
+      val bollingers = getAllPoints()
 
       val jsCandles = candles.map { c =>
         val time = c.createdAt.toEpochSecond() * 1000L - 2.16e+7
         val defaultEMA = ExponentialMovingAverage(c.createdAt, BigDecimal(0), 0)
         val ema1 = movingAverages.head._2.find( avg => c.createdAt.equals(avg.time)).getOrElse(defaultEMA).ema
         val ema2 = movingAverages.last._2.find( avg => c.createdAt.equals(avg.time)).getOrElse(defaultEMA).ema
+        val bands = bollingers.find(b => c.createdAt.equals(b.time)).getOrElse(BollingerBandPoint(c.createdAt, 0, 0, 0))
 
         Json.arr(
           // TODO UTF offerset should come from client
@@ -175,6 +184,9 @@ class PlaybackService(out: ActorRef, val database: DBService, sessionId: Int)(im
           ema1,
           ema2,
           0,
+          bands.center,
+          bands.upper,
+          bands.lower,
           0,
           0
         )
@@ -194,6 +206,7 @@ class PlaybackService(out: ActorRef, val database: DBService, sessionId: Int)(im
     val candles = getCandles()
     val movingAverages = getMovingAverages()
     val vols = getVolumes()
+    val bollingers = getAllPoints()
 
     val jsCandles = candles.map { c =>
       val time = c.time.toEpochSecond() * 1000L - 2.16e+7
@@ -201,6 +214,7 @@ class PlaybackService(out: ActorRef, val database: DBService, sessionId: Int)(im
       val defaultTrade = Trade(marketName, c.time, 0, 0)
       val ema1 = movingAverages.head._2.find( avg => c.time.equals(avg.time)).getOrElse(defaultEMA).ema
       val ema2 = movingAverages.last._2.find( avg => c.time.equals(avg.time)).getOrElse(defaultEMA).ema
+      val bands = bollingers.find(b => c.time.equals(b.time)).getOrElse(BollingerBandPoint(c.time, 0, 0, 0))
       val vol = vols.find( vol => c.time.equals(vol.time))
         .getOrElse(PeriodVolume(c.time, 0)).btcVolume.setScale(2, RoundingMode.DOWN)
       val buy = buyList.find( trade => Misc.roundDateToMinute(trade.time, periodMinutes).isEqual(c.time))
@@ -219,6 +233,9 @@ class PlaybackService(out: ActorRef, val database: DBService, sessionId: Int)(im
         ema1,
         ema2,
         vol,
+        bands.center,
+        bands.upper,
+        bands.lower,
         buy,
         sell
       )

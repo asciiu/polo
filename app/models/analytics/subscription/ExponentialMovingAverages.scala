@@ -1,4 +1,4 @@
-package models.analytics.individual
+package models.analytics.subscription
 
 import akka.actor.ActorLogging
 import akka.contrib.pattern.ReceivePipeline
@@ -36,10 +36,6 @@ trait ExponentialMovingAverages extends ActorLogging {
   private val averages = scala.collection.mutable.ListBuffer[MarketEMACollection]()
 
   def setAllMarketAverages(marketAverages: List[MarketEMACollection]) = averages ++= marketAverages
-
-  def resetAverages() = {
-    averages.clear()
-  }
 
   /**
     * Sets all averages for each period as a collection of exponential

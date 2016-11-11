@@ -3,13 +3,8 @@ package services.actors
 // external
 
 import akka.actor.{Actor, ActorLogging, ActorRef}
-import akka.contrib.pattern.ReceivePipeline
-import akka.contrib.pattern.ReceivePipeline.Inner
 import java.time.OffsetDateTime
 import javax.inject.Inject
-
-import models.analytics.theworks.{ExponentialMovingAverages, MarketCandles, Volume24HourTracking}
-import models.analytics.AccountBalances
 import models.market.MarketStructures.{Candles, ClosePrice, ExponentialMovingAverage}
 import models.strategies.{FirstCrossStrategy}
 import play.api.Configuration

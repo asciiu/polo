@@ -1,4 +1,4 @@
-package models.analytics.individual
+package models.analytics.subscription
 
 // external
 import akka.actor.ActorLogging
@@ -10,7 +10,6 @@ import utils.Misc
 import scala.collection.mutable.ListBuffer
 
 // internal
-import models.market.MarketEMACollection
 import models.market.MarketStructures.{Candles, ClosePrice, MarketMessage}
 
 /**
@@ -29,6 +28,7 @@ trait Bollinger extends ActorLogging {
       */
     case mc: Candles =>
       val cp = mc.candles.map( c => ClosePrice(c.time, c.close))
+      closePrices ++= cp
       computeBands(cp)
       Inner(mc)
   }
@@ -43,22 +43,16 @@ trait Bollinger extends ActorLogging {
   // to be defined
   val marketName: String
 
-  def reset() = {
-    zeBands.clear()
-    closePrices.clear()
-  }
-
   /**
     * Sets all averages for each period as a collection of simple moving averages.
     *
-    * @param prices assumes the close prices are sorted with most recent
+    * @param closePrices assumes the close prices are sorted with most recent
     *                    close period first and that all close prices have the same periodMinutes
     *                    as this object. Example, close prices for every 5 minute
     *                    period for the last 24 hour window.
     * @return
     */
-  def computeBands(prices: List[ClosePrice]) = {
-    closePrices ++= prices
+  def computeBands(closePrices: List[ClosePrice]) = {
     // create a new collection for specific periods
     val periodPrices = closePrices.sliding(periodInAverage).toList
 
@@ -116,7 +110,7 @@ trait Bollinger extends ActorLogging {
     zeBands.headOption
   }
 
-  /**    val bollingers = getAllPoints()
+  /**
     * Returns the moving averages for this market.
     *
     * @return a map of period to exponential moving averages for that period
