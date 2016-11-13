@@ -1,11 +1,13 @@
 package models.analytics.individual
 
+import java.time.OffsetDateTime
+
 import akka.actor.ActorLogging
 import akka.contrib.pattern.ReceivePipeline
 import akka.contrib.pattern.ReceivePipeline.Inner
-
 import models.market.MarketCandle
 import models.market.MarketStructures.{Candles, ClosePrice, MarketMessage}
+
 import scala.collection.mutable.ListBuffer
 import utils.Misc._
 
@@ -71,6 +73,10 @@ trait MarketCandles extends ActorLogging {
     */
   def getCandles(): List[MarketCandle] = {
     marketCandles.reverse.toList
+  }
+
+  def getCandle(atTime: OffsetDateTime): Option[MarketCandle] = {
+    marketCandles.find(_.time.isEqual(atTime))
   }
 
   def updateMarketCandle(closePrice: ClosePrice) = {

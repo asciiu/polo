@@ -7,6 +7,7 @@ import akka.contrib.pattern.ReceivePipeline
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import models.market.MarketStructures.BollingerBandPoint
+import models.strategies.BollingerStrategy
 import play.api.libs.json.Json
 import services.actors.PoloniexMarketService.GetBands
 import slick.backend.DatabasePublisher
@@ -56,8 +57,7 @@ class PlaybackService(out: ActorRef, val database: DBService, sessionId: Int)(im
   // TODO this will eventually exercise some trade strategy based upon pattern
   // recognition
   //val strategy = new GoldenCrossStrategy(this)
-  val strategy = new NeuralDataStrategy(this)
-
+  val strategy = new BollingerStrategy(this)
 
 
   override def preStart() = {
@@ -71,12 +71,11 @@ class PlaybackService(out: ActorRef, val database: DBService, sessionId: Int)(im
   def receive: Receive = {
     // send updates from Bitcoin markets only
     case msg: MarketMessage =>
-      //strategy.handleMessage(msg)
+      strategy.handleMessage(msg)
 
     case Done =>
-      analyzeCandles()
+      strategy.printResults()
       sendTCandles(myMarket)
-      //strategy.printResults()
 
     case name: String =>
       // TODO there is better way to do this
@@ -88,10 +87,6 @@ class PlaybackService(out: ActorRef, val database: DBService, sessionId: Int)(im
         myMarket = name
         sendCandles(name)
       }
-  }
-
-  def analyzeCandles(): Unit = {
-    strategy.createDataFromCandles(myMarket)
   }
 
   def playbackMessages(marketName: String): Unit = {

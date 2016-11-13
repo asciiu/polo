@@ -52,7 +52,7 @@ trait OrderFiller extends ActorLogging with AccountBalances {
     tradeOrders.get(marketName) match {
       case Some(orders) if orders.nonEmpty =>
         orders.filter(_.side == OrderType.buy).nonEmpty
-      case None => false
+      case _ => false
     }
   }
 
