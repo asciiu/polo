@@ -8,7 +8,7 @@ import akka.stream.Materializer
 import javax.inject.{Inject, Named, Singleton}
 
 import jp.t2v.lab.play2.auth.AuthElement
-import models.market.MarketStructures.{BollingerBandPoint, ExponentialMovingAverage}
+import models.market.MarketStructures.{BollingerBandPoint, ExponentialMovingAverage, MarketSetupNotification}
 import models.poloniex.PoloniexEventBus
 import models.poloniex.trade.PoloniexTradeClient
 import play.api.i18n.{I18nSupport, MessagesApi}
@@ -19,7 +19,8 @@ import play.api.libs.streams.ActorFlow
 import play.api.Configuration
 import org.joda.time.format.DateTimeFormat
 import services.actors.PoloniexMarketService.GetBands
-import services.actors.TropicThunderService
+import services.actors.BrowserService
+import services.actors.NotificationService.GetMarketSetup
 
 import scala.language.postfixOps
 import scala.concurrent.{ExecutionContext, Future}
@@ -42,7 +43,8 @@ class PoloniexController @Inject()(val database: DBService,
                                    ws: WSClient,
                                    conf: Configuration,
                                    @Named("poloniex-market") marketService: ActorRef,
-                                   @Named("poloniex-feed") feedService: ActorRef)
+                                   @Named("poloniex-feed") feedService: ActorRef,
+                                   @Named("poloniex-alerts") notificationService: ActorRef)
                                   (implicit system: ActorSystem,
                                    materializer: Materializer,
                                    context: ExecutionContext,
@@ -57,6 +59,7 @@ class PoloniexController @Inject()(val database: DBService,
     }.toList))
 
   implicit val msgWrite = Json.writes[Msg]
+  implicit val timeout = Timeout(5 seconds)
 
   val tradeClient = new PoloniexTradeClient(
     conf.getString("poloniex.apiKey").getOrElse(""),
@@ -69,11 +72,46 @@ class PoloniexController @Inject()(val database: DBService,
     * Sends market updates to all connected clients.
     */
   def socket() = WebSocket.accept[String, String] { request =>
-    ActorFlow.actorRef(out => TropicThunderService.props(out, database))
+    ActorFlow.actorRef(out => BrowserService.props(out, database))
+  }
+
+  /**
+    * Sends market setups to all connected clients.
+    */
+  def setup() = WebSocket.accept[String, String] { request =>
+    class SetupSubscriber(out: ActorRef)(implicit ctx: ExecutionContext) extends Actor {
+      val eventBus = PoloniexEventBus()
+
+      override def preStart() = {
+        (notificationService ? GetMarketSetup).mapTo[Set[String]].map { markets =>
+          val m = Json.toJson(markets)
+          val json = Json.obj(
+            "type" -> "MarketSetups",
+            "data" -> m
+          ).toString
+          out ! json
+        }
+        eventBus.subscribe(self, PoloniexEventBus.BollingerNotification)
+      }
+
+      override def postStop() = {
+        eventBus.unsubscribe(self, PoloniexEventBus.BollingerNotification)
+      }
+
+      def receive: Receive = {
+        case MarketSetupNotification(marketName, isSetup) =>
+          val json = Json.obj(
+            "type" -> "MarketSetup",
+            "data" -> Json.obj("marketName" -> marketName, "isSetup" -> isSetup)
+          ).toString
+          out ! json
+      }
+    }
+
+    ActorFlow.actorRef(out => Props(new SetupSubscriber(out)))
   }
 
   def isRecording() = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
-    implicit val timeout = Timeout(5 seconds)
     (marketService ? GetSessionId).mapTo[Option[Int]].map { option =>
       Ok(Json.toJson(option.isDefined))
     }

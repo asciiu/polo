@@ -29,4 +29,5 @@ object PoloniexEventBus {
   val Candles = "/poloniex/candles"
   val Updates = "/poloniex/updates"
   val NewMarket = "/poloniex/newm"
+  val BollingerNotification = "/poloniex/alerts"
 }

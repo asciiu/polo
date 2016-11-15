@@ -50,4 +50,6 @@ object MarketStructures {
                    time: OffsetDateTime,
                    price: BigDecimal,
                    quantity: BigDecimal)
+
+  case class MarketSetupNotification(marketName: String, isSetup: Boolean)
 }

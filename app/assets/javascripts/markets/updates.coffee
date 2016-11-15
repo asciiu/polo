@@ -1,14 +1,14 @@
 $ ->
-  route = jsRoutes.controllers.PoloniexController.isRecording()
-  $.ajax
-    method: route.method
-    url: route.url
-    success: (result) ->
-      # result will be boolean
-      recording = JSON.parse(result)
-      if (recording)
-        $('div#run-btn').html('Stop')
-        $('div#run-btn').addClass('alert')
+  #route = jsRoutes.controllers.PoloniexController.isRecording()
+  #$.ajax
+  #  method: route.method
+  #  url: route.url
+  #  success: (result) ->
+  #    # result will be boolean
+  #    recording = JSON.parse(result)
+  #    if (recording)
+  #      $('div#run-btn').html('Stop')
+  #      $('div#run-btn').addClass('alert')
 
   $('div#run-btn').click (event) ->
     self = $(this)

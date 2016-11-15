@@ -12,5 +12,6 @@ class CustomModule extends AbstractModule with AkkaGuiceSupport {
     // for live traffic
     bindActor[PoloniexMarketService]("poloniex-market")
     bindActor[PoloniexWebSocketFeedService]("poloniex-feed")
+    bindActor[NotificationService]("poloniex-alerts")
   }
 }

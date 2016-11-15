@@ -6,6 +6,7 @@ import akka.contrib.pattern.ReceivePipeline
 import java.time.OffsetDateTime
 
 import models.analytics.individual.KitchenSink
+import models.strategies.BollingerAlertStrategy
 
 import scala.concurrent.ExecutionContext
 
@@ -37,6 +38,8 @@ class MarketService(val marketName: String, val database: DBService) extends Act
 
   import MarketService._
 
+  val strategy = new BollingerAlertStrategy(this)
+
   override def preStart() = {
     log.info(s"Started $marketName service")
   }
@@ -47,7 +50,7 @@ class MarketService(val marketName: String, val database: DBService) extends Act
 
   def receive: Receive = {
     case msg: MarketMessage =>
-      // TODO perform some strategy here
+      strategy.handleMessage(msg)
 
     case SendCandles(out) =>
       out ! getCandles()

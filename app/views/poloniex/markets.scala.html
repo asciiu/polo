@@ -4,6 +4,7 @@
 
 @scripts = {
     <script type='text/javascript' src='@routes.Assets.at("javascripts/markets/updates.js")'></script>
+    <script type='text/javascript' src='@routes.Assets.at("javascripts/markets/setups.js")'></script>
     <script type='text/javascript' src='@routes.Assets.at("javascripts/markets/revenueChart.js")'></script>
 }
 
@@ -23,7 +24,7 @@
 
                 <tbody>
                 @for(update <- updates) {
-                    <tr id="@update.marketName">
+                    <tr id="@update.marketName" class="">
                     <td><a href="@routes.PoloniexController.market(update.marketName)">@update.marketName</a></td>
                     <td>@("%1.8f".format(update.info.last))</td>
                     <td>@update.info.baseVolume</td>

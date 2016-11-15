@@ -12,14 +12,14 @@ import models.market.MarketStructures.{MarketMessage => Msg}
 import models.poloniex.PoloniexEventBus
 
 
-object TropicThunderService{
+object BrowserService {
   def props(out: ActorRef, database: DBService)(implicit context: ExecutionContext) =
-    Props(new TropicThunderService(out, database))
+    Props(new BrowserService(out, database))
 
   case object Done
 }
 
-class TropicThunderService(out: ActorRef, database: DBService)(implicit ctx: ExecutionContext)
+class BrowserService(out: ActorRef, database: DBService)(implicit ctx: ExecutionContext)
   extends Actor {
 
   val eventBus = PoloniexEventBus()
