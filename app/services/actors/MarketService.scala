@@ -1,21 +1,18 @@
 package services.actors
 
 // external
-import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import akka.actor.{Actor, ActorLogging, Props}
 import akka.contrib.pattern.ReceivePipeline
-import java.time.OffsetDateTime
-
-import models.analytics.individual.KitchenSink
-import models.poloniex.{MarketEvent, PoloniexEventBus}
-import models.strategies.BollingerAlertStrategy
 import play.api.libs.json.{JsArray, Json}
-
 import scala.concurrent.ExecutionContext
 import scala.math.BigDecimal.RoundingMode
 
 // internal
 import models.analytics.Archiving
+import models.analytics.individual.KitchenSink
 import models.market.MarketStructures._
+import models.poloniex.{MarketEvent, PoloniexEventBus}
+import models.strategies.BollingerAlertStrategy
 import services.DBService
 
 object MarketService {
@@ -63,7 +60,7 @@ class MarketService(val marketName: String, val database: DBService) extends Act
         val update = Update(msg, candleData)
         eventBus.publish(MarketEvent(PoloniexEventBus.Updates + s"/$marketName", update))
 
-      case _ =>
+      case _ => ???
     }
   }
 
