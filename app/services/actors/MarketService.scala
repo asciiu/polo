@@ -8,8 +8,10 @@ import java.time.OffsetDateTime
 import models.analytics.individual.KitchenSink
 import models.poloniex.{MarketEvent, PoloniexEventBus}
 import models.strategies.BollingerAlertStrategy
+import play.api.libs.json.{JsArray, Json}
 
 import scala.concurrent.ExecutionContext
+import scala.math.BigDecimal.RoundingMode
 
 // internal
 import models.analytics.Archiving
@@ -29,6 +31,8 @@ object MarketService {
   case class SendLatestMessage(out: ActorRef)
   case class SendBollingerBands(out: ActorRef)
   case class SendLatestBollingerBands(out: ActorRef)
+
+  case class Update(message: MarketMessage, candleData: JsArray)
 }
 
 class MarketService(val marketName: String, val database: DBService) extends Actor
@@ -46,14 +50,43 @@ class MarketService(val marketName: String, val database: DBService) extends Act
     log.info(s"Started $marketName service")
   }
 
+  private def publishUpdate(msg: MarketMessage) = {
+    val averages = getLatestMovingAverages()
+
+    getLatestCandle() match {
+      case Some(candle) if (averages.nonEmpty) =>
+        val volume24Hr = getVolume(candle.time)
+        val bollingers = getLatestPoints()
+        val bands = bollingers.getOrElse(BollingerBandPoint(candle.time, 0, 0, 0))
+        val candleData = Json.arr(
+          // TODO UTF offerset should come from client
+          candle.time.toEpochSecond() * 1000L - 2.16e+7,
+          candle.open,
+          candle.high,
+          candle.low,
+          candle.close,
+          averages.head._2,
+          averages.last._2,
+          volume24Hr.btcVolume.setScale(2, RoundingMode.DOWN),
+          bands.center,
+          bands.upper,
+          bands.lower
+        )
+        val update = Update(msg, candleData)
+        eventBus.publish(MarketEvent(PoloniexEventBus.Updates + s"/$marketName", update))
+
+      case _ =>
+    }
+  }
+
   override def postStop() = {
     log.info(s"Shutdown $marketName service")
   }
 
   def receive: Receive = {
     case msg: MarketMessage =>
-      eventBus.publish(MarketEvent(PoloniexEventBus.Updates + s"/$marketName", msg))
       strategy.handleMessage(msg)
+      publishUpdate(msg)
 
     case SendCandles(out) =>
       out ! getCandles()

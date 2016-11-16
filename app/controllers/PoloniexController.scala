@@ -232,47 +232,4 @@ class PoloniexController @Inject()(val database: DBService,
       Ok(Json.toJson(l))
     }
   }
-
-  /**
-    * Returns the latest candle for a market.
-    *
-    * @param marketName
-    */
-  def latestCandle(marketName: String) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
-    implicit val timeout = Timeout(5 seconds)
-
-    // TODO this will fail if the first future returns a None
-    for {
-      candle <- (marketService ? GetLastestCandle(marketName)).mapTo[Option[MarketCandle]]
-      averages <- (marketService ? GetLatestMovingAverages(marketName)).mapTo[Map[Int, BigDecimal]]
-      volume24hr <- (marketService ? GetVolume(marketName, candle.get.time)).mapTo[PeriodVolume]
-      bollingers <- (marketService ? GetLatestBands(marketName)).mapTo[Option[BollingerBandPoint]]
-
-    } yield {
-      val df = DateTimeFormat.forPattern("MMM dd HH:mm")
-
-      val info = candle match {
-        case Some(c) if averages.keySet.size == 2 =>
-          val bands = bollingers.getOrElse(BollingerBandPoint(c.time, 0, 0, 0))
-            Json.arr(
-              // TODO UTF offerset should come from client
-              c.time.toEpochSecond() * 1000L - 2.16e+7,
-              c.open,
-              c.high,
-              c.low,
-              c.close,
-              averages.head._2,
-              averages.last._2,
-              volume24hr.btcVolume.setScale(2, RoundingMode.DOWN),
-              bands.center,
-              bands.upper,
-              bands.lower
-            )
-        case _ =>
-          Json.arr()
-      }
-
-      Ok(Json.toJson(info))
-    }
-  }
 }

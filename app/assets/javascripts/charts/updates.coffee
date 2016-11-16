@@ -84,33 +84,29 @@ $ ->
     return
 
   socket.onmessage = (event) ->
+   msg = JSON.parse(event.data);
 
-    # Should be of type MarketMessage in json
-    market = JSON.parse(event.data)
+   switch msg.type
+     when 'MarketMessage'
+       # Should be of type MarketMessage in json
+       market = msg.data
 
-    # update chart
-    chart = $('#candle-chart').highcharts()
-    candles = chart.series[0]
-    ema1 = chart.series[1]
-    ema2 = chart.series[2]
-    vol  = chart.series[3]
-    avg  = chart.series[4]
-    upper = chart.series[5]
-    lower = chart.series[6]
+       # update chart
+       chart = $('#candle-chart').highcharts()
+       candles = chart.series[0]
+       ema1 = chart.series[1]
+       ema2 = chart.series[2]
+       vol  = chart.series[3]
+       avg  = chart.series[4]
+       upper = chart.series[5]
+       lower = chart.series[6]
 
-    # update the header stats
-    $('#span-change').html(market.percentChange)
-    $('#td-last').html(market.last.toFixed(8))
-    $('#td-high').html(market.high24hr.toFixed(8))
-    $('#td-low').html(market.low24hr.toFixed(8))
+       # update the header stats
+       $('#span-change').html(market.percentChange)
+       $('#td-last').html(market.last.toFixed(8))
+       $('#td-high').html(market.high24hr.toFixed(8))
+       $('#td-low').html(market.low24hr.toFixed(8))
 
-    # get latest candle from server
-    route = jsRoutes.controllers.PoloniexController.latestCandle(name)
-    $.ajax
-      method: route.method
-      url: route.url
-      success: (result) ->
-        updateChartData(result)
-        return
+       updateChartData(msg.candle)
 
     return

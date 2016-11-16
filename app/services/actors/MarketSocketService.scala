@@ -3,6 +3,7 @@ package services.actors
 import akka.actor.{Actor, ActorRef, Props}
 import play.api.libs.json.Json
 import services.DBService
+import services.actors.MarketService.Update
 
 import scala.concurrent.ExecutionContext
 import scala.math.BigDecimal.RoundingMode
@@ -44,9 +45,16 @@ class MarketSocketService(marketName: String, out: ActorRef, database: DBService
   }
 
   def receive = {
-    case msg: Msg =>
+
+    case Update(msg, candleData) =>
       val percentChange = msg.percentChange * 100
-      val ud = msg.copy(percentChange = percentChange.setScale(2, RoundingMode.CEILING))
-      out ! Json.toJson(ud).toString
+      val marketMessage = msg.copy(percentChange = percentChange.setScale(2, RoundingMode.CEILING))
+      val json = Json.obj(
+        "type" -> "MarketMessage",
+        "data" -> marketMessage,
+        "candle" -> candleData
+      ).toString
+
+      out ! json
   }
 }

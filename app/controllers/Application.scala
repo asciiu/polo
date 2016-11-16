@@ -24,7 +24,6 @@ class Application @Inject()(val database: DBService,
     Ok(
       JavaScriptReverseRouter("jsRoutes")(
         PoloniexController.candles,
-        PoloniexController.latestCandle,
         PoloniexController.socket,
         PoloniexController.setup,
         PoloniexController.isRecording,
