@@ -77,6 +77,30 @@ class PoloniexController @Inject()(val database: DBService,
   }
 
   /**
+    * Forwards the details of the selected market.
+    * @param marketName
+    * @return
+    */
+  def market(marketName: String) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
+    // TODO this will fail when the market service at that name is not there
+    val marketRef = system.actorSelection(s"akka://application/user/poloniex-market/$marketName")
+
+    (marketRef ? ReturnLatestMessage).mapTo[Option[Msg]].map { msg =>
+      msg match {
+        case Some(m) =>
+          // change percent format from decimal
+          val percentChange = m.percentChange * 100
+          val normalized = m.copy(percentChange =
+            percentChange.setScale(2, RoundingMode.CEILING))
+
+          Ok(views.html.poloniex.market(loggedIn, marketName, normalized))
+        case None =>
+          NotFound(views.html.errors.notFound(request))
+      }
+    }
+  }
+
+  /**
     * Displays all poloniex markets.
     */
   def markets() = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
@@ -89,8 +113,8 @@ class PoloniexController @Inject()(val database: DBService,
     // TODO this request should be factored into to the poloniex models
     // poloniex markets
     val poloniexRequest: WSRequest = ws.url("https://poloniex.com/public?command=returnTicker")
-        .withHeaders("Accept" -> "application/json")
-        .withRequestTimeout(10000.millis)
+      .withHeaders("Accept" -> "application/json")
+      .withRequestTimeout(10000.millis)
 
     poloniexRequest.get().map { polo =>
       polo.json.validate[List[PoloniexMarketUpdate]] match {
@@ -112,32 +136,6 @@ class PoloniexController @Inject()(val database: DBService,
           Ok(views.html.poloniex.markets(loggedIn, bitcoin, btcmarkets))
         case _ =>
           BadRequest("could not read poloniex market")
-      }
-    }
-  }
-
-  /**
-    * The latest market data.
-    *
-    * @param marketName
-    * @return
-    */
-  def market(marketName: String) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
-    // TODO this will fail when the market service at that name is not there
-    val marketRef = system.actorSelection(s"akka://application/user/poloniex-market/$marketName")
-
-    (marketRef ? ReturnLatestMessage).mapTo[Option[Msg]].map { msg =>
-      msg match {
-        case Some(m) =>
-          // change percent format from decimal
-          val percentChange = m.percentChange * 100
-          //val name = t.name.replace("BTC_", "")
-          val normalized = m.copy(percentChange =
-            percentChange.setScale(2, RoundingMode.CEILING))
-
-          Ok(views.html.poloniex.market(loggedIn, marketName, normalized))
-        case None =>
-          NotFound(views.html.errors.notFound(request))
       }
     }
   }
