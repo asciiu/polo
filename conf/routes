@@ -26,17 +26,20 @@ POST    /messages/:id/delete                  controllers.RestrictedApplication.
 GET     /assets/*file                         controllers.Assets.at(path="/public", file)
 GET     /webjars/*file                        controllers.WebJarAssets.at(file)
 
+
 # Playback controller reads data recorded in DB
 GET     /history/markets                      controllers.HistoryController.markets(sessionId: Int)
 GET     /history/socket                       controllers.HistoryController.socket(sessionId: Int)
 
+
 # Poloneix
 GET     /events                               controllers.PoloniexController.messages()
+GET     /markets                              controllers.PoloniexController.markets()
 GET     /setups                               controllers.PoloniexController.setups()
 GET     /market/:marketName                   controllers.PoloniexController.market(marketName)
 GET     /market/:marketName/candles           controllers.PoloniexController.candles(marketName)
 GET     /market/:marketName/updates           controllers.PoloniexController.updates(marketName)
-GET     /markets                              controllers.PoloniexController.markets()
+
 
 # Research and Development controller
 GET     /arbiter                              controllers.ProtoController.arbiter()
