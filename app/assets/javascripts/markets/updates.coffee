@@ -10,30 +10,29 @@ $ ->
   #      $('div#run-btn').html('Stop')
   #      $('div#run-btn').addClass('alert')
 
-  $('div#run-btn').click (event) ->
-    self = $(this)
-    if (self.html() == 'Record')
-      route = jsRoutes.controllers.PoloniexController.startCapture()
-      $.ajax
-        method: route.method
-        url: route.url
-        success: (result) ->
-          self.html('Stop')
-          self.addClass('alert')
-    else
-      route = jsRoutes.controllers.PoloniexController.endCapture()
-      $.ajax
-        method: route.method
-        url: route.url
-        success: (result) ->
-          self.html('Record')
-          self.removeClass('alert')
-
-    return
+  #$('div#run-btn').click (event) ->
+  #  self = $(this)
+  #  if (self.html() == 'Record')
+  #    route = jsRoutes.controllers.PoloniexController.startCapture()
+  #    $.ajax
+  #      method: route.method
+  #      url: route.url
+  #      success: (result) ->
+  #        self.html('Stop')
+  #        self.addClass('alert')
+  #  else
+  #    route = jsRoutes.controllers.PoloniexController.endCapture()
+  #    $.ajax
+  #      method: route.method
+  #      url: route.url
+  #      success: (result) ->
+  #        self.html('Record')
+  #        self.removeClass('alert')
+  #  return
 
   #########################################################
   # Web socket feed should update the table of tickers
-  socket = new WebSocket('ws://localhost:9001' + jsRoutes.controllers.PoloniexController.socket().url)
+  socket = new WebSocket('ws://localhost:9001' + jsRoutes.controllers.PoloniexController.messages().url)
 
   socket.onopen = (event) ->
     console.log('connected')

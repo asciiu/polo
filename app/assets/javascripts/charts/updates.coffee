@@ -77,7 +77,7 @@ $ ->
   name = $('#market-name').html()
 
   # Web socket feed should update the table of tickers
-  socket = new WebSocket('ws://localhost:9001' + jsRoutes.controllers.PoloniexController.socket(name).url)
+  socket = new WebSocket('ws://localhost:9001' + jsRoutes.controllers.PoloniexController.updates(name).url)
 
   socket.onopen = (event) ->
     console.log('connected')

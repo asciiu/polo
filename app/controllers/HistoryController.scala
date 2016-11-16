@@ -76,39 +76,4 @@ class HistoryController  @Inject()(val database: DBService,
   def capturedSessions() = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
     Future.successful(Ok(view.markets(loggedIn, 1, List[String]())))
   }
-
-//  def candles(marketName: String) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
-//    val marketCandles = PoloniexCandle.filter( c => c.sessionId === sessionID && c.cryptoCurrency === marketName).sortBy(_.createdAt)
-//
-//    database.runAsync(marketCandles.result).flatMap{ candles =>
-//      implicit val timeout = Timeout(5 seconds)
-//
-//      // TODO this should be controlled by socket session
-//      val marketCandles = candles.map(c =>
-//        new MarketCandle(c.createdAt, 5, c.open, c.close, c.highestBid, c.lowestAsk)).toList.reverse
-//
-//      (marketService ? SetCandles(marketName, marketCandles))
-//        .mapTo[List[(Int, List[ExponentialMovingAverage])]]
-//        .map { ema =>
-//
-//        val l = candles.map { c =>
-//          val time = c.createdAt.toEpochSecond() * 1000L - 2.16e+7
-//          val defaultEMA = ExponentialMovingAverage(c.createdAt, BigDecimal(0), 0)
-//          Json.arr(
-//            // TODO UTF offerset should come from client
-//            // I've subtracted 6 hours(2.16e+7 milliseconds) for denver time for now
-//            time,
-//            c.open,
-//            c.highestBid,
-//            c.lowestAsk,
-//            c.close,
-//            ema(0)._2.find(avg => c.createdAt.equals(avg.time)).getOrElse(defaultEMA).ema,
-//            ema(1)._2.find(avg => c.createdAt.equals(avg.time)).getOrElse(defaultEMA).ema,
-//            0
-//          )
-//        }
-//        Ok(Json.toJson(l))
-//      }
-//    }
-//  }
 }

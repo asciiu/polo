@@ -32,13 +32,11 @@ GET     /history/socket             controllers.HistoryController.socket(session
 
 # Poloneix
 GET     /candles/:marketName        controllers.PoloniexController.candles(marketName)
-GET     /socket/:marketName         controllers.PoloniexController.socket(marketName)
+GET     /updates/:marketName        controllers.PoloniexController.updates(marketName)
+GET     /events                     controllers.PoloniexController.messages()
 GET     /setup                      controllers.PoloniexController.setup()
 GET     /markets                    controllers.PoloniexController.markets()
 GET     /market/:marketName         controllers.PoloniexController.market(marketName)
-GET     /capture/start              controllers.PoloniexController.startCapture()
-GET     /capture/end                controllers.PoloniexController.endCapture()
-GET     /capture/isRecording        controllers.PoloniexController.isRecording()
 
 # Research and Development controller
 GET     /arbiter                    controllers.ProtoController.arbiter()
