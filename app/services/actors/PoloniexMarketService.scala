@@ -87,7 +87,7 @@ class PoloniexMarketService @Inject()(val database: DBService,
         msg.baseVolume > baseVolumeRule) {
 
         // fire up a new actor per market
-        markets += marketName -> context.actorOf(MarketService.props(marketName, database))
+        markets += marketName -> context.actorOf(MarketService.props(marketName, database), marketName)
 
         // send a message to the retriever to get the candle data from Poloniex
         // if the 24 hour baseVolume from this update is greater than our threshold

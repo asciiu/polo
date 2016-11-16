@@ -32,6 +32,7 @@ object MarketService {
   case class SendBollingerBands(out: ActorRef)
   case class SendLatestBollingerBands(out: ActorRef)
 
+  case object ReturnAllData
   case class Update(message: MarketMessage, candleData: JsArray)
 }
 
@@ -79,6 +80,34 @@ class MarketService(val marketName: String, val database: DBService) extends Act
     }
   }
 
+  private def getAllData(): List[JsArray] = {
+    val candles = getCandles()
+    val movingAverages = getMovingAverages()
+    val volume24Hr = getVolumes()
+    val bollingers = getAllPoints()
+
+    candles.map { c =>
+      val defaultEMA = ExponentialMovingAverage(c.time, 0, c.close)
+      val bands = bollingers.find(b => c.time.equals(b.time)).getOrElse(BollingerBandPoint(c.time, 0, 0, 0))
+
+      Json.arr(
+        // TODO UTF offerset should come from client
+        // I've subtracted 6 hours(2.16e+7 milliseconds) for denver time for now
+        c.time.toEpochSecond() * 1000L - 2.16e+7,
+        c.open,
+        c.high,
+        c.low,
+        c.close,
+        movingAverages.head._2.find( avg => c.time.equals(avg.time)).getOrElse(defaultEMA).ema,
+        movingAverages.last._2.find( avg => c.time.equals(avg.time)).getOrElse(defaultEMA).ema,
+        volume24Hr.find( vol => c.time.equals(vol.time)).getOrElse(PeriodVolume(c.time, 0)).btcVolume.setScale(2, RoundingMode.DOWN),
+        bands.center,
+        bands.upper,
+        bands.lower
+      )
+    }
+  }
+
   override def postStop() = {
     log.info(s"Shutdown $marketName service")
   }
@@ -87,6 +116,12 @@ class MarketService(val marketName: String, val database: DBService) extends Act
     case msg: MarketMessage =>
       strategy.handleMessage(msg)
       publishUpdate(msg)
+
+    /**
+      * Returns List[JsArray]
+      */
+    case ReturnAllData =>
+      sender ! getAllData()
 
     case SendCandles(out) =>
       out ! getCandles()

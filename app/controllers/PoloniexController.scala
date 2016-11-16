@@ -18,6 +18,7 @@ import play.api.libs.json._
 import play.api.libs.streams.ActorFlow
 import play.api.Configuration
 import org.joda.time.format.DateTimeFormat
+import services.actors.MarketService.ReturnAllData
 import services.actors.PoloniexMarketService.GetBands
 import services.actors.MarketSocketService
 import services.actors.NotificationService.GetMarketSetup
@@ -174,8 +175,6 @@ class PoloniexController @Inject()(val database: DBService,
     * @return
     */
   def market(marketName: String) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
-    implicit val timeout = Timeout(5 seconds)
-
     (marketService ? GetLatestMessage(marketName)).mapTo[Option[Msg]].map { msg =>
       msg match {
         case Some(m) =>
@@ -192,44 +191,15 @@ class PoloniexController @Inject()(val database: DBService,
     }
   }
 
-
   /**
     * Returns candle data for the following market.
     *
     * @param marketName
     */
   def candles(marketName: String) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
-    implicit val timeout = Timeout(5 seconds)
-
-    for {
-      candles <- (marketService ? GetCandles(marketName)).mapTo[List[MarketCandle]]
-      movingAverages <- (marketService ? GetMovingAverages(marketName)).mapTo[Map[Int, List[ExponentialMovingAverage]]]
-      volume24hr <- (marketService ? GetVolumes(marketName)).mapTo[List[PeriodVolume]]
-      bollingers <- (marketService ? GetBands(marketName)).mapTo[List[BollingerBandPoint]]
-    } yield {
-      val l = candles.map { c =>
-        val defaultEMA = ExponentialMovingAverage(c.time, 0, c.close)
-        val bands = bollingers.find(b => c.time.equals(b.time)).getOrElse(BollingerBandPoint(c.time, 0, 0, 0))
-
-
-        Json.arr(
-          // TODO UTF offerset should come from client
-          // I've subtracted 6 hours(2.16e+7 milliseconds) for denver time for now
-          c.time.toEpochSecond() * 1000L - 2.16e+7,
-          c.open,
-          c.high,
-          c.low,
-          c.close,
-          movingAverages.head._2.find( avg => c.time.equals(avg.time)).getOrElse(defaultEMA).ema,
-          movingAverages.last._2.find( avg => c.time.equals(avg.time)).getOrElse(defaultEMA).ema,
-          volume24hr.find( vol => c.time.equals(vol.time)).getOrElse(PeriodVolume(c.time, 0)).btcVolume.setScale(2, RoundingMode.DOWN),
-          bands.center,
-          bands.upper,
-          bands.lower
-        )
-      }
-
-      Ok(Json.toJson(l))
+    val marketRef = system.actorSelection(s"akka://application/user/poloniex-market/$marketName")
+    (marketRef ? ReturnAllData).mapTo[List[JsArray]].map { data =>
+      Ok(Json.toJson(data))
     }
   }
 }
