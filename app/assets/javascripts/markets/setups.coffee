@@ -9,7 +9,7 @@ $ ->
 
   #########################################################
   # Web socket feed should update the table of tickers
-  socket = new WebSocket('ws://localhost:9001' + jsRoutes.controllers.PoloniexController.setup().url)
+  socket = new WebSocket('ws://localhost:9001' + jsRoutes.controllers.PoloniexController.setups().url)
 
   socket.onopen = (event) ->
     console.log('connected to setups')

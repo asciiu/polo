@@ -61,42 +61,6 @@ class PoloniexController @Inject()(val database: DBService,
     ws
   )
 
-  /**
-    * Sends market setups to all connected clients.
-    */
-  def setup() = WebSocket.accept[String, String] { request =>
-    class SetupSubscriber(out: ActorRef)(implicit ctx: ExecutionContext) extends Actor {
-      val eventBus = PoloniexEventBus()
-
-      override def preStart() = {
-        (notificationService ? GetMarketSetup).mapTo[Set[String]].map { markets =>
-          val m = Json.toJson(markets)
-          val json = Json.obj(
-            "type" -> "MarketSetups",
-            "data" -> m
-          ).toString
-          out ! json
-        }
-        eventBus.subscribe(self, PoloniexEventBus.BollingerNotification)
-      }
-
-      override def postStop() = {
-        eventBus.unsubscribe(self, PoloniexEventBus.BollingerNotification)
-      }
-
-      def receive: Receive = {
-        case MarketSetupNotification(marketName, isSetup) =>
-          val json = Json.obj(
-            "type" -> "MarketSetup",
-            "data" -> Json.obj("marketName" -> marketName, "isSetup" -> isSetup)
-          ).toString
-          out ! json
-      }
-    }
-
-    ActorFlow.actorRef(out => Props(new SetupSubscriber(out)))
-  }
-
   def isRecording() = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
     // TODO
     Future.successful(Ok(Json.toJson(false)))
@@ -201,11 +165,49 @@ class PoloniexController @Inject()(val database: DBService,
       override def postStop() = eventBus.unsubscribe(self, PoloniexEventBus.Updates)
       def receive: Receive = {
         case msg: Msg =>
-          out ! Json.toJson(msg).toString
+          val percentChange = msg.percentChange * 100
+          val marketMessage = msg.copy(percentChange = percentChange.setScale(2, RoundingMode.CEILING))
+          out ! Json.toJson(marketMessage).toString
       }
     }
 
     ActorFlow.actorRef(out => Props(new MarketsNotifier(out)))
+  }
+
+  /**
+    * Sends market setups to all connected clients.
+    */
+  def setups() = WebSocket.accept[String, String] { request =>
+    class SetupSubscriber(out: ActorRef)(implicit ctx: ExecutionContext) extends Actor {
+      val eventBus = PoloniexEventBus()
+
+      override def preStart() = {
+        (notificationService ? GetMarketSetup).mapTo[Set[String]].map { markets =>
+          val m = Json.toJson(markets)
+          val json = Json.obj(
+            "type" -> "MarketSetups",
+            "data" -> m
+          ).toString
+          out ! json
+        }
+        eventBus.subscribe(self, PoloniexEventBus.BollingerNotification)
+      }
+
+      override def postStop() = {
+        eventBus.unsubscribe(self, PoloniexEventBus.BollingerNotification)
+      }
+
+      def receive: Receive = {
+        case MarketSetupNotification(marketName, isSetup) =>
+          val json = Json.obj(
+            "type" -> "MarketSetup",
+            "data" -> Json.obj("marketName" -> marketName, "isSetup" -> isSetup)
+          ).toString
+          out ! json
+      }
+    }
+
+    ActorFlow.actorRef(out => Props(new SetupSubscriber(out)))
   }
 
   /**
