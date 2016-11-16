@@ -12,14 +12,23 @@ import models.market.MarketStructures.{MarketMessage => Msg}
 import models.poloniex.PoloniexEventBus
 
 
-object BrowserService {
+object MarketSocketService {
   def props(marketName: String, out: ActorRef, database: DBService)(implicit context: ExecutionContext) =
-    Props(new BrowserService(marketName, out, database))
+    Props(new MarketSocketService(marketName, out, database))
 
   case object Done
 }
 
-class BrowserService(marketName: String, out: ActorRef, database: DBService)(implicit ctx: ExecutionContext)
+/**
+  * This actor will service websocket connections that require updates
+  * from a single market source.
+  *
+  * @param marketName
+  * @param out an actor reference to the browser client
+  * @param database
+  * @param ctx
+  */
+class MarketSocketService(marketName: String, out: ActorRef, database: DBService)(implicit ctx: ExecutionContext)
   extends Actor {
 
   val eventBus = PoloniexEventBus()
@@ -35,12 +44,9 @@ class BrowserService(marketName: String, out: ActorRef, database: DBService)(imp
   }
 
   def receive = {
-    // send updates from Bitcoin markets only
-    case msg: Msg if msg.cryptoCurrency.startsWith("BTC") =>
+    case msg: Msg =>
       val percentChange = msg.percentChange * 100
       val ud = msg.copy(percentChange = percentChange.setScale(2, RoundingMode.CEILING))
       out ! Json.toJson(ud).toString
-    case msg: Msg if msg.cryptoCurrency == "USDT_BTC" =>
-      out ! Json.toJson(msg).toString
   }
 }

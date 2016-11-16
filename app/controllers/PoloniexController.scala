@@ -19,7 +19,7 @@ import play.api.libs.streams.ActorFlow
 import play.api.Configuration
 import org.joda.time.format.DateTimeFormat
 import services.actors.PoloniexMarketService.GetBands
-import services.actors.BrowserService
+import services.actors.MarketSocketService
 import services.actors.NotificationService.GetMarketSetup
 
 import scala.language.postfixOps
@@ -72,7 +72,7 @@ class PoloniexController @Inject()(val database: DBService,
     * Sends market updates to all connected clients.
     */
   def socket(marketName: String) = WebSocket.accept[String, String] { request =>
-    ActorFlow.actorRef(out => BrowserService.props(marketName, out, database))
+    ActorFlow.actorRef(out => MarketSocketService.props(marketName, out, database))
   }
 
   /**
