@@ -9,7 +9,6 @@ import akka.stream.scaladsl.{Flow, Sink, Source}
 import models.market.MarketStructures.BollingerBandPoint
 import models.strategies.BollingerStrategy
 import play.api.libs.json.Json
-import services.actors.PoloniexMarketService.GetBands
 import slick.backend.DatabasePublisher
 
 import scala.math.BigDecimal.RoundingMode

@@ -33,6 +33,7 @@ object MarketService {
   case class SendLatestBollingerBands(out: ActorRef)
 
   case object ReturnAllData
+  case object ReturnLatestMessage
   case class Update(message: MarketMessage, candleData: JsArray)
 }
 
@@ -122,6 +123,9 @@ class MarketService(val marketName: String, val database: DBService) extends Act
       */
     case ReturnAllData =>
       sender ! getAllData()
+
+    case ReturnLatestMessage =>
+      sender ! getLatestMessage
 
     case SendCandles(out) =>
       out ! getCandles()

@@ -27,7 +27,6 @@ import models.db.Tables.profile.api._
 import models.market.MarketCandle
 import models.market.MarketStructures.{ExponentialMovingAverage, MarketMessage}
 import models.poloniex.PoloniexEventBus
-import services.actors.PoloniexMarketService.SetCandles
 import services.DBService
 import views.html.{history => view}
 

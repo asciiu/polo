@@ -18,8 +18,7 @@ import play.api.libs.json._
 import play.api.libs.streams.ActorFlow
 import play.api.Configuration
 import org.joda.time.format.DateTimeFormat
-import services.actors.MarketService.ReturnAllData
-import services.actors.PoloniexMarketService.GetBands
+import services.actors.MarketService.{ReturnAllData, ReturnLatestMessage}
 import services.actors.MarketSocketService
 import services.actors.NotificationService.GetMarketSetup
 
@@ -175,7 +174,10 @@ class PoloniexController @Inject()(val database: DBService,
     * @return
     */
   def market(marketName: String) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
-    (marketService ? GetLatestMessage(marketName)).mapTo[Option[Msg]].map { msg =>
+    // TODO this will fail when the market service at that name is not there
+    val marketRef = system.actorSelection(s"akka://application/user/poloniex-market/$marketName")
+
+    (marketRef ? ReturnLatestMessage).mapTo[Option[Msg]].map { msg =>
       msg match {
         case Some(m) =>
           // change percent format from decimal
@@ -197,6 +199,7 @@ class PoloniexController @Inject()(val database: DBService,
     * @param marketName
     */
   def candles(marketName: String) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
+    // TODO this will fail if there is no actor there
     val marketRef = system.actorSelection(s"akka://application/user/poloniex-market/$marketName")
     (marketRef ? ReturnAllData).mapTo[List[JsArray]].map { data =>
       Ok(Json.toJson(data))
