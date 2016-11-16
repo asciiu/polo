@@ -24,7 +24,6 @@ $ ->
         while i < count
           marketName = msg.data[i]
           light marketName, true
-          console.log(marketName)
           ++i
 
       when 'MarketSetup'

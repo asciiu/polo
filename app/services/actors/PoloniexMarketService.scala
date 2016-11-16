@@ -16,15 +16,6 @@ import models.poloniex.PoloniexEventBus._
 import services.DBService
 
 
-object PoloniexMarketService {
-  trait CandleManagerMessage
-
-  // TODO these should be implemented in the MarketService
-  case object GetSessionId extends CandleManagerMessage
-  case object StartCapture extends CandleManagerMessage
-  case object EndCapture extends CandleManagerMessage
-}
-
 /**
   * This actor is reponsible for managing all poloniex markets. New
   * actors for each market should be created here.
@@ -34,7 +25,6 @@ class PoloniexMarketService @Inject()(val database: DBService,
                                       conf: Configuration)(implicit ctx: ExecutionContext) extends Actor
   with ActorLogging {
 
-  import PoloniexMarketService._
   import PoloniexCandleRetrieverService._
 
   val candleService = context.actorOf(PoloniexCandleRetrieverService.props(ws, conf))
@@ -77,15 +67,5 @@ class PoloniexMarketService @Inject()(val database: DBService,
       if (markets.contains(marketName)) {
         markets(marketName) ! msg
       }
-
-    case GetSessionId =>
-      //sender ! getSessionId
-
-    // TODO send the session id to the actors
-      // and have the actors archive the candles
-    case StartCapture =>
-      //beginSession(marketCandles.map( m => Can(m._1, m._2.toList)).toList)
-    case EndCapture =>
-      //endSession()
   }
 }

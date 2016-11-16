@@ -48,10 +48,6 @@ class MarketService(val marketName: String, val database: DBService) extends Act
   val eventBus = PoloniexEventBus()
   val strategy = new BollingerAlertStrategy(this)
 
-  override def preStart() = {
-    log.info(s"Started $marketName service")
-  }
-
   private def publishUpdate(msg: MarketMessage) = {
     val averages = getLatestMovingAverages()
 

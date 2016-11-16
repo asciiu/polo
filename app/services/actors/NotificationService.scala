@@ -36,11 +36,9 @@ class NotificationService @Inject()(implicit ctx: ExecutionContext)
 
   def receive = {
     case MarketSetupNotification(marketName, isSetup) if (isSetup) =>
-      log.info(s"MarketSetup: $marketName true")
       goodMarkets += marketName
 
     case MarketSetupNotification(marketName, isSetup) if (!isSetup) =>
-      log.info(s"MarketSetup: $marketName false")
       goodMarkets -= marketName
 
     case GetMarketSetup =>

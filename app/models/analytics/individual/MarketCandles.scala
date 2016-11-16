@@ -54,7 +54,7 @@ trait MarketCandles extends ActorLogging {
       marketCandles.appendAll(last24hrCandles)
     }
 
-    log.info(s"Candle data for $marketName added")
+    log.info(s"$marketName service ready")
   }
 
   /**

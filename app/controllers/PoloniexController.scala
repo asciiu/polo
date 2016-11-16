@@ -17,7 +17,6 @@ import play.api.mvc.{Controller, WebSocket}
 import play.api.libs.json._
 import play.api.libs.streams.ActorFlow
 import play.api.Configuration
-import org.joda.time.format.DateTimeFormat
 import services.actors.MarketService.{ReturnAllData, ReturnLatestMessage}
 import services.actors.MarketSocketService
 import services.actors.NotificationService.GetMarketSetup
@@ -28,14 +27,10 @@ import scala.concurrent.duration._
 import scala.math.BigDecimal.RoundingMode
 
 // internal
-import models.market.MarketStructures.PeriodVolume
 import models.market.MarketStructures.{MarketMessage => Msg}
 import models.db.AccountRole
 import models.poloniex.{PoloniexMarketUpdate, PoloniexMarketMessage}
 import services.DBService
-import models.market.MarketCandle
-import services.actors.PoloniexMarketService
-import PoloniexMarketService._
 
 @Singleton
 class PoloniexController @Inject()(val database: DBService,
@@ -112,18 +107,17 @@ class PoloniexController @Inject()(val database: DBService,
   }
 
   def isRecording() = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
-    (marketService ? GetSessionId).mapTo[Option[Int]].map { option =>
-      Ok(Json.toJson(option.isDefined))
-    }
+    // TODO
+    Future.successful(Ok(Json.toJson(false)))
   }
 
   def startCapture() = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
-    marketService ! StartCapture
+    // TODO
     Future.successful(Ok(Json.toJson(true)))
   }
 
   def endCapture() = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
-    marketService ! EndCapture
+    // TODO
     Future.successful(Ok(Json.toJson(true)))
   }
 
