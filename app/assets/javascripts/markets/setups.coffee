@@ -19,12 +19,12 @@ $ ->
     msg = JSON.parse(event.data);
     switch msg.type
       when 'MarketSetups'
-
         count = msg.data.length
         i = 0
         while i < count
           marketName = msg.data[i]
           light marketName, true
+          console.log(marketName)
           ++i
 
       when 'MarketSetup'

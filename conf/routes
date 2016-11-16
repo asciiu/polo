@@ -33,7 +33,7 @@ GET     /history/socket             controllers.HistoryController.socket(session
 # Poloneix
 GET     /candles/:marketName        controllers.PoloniexController.candles(marketName)
 GET     /last/:marketName           controllers.PoloniexController.latestCandle(marketName)
-GET     /socket                     controllers.PoloniexController.socket()
+GET     /socket/:marketName         controllers.PoloniexController.socket(marketName)
 GET     /setup                      controllers.PoloniexController.setup()
 GET     /markets                    controllers.PoloniexController.markets()
 GET     /market/:marketName         controllers.PoloniexController.market(marketName)

@@ -6,6 +6,7 @@ import akka.contrib.pattern.ReceivePipeline
 import java.time.OffsetDateTime
 
 import models.analytics.individual.KitchenSink
+import models.poloniex.{MarketEvent, PoloniexEventBus}
 import models.strategies.BollingerAlertStrategy
 
 import scala.concurrent.ExecutionContext
@@ -38,6 +39,7 @@ class MarketService(val marketName: String, val database: DBService) extends Act
 
   import MarketService._
 
+  val eventBus = PoloniexEventBus()
   val strategy = new BollingerAlertStrategy(this)
 
   override def preStart() = {
@@ -50,6 +52,7 @@ class MarketService(val marketName: String, val database: DBService) extends Act
 
   def receive: Receive = {
     case msg: MarketMessage =>
+      eventBus.publish(MarketEvent(PoloniexEventBus.Updates + s"/$marketName", msg))
       strategy.handleMessage(msg)
 
     case SendCandles(out) =>

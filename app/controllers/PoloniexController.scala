@@ -71,8 +71,8 @@ class PoloniexController @Inject()(val database: DBService,
   /**
     * Sends market updates to all connected clients.
     */
-  def socket() = WebSocket.accept[String, String] { request =>
-    ActorFlow.actorRef(out => BrowserService.props(out, database))
+  def socket(marketName: String) = WebSocket.accept[String, String] { request =>
+    ActorFlow.actorRef(out => BrowserService.props(marketName, out, database))
   }
 
   /**

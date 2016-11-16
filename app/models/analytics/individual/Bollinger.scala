@@ -36,7 +36,7 @@ trait Bollinger extends ActorLogging {
   private val zeBands = ListBuffer[BollingerBandPoint]()
 
   // these are the system defaults but can be overridden
-  val periodInAverage = 10
+  val periodInAverage = 20
   val closePrices = ListBuffer[ClosePrice]()
   val periodMinutes = 5
   val percent: BigDecimal = 0.04

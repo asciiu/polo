@@ -13,13 +13,13 @@ import models.poloniex.PoloniexEventBus
 
 
 object BrowserService {
-  def props(out: ActorRef, database: DBService)(implicit context: ExecutionContext) =
-    Props(new BrowserService(out, database))
+  def props(marketName: String, out: ActorRef, database: DBService)(implicit context: ExecutionContext) =
+    Props(new BrowserService(marketName, out, database))
 
   case object Done
 }
 
-class BrowserService(out: ActorRef, database: DBService)(implicit ctx: ExecutionContext)
+class BrowserService(marketName: String, out: ActorRef, database: DBService)(implicit ctx: ExecutionContext)
   extends Actor {
 
   val eventBus = PoloniexEventBus()
@@ -27,11 +27,11 @@ class BrowserService(out: ActorRef, database: DBService)(implicit ctx: Execution
   implicit val msgWrite = Json.writes[Msg]
 
   override def preStart() = {
-    eventBus.subscribe(self, PoloniexEventBus.Updates)
+    eventBus.subscribe(self, PoloniexEventBus.Updates + s"/$marketName")
   }
 
   override def postStop() = {
-    eventBus.unsubscribe(self, PoloniexEventBus.Updates)
+    eventBus.unsubscribe(self, PoloniexEventBus.Updates + s"/$marketName")
   }
 
   def receive = {
