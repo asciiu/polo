@@ -4,7 +4,7 @@ $ ->
 
   # update chart
   route = jsRoutes.controllers.PoloniexController.candles(name)
-  chart.setTitle({text: name})
+  #chart.setTitle({text: name})
 
   $.ajax
     method: route.method

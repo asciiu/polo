@@ -34,6 +34,7 @@ class MarketService(val marketName: String, val database: DBService) extends Act
 
   val eventBus = PoloniexEventBus()
   val strategy = new BollingerAlertStrategy(this)
+  var myLastUSDPrice: BigDecimal = 0.0
 
   private def publishUpdate(msg: MarketMessage) = {
     val averages = getLatestMovingAverages()
@@ -55,12 +56,13 @@ class MarketService(val marketName: String, val database: DBService) extends Act
           volume24Hr.btcVolume.setScale(2, RoundingMode.DOWN),
           bands.center,
           bands.upper,
-          bands.lower
+          bands.lower,
+          myLastUSDPrice
         )
         val update = Update(msg, candleData)
         eventBus.publish(MarketEvent(PoloniexEventBus.Updates + s"/$marketName", update))
 
-      case _ => ???
+      case _ =>
     }
   }
 
@@ -92,7 +94,11 @@ class MarketService(val marketName: String, val database: DBService) extends Act
     }
   }
 
+  override def preStart() = {
+    eventBus.subscribe(self, PoloniexEventBus.BTCPrice)
+  }
   override def postStop() = {
+    eventBus.unsubscribe(self, PoloniexEventBus.BTCPrice)
     log.info(s"Shutdown $marketName service")
   }
 
@@ -100,6 +106,12 @@ class MarketService(val marketName: String, val database: DBService) extends Act
     case msg: MarketMessage =>
       strategy.handleMessage(msg)
       publishUpdate(msg)
+
+    case PriceUpdateBTC(time, price) =>
+      val last = getLatestMessage()
+      if (last.isDefined) {
+        myLastUSDPrice = last.get.last * price
+      }
 
     /**
       * Returns List[JsArray]

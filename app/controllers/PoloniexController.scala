@@ -77,7 +77,7 @@ class PoloniexController @Inject()(val database: DBService,
   }
 
   /**
-    * Forwards the details of the selected market.
+    * Directs the user to the details of the selected market.
     * @param marketName
     * @return
     */

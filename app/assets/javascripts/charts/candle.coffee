@@ -37,7 +37,7 @@ $ ->
     chart.lbl.attr({
       text: str,
       x: xMax + chart.plotLeft,
-      y: chart.plotTop,
+      y: chart.plotTop + 10,
     })
 
     rectangle.attr({
@@ -91,7 +91,13 @@ $ ->
     title: {
       text: 'Hello'
       style: {
-        font: 'bold 16px "Trebuchet MS", Verdana, sans-serif'
+        fontSize: '12px'
+        color: '#FFF'
+      }
+    }
+    subtitle: {
+      style: {
+        fontSize: '10px'
         color: '#FFF'
       }
     }
@@ -102,13 +108,14 @@ $ ->
     tooltip: {
       style: {
         color: '#FFF'
+        fontSize: '8pt'
       }
       enabled: true,
       positioner: (labelWidth, labelHeight, point) ->
-        return { x: chart.plotWidth - labelWidth + chart.plotLeft, y: 39 }
+        return { x: chart.plotWidth - labelWidth + chart.plotLeft, y: 33 }
       shadow: false,
       borderWidth: 0,
-      backgroundColor: 'rgba(30, 43, 52, 1.0)'
+      backgroundColor: 'rgba(30, 43, 52, 0.0)'
       formatter: () ->
         x = this.x
         point = this.points.find (p) -> x == p.x
@@ -164,6 +171,7 @@ $ ->
       }],
       selected : 3,
       inputEnabled : false
+      enabled: false
     }
 
     plotOptions: {
@@ -296,4 +304,22 @@ $ ->
     fontSize: '8pt'
     color: 'rgba(255, 255, 255,0.8)'
   }).add()
+
+  # label for name of market
+  chart.lbl2 = chart.renderer.label('', 0, 0, null, null, null, true).css({
+    textAlign: 'center'
+    fontSize: '14pt'
+    color: 'rgba(255, 255, 255,1.0)'
+  }).add()
+
+  # label for high and low
+  chart.lbl3 = chart.renderer.label('24 H: 0.00000000<br> 24 L:  0.00000000', 0, chart.lbl2.height, null, null, null, true).css({
+    textAlign: 'right'
+    fontSize: '8pt'
+    color: 'rgba(255, 255, 255,1.0)'
+  }).add()
+
+  chart.lbl3.attr({
+    y: chart.lbl3.height - chart.lbl2.height
+  })
 

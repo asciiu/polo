@@ -12,26 +12,10 @@
 @_template(Some(account), scripts) {
     <div class="row column markets">
         <div hidden id="market-name">@marketName</div>
-        <div class="large-10 columns chart" id="candle-chart"></div>
-        <div class="small-2 columns">
-           <table>
-              <thead>
-                  <tr>
-                  <th>24 Hour Change</th>
-                  <th>Last Sale</th>
-                  <th>24 Hour High</th>
-                  <th>24 Hour Low</th>
-                  </tr>
-              </thead>
-              <tbody>
-              <tr>
-                  <td><span id="span-change">@msg.percentChange</span> %</td>
-                  <td id="td-last">@msg.last</td>
-                  <td id="td-high">@msg.high24hr</td>
-                  <td id="td-low">@msg.low24hr</td>
-              </td>
-              </tbody>
-           </table>
-        </div>
+        <div hidden id="market-last">@msg.last</div>
+        <div hidden id="market-percent">@msg.percentChange</div>
+        <div hidden id="market-high">@msg.high24hr</div>
+        <div hidden id="market-low">@msg.low24hr</div>
+        <div class="large-8 columns chart" id="candle-chart"></div>
     </div>
 }

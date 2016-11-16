@@ -75,6 +75,19 @@ $ ->
 
   #########################################################
   name = $('#market-name').html()
+  last = $('#market-last').html()
+  percent = $('#market-percent').html()
+  low = $('#market-low').html()
+  high = $('#market-high').html()
+
+  chart = $('#candle-chart').highcharts()
+  chart.lbl2.attr({
+    text: '<b>' + name + '</b>'
+  })
+  chart.setTitle({text: last + ' BTC (' + percent + ')'})
+  chart.lbl3.attr({
+    text: '24 H: ' + high + '<br>' + "24 L: " + low
+  })
 
   # Web socket feed should update the table of tickers
   socket = new WebSocket('ws://localhost:9001' + jsRoutes.controllers.PoloniexController.updates(name).url)
@@ -101,11 +114,18 @@ $ ->
        upper = chart.series[5]
        lower = chart.series[6]
 
-       # update the header stats
-       $('#span-change').html(market.percentChange)
-       $('#td-last').html(market.last.toFixed(8))
-       $('#td-high').html(market.high24hr.toFixed(8))
-       $('#td-low').html(market.low24hr.toFixed(8))
+       last = market.last.toFixed(8)
+       high = market.high24hr.toFixed(8)
+       low = market.low24hr.toFixed(8)
+
+       chart.setTitle({text: last + ' BTC (' + market.percentChange + '%)'})
+       chart.lbl3.attr({
+         text: '24 H: ' + high + '<br>' + "24 L: " + low
+       })
+
+       # set the subtitle as the USD price
+       if (msg.candle[msg.candle.length-1] != 0)
+         chart.setTitle(null, { text: '$'+msg.candle[msg.candle.length-1].toFixed(4)})
 
        updateChartData(msg.candle)
 

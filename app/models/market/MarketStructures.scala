@@ -29,6 +29,8 @@ object MarketStructures {
                            high24hr: BigDecimal,
                            low24hr: BigDecimal)
 
+  case class PriceUpdateBTC(time: OffsetDateTime, last: BigDecimal)
+
   /**
     * Represents an Order.
     * @param time

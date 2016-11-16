@@ -26,6 +26,7 @@ object PoloniexEventBus {
   lazy val instance = new PoloniexEventBus
   def apply() = instance
 
+  val BTCPrice = "/poloniex/btcprice"
   val Candles = "/poloniex/candles"
   val Updates = "/poloniex/updates"
   val NewMarket = "/poloniex/newm"

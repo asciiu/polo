@@ -3,8 +3,12 @@ package services.actors
 // external
 import akka.actor.{Actor, ActorLogging, ActorRef}
 import javax.inject.Inject
+
+import models.market.MarketStructures.PriceUpdateBTC
+import models.poloniex.MarketEvent
 import play.api.Configuration
 import play.api.libs.ws.WSClient
+
 import scala.concurrent.ExecutionContext
 import scala.language.postfixOps
 
@@ -59,6 +63,10 @@ class PoloniexMarketService @Inject()(val database: DBService,
 
     case msg: MarketMessage =>
       val marketName = msg.cryptoCurrency
+
+      if (marketName.contains("USDT_BTC")) {
+        eventBus.publish(MarketEvent(PoloniexEventBus.BTCPrice, PriceUpdateBTC(msg.time, msg.last)))
+      }
 
       // only care about BTC markets
       if (marketName.startsWith("BTC")) {
