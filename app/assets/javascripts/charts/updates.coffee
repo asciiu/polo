@@ -84,9 +84,9 @@ $ ->
   chart.lbl2.attr({
     text: '<b>' + name + '</b>'
   })
-  chart.setTitle({text: last + ' BTC (' + percent + ')'})
+  chart.setTitle({text: last + ' BTC (' + percent + '%)'})
   chart.lbl3.attr({
-    text: '24 H: ' + high + '<br>' + "24 L: " + low
+    text: '24hr H: ' + high + '<br>' + "24hr L: " + low
   })
 
   # Web socket feed should update the table of tickers
@@ -120,7 +120,7 @@ $ ->
 
        chart.setTitle({text: last + ' BTC (' + market.percentChange + '%)'})
        chart.lbl3.attr({
-         text: '24 H: ' + high + '<br>' + "24 L: " + low
+         text: '24hr H: ' + high + '<br>' + "24hr L: " + low
        })
 
        # set the subtitle as the USD price
