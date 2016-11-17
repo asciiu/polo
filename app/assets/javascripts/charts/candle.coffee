@@ -112,7 +112,7 @@ $ ->
       }
       enabled: true,
       positioner: (labelWidth, labelHeight, point) ->
-        return { x: chart.plotWidth - labelWidth + chart.plotLeft, y: 33 }
+        return { x: chart.plotWidth - labelWidth + chart.plotLeft, y: 17 }
       shadow: false,
       borderWidth: 0,
       backgroundColor: 'rgba(30, 43, 52, 0.0)'
@@ -305,21 +305,10 @@ $ ->
     color: 'rgba(255, 255, 255,0.8)'
   }).add()
 
-  # label for name of market
-  chart.lbl2 = chart.renderer.label('', 0, 0, null, null, null, true).css({
-    textAlign: 'center'
-    fontSize: '14pt'
-    color: 'rgba(255, 255, 255,1.0)'
-  }).add()
-
   # label for high and low
-  chart.lbl3 = chart.renderer.label('24 H: 0.00000000<br> 24 L:  0.00000000', 0, chart.lbl2.height, null, null, null, true).css({
+  chart.upperRight = chart.renderer.label('24 H: 0.00000000<br> 24 L:  0.00000000', 0, 0, null, null, null, true).css({
     textAlign: 'right'
-    fontSize: '8pt'
+    fontSize: '7pt'
     color: 'rgba(255, 255, 255,1.0)'
   }).add()
-
-  chart.lbl3.attr({
-    y: chart.lbl3.height - chart.lbl2.height
-  })
 
