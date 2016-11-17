@@ -205,16 +205,16 @@ class PlaybackService(out: ActorRef, val database: DBService, sessionId: Int)(im
     val jsCandles = candles.map { c =>
       val time = c.time.toEpochSecond() * 1000L - 2.16e+7
       val defaultEMA = ExponentialMovingAverage(c.time, BigDecimal(0), 0)
-      val defaultTrade = Trade(marketName, c.time, 0, 0)
+      val defaultTrade = Trade(marketName, c.time, 0, "buy", 0.0, 0.0, 0.0)
       val ema1 = movingAverages.head._2.find( avg => c.time.equals(avg.time)).getOrElse(defaultEMA).ema
       val ema2 = movingAverages.last._2.find( avg => c.time.equals(avg.time)).getOrElse(defaultEMA).ema
       val bands = bollingers.find(b => c.time.equals(b.time)).getOrElse(BollingerBandPoint(c.time, 0, 0, 0))
       val vol = vols.find( vol => c.time.equals(vol.time))
         .getOrElse(PeriodVolume(c.time, 0)).btcVolume.setScale(2, RoundingMode.DOWN)
       val buy = buyList.find( trade => Misc.roundDateToMinute(trade.time, periodMinutes).isEqual(c.time))
-        .getOrElse(defaultTrade).price
+        .getOrElse(defaultTrade).rate
       val sell = sellList.find( trade => Misc.roundDateToMinute(trade.time, periodMinutes).isEqual(c.time))
-        .getOrElse(defaultTrade).price
+        .getOrElse(defaultTrade).rate
 
       Json.arr(
         // TODO UTF offerset should come from client

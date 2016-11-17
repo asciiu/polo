@@ -72,7 +72,7 @@ class NeuralDataStrategy(val context: KitchenSink) extends Strategy {
 
 
         if (opportunites == 1 || opportunites == 4 || opportunites == 8) {
-          context.buyList.append(Trade(marketName, set.head.time, set.head.open, 1))
+          //context.buyList.append(Trade(marketName, set.head.time, set.head.open, 1))
           candlePatterns.append(inputs.toArray)
         }
 

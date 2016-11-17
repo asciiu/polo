@@ -70,7 +70,7 @@ class BollingerStrategy(val context: KitchenSink) extends Strategy {
     val lastMinuteOfCandle = (msg.time.getMinute() % 5) > 3
 
     if (marketbalance > 0) {
-      val buyPrice = context.buyList.last.price
+      val buyPrice = context.buyList.last.rate
 
       // stop loss
       if (isStopLoss(buyPrice, currentPrice, -0.03) || (thisCandle.isDefined && !thisCandle.get.isBuy && lastMinuteOfCandle)) {
@@ -80,13 +80,13 @@ class BollingerStrategy(val context: KitchenSink) extends Strategy {
   }
 
   def buyFilled(order: Order, time: OffsetDateTime) = {
-    context.buyList += Trade(order.marketName, time, order.price, order.quantity)
+    //context.buyList += Trade(order.marketName, time, order.price, order.quantity)
     balance -= order.price * order.quantity
     buyCount += 1
   }
 
   def sellFilled(order: Order, time: OffsetDateTime) = {
-    context.sellList += Trade(order.marketName, time, order.price, order.quantity)
+    //context.sellList += Trade(order.marketName, time, order.price, order.quantity)
     sellCount += 1
     balance += order.price * order.quantity
   }

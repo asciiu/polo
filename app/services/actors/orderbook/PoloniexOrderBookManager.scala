@@ -7,7 +7,7 @@ import javax.inject.Inject
 
 import play.api.Configuration
 import play.api.libs.ws.WSClient
-import services.actors.orderbook.PoloniexOrderBookSubscriber.DoDisconnect
+import services.actors.orderbook.PoloniexOrderBookSubscriber.DoShutdown
 
 import scala.concurrent.ExecutionContext
 import scala.language.postfixOps
@@ -72,8 +72,7 @@ class PoloniexOrderBookManager @Inject()(val database: DBService,
       // if no more subscribers shut the order book subscriber down
       if (subscriberCounts(marketName) == 0) {
         val actorRef = markets(marketName)
-        actorRef ! DoDisconnect
-        actorRef ! PoisonPill
+        actorRef ! DoShutdown
         markets.remove(marketName)
       }
   }

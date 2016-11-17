@@ -1,12 +1,15 @@
 package services.actors.orderbook
 
 // external
+import java.time.{OffsetDateTime, ZoneId, ZonedDateTime}
+import java.time.format.DateTimeFormatter
+
 import akka.actor._
 import akka.io._
 import akka.wamp._
 import akka.wamp.client._
 import akka.wamp.messages._
-import models.market.MarketStructures.{OrderBookModify, OrderBookRemove}
+import models.market.MarketStructures.Trade
 import play.api.Configuration
 
 import scala.concurrent.duration._
@@ -14,6 +17,7 @@ import scala.language.postfixOps
 
 // internal
 import models.poloniex.{MarketEvent, PoloniexEventBus}
+import models.market.MarketStructures.{OrderBookModify, OrderBookRemove}
 
 
 
@@ -22,7 +26,7 @@ object PoloniexOrderBookSubscriber {
     Props(new PoloniexOrderBookSubscriber(conf, marketName))
 
   case object DoConnect
-  case object DoDisconnect
+  case object DoShutdown
 }
 
 class PoloniexOrderBookSubscriber (conf: Configuration, marketName: String)  extends Actor
@@ -34,6 +38,9 @@ class PoloniexOrderBookSubscriber (conf: Configuration, marketName: String)  ext
   val manager = IO(Wamp)
   val endpoint = conf.getString("poloniex.websocket").getOrElse("wss://api.poloniex.com")
   val eventBus = PoloniexEventBus()
+
+  val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.of("UTC"))
+  var shutdown = false
 
   override def preStart(): Unit = {
     self ! DoConnect
@@ -81,13 +88,19 @@ class PoloniexOrderBookSubscriber (conf: Configuration, marketName: String)  ext
         }
 
     case signal @ Disconnected =>
-      context become receive
-      self ! DoConnect
-      log.info(s"Disconnected!! Attempting to reconnect")
+      if (!shutdown) {
+        context become receive
+        self ! DoConnect
+        log.info(s"Disconnected!! Attempting to reconnect")
+      } else {
+        self ! PoisonPill
+      }
 
-    case DoDisconnect =>
-      // TODO fix this - not disconnecting
+    case DoShutdown =>
+      // end session
       transport ! Goodbye
+      transport ! Disconnect
+      shutdown = true
   }
 
   /**
@@ -118,8 +131,18 @@ class PoloniexOrderBookSubscriber (conf: Configuration, marketName: String)  ext
           val rate = BigDecimal(map("rate"))
           val amount = BigDecimal(map("amount"))
           val order = OrderBookModify(marketName, side, rate, amount)
-          println(order)
           eventBus.publish(MarketEvent(PoloniexEventBus.Orders, order))
+
+        case (Some(t), Some(d)) if (t == "newTrade") =>
+          val map = d.asInstanceOf[Map[String, String]]
+          val tradeID = map("tradeID").toInt
+          val rate = BigDecimal(map("rate"))
+          val amount = BigDecimal(map("amount"))
+          val total = BigDecimal(map("total"))
+          val side = map("type")
+          val date = ZonedDateTime.parse(map("date"), formatter)
+          val trade = Trade(marketName, date.toOffsetDateTime, tradeID, side, rate, amount, total)
+          eventBus.publish(MarketEvent(PoloniexEventBus.Orders, trade))
 
         case _ =>
       }

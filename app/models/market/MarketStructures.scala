@@ -54,8 +54,17 @@ object MarketStructures {
 
   case class Trade(marketName: String,
                    time: OffsetDateTime,
-                   price: BigDecimal,
-                   quantity: BigDecimal)
+                   tradeID: Int,
+                   side: String,
+                   rate : BigDecimal,
+                   amount: BigDecimal,
+                   total: BigDecimal
+                  )
+
+  //case class Trade(marketName: String,
+  //                 time: OffsetDateTime,
+  //                 price: BigDecimal,
+  //                 quantity: BigDecimal)
 
   case class MarketSetupNotification(marketName: String, isSetup: Boolean)
 }

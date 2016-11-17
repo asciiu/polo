@@ -86,7 +86,7 @@ class FirstCrossStrategy(val context: KitchenSink) extends GrandfatherStrategy {
           if (!buyRecords.contains(marketName) && balance > cost &&
             msg.baseVolume > baseVolumeAllowable && priceDiff > 0.05) {
 
-            context.buyList.append(Trade(marketName, msg.time, currentPrice, quantity))
+            //context.buyList.append(Trade(marketName, msg.time, currentPrice, quantity))
             balance -= cost
             totalBuys += 1
             buyRecords(marketName) = BuyRecord(currentPrice, quantity, msg.baseVolume)
@@ -115,7 +115,7 @@ class FirstCrossStrategy(val context: KitchenSink) extends GrandfatherStrategy {
               largestWinRecord = Result(marketName, percent, buyRecord.quantity, buyRecord.price * buyRecord.quantity, currentPrice * buyRecord.quantity)
             }
 
-            context.sellList.append(Trade(marketName, msg.time, currentPrice, buyRecord.quantity))
+            //context.sellList.append(Trade(marketName, msg.time, currentPrice, buyRecord.quantity))
             winCount += 1
             totalSells += 1
             balance += currentPrice * buyRecord.quantity
@@ -129,7 +129,7 @@ class FirstCrossStrategy(val context: KitchenSink) extends GrandfatherStrategy {
               largestLoss = Result(marketName, percent, buyRecord.quantity, buyRecord.price * buyRecord.quantity, currentPrice * buyRecord.quantity)
             }
 
-            context.sellList.append(Trade(marketName, msg.time, currentPrice, buyRecord.quantity))
+            //context.sellList.append(Trade(marketName, msg.time, currentPrice, buyRecord.quantity))
             lossCount += 1
             totalSells += 1
             balance += currentPrice * buyRecord.quantity
