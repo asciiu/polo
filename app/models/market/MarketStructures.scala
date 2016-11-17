@@ -48,6 +48,10 @@ object MarketStructures {
                    side: models.db.OrderType.Value,
                    callback: (Order, OffsetDateTime) => Unit)
 
+  case class OrderBookModify(marketName: String, side: String, rate: BigDecimal, amount: BigDecimal)
+
+  case class OrderBookRemove(marketName: String, side: String, rate: BigDecimal)
+
   case class Trade(marketName: String,
                    time: OffsetDateTime,
                    price: BigDecimal,

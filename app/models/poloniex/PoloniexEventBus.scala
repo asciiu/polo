@@ -26,9 +26,24 @@ object PoloniexEventBus {
   lazy val instance = new PoloniexEventBus
   def apply() = instance
 
-  val BTCPrice = "/poloniex/btcprice"
-  val Candles = "/poloniex/candles"
-  val Updates = "/poloniex/updates"
-  val NewMarket = "/poloniex/newm"
+  // channel for bollinger setups
   val BollingerNotification = "/poloniex/alerts"
+
+  // btc price updates channel
+  val BTCPrice = "/poloniex/btcprice"
+
+  // when full candles are passed
+  val Candles = "/poloniex/candles"
+
+  // order updates from poloniex push api
+  val Orders = "/poloniex/orders"
+
+  val OrderBookSubscribers = "/poloniex/orderbook/subscribers"
+
+  // message updates from poloniex push api
+  val Updates = "/poloniex/updates"
+
+  // when a new market message arrives from a market
+  // that was just added
+  val NewMarket = "/poloniex/newm"
 }

@@ -6,6 +6,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import akka.stream.Materializer
 import javax.inject.{Inject, Named, Singleton}
+
 import jp.t2v.lab.play2.auth.AuthElement
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.ws.{WSClient, WSRequest}
@@ -13,6 +14,8 @@ import play.api.mvc.{Controller, WebSocket}
 import play.api.libs.json._
 import play.api.libs.streams.ActorFlow
 import play.api.Configuration
+import services.actors.orderbook.PoloniexOrderBookManager.Subscribe
+
 import scala.language.postfixOps
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
@@ -35,6 +38,7 @@ class PoloniexController @Inject()(val database: DBService,
                                    val messagesApi: MessagesApi,
                                    ws: WSClient,
                                    conf: Configuration,
+                                   @Named("poloniex-orderbooks") orderBooks: ActorRef,
                                    @Named("poloniex-market") marketService: ActorRef,
                                    @Named("poloniex-feed") feedService: ActorRef,
                                    @Named("poloniex-alerts") notificationService: ActorRef)

@@ -1,9 +1,11 @@
 package services.actors
 
 import akka.actor.{Actor, ActorRef, Props}
+import models.poloniex.MarketEvent
 import play.api.libs.json.Json
 import services.DBService
 import services.actors.MarketService.Update
+import services.actors.orderbook.PoloniexOrderBookManager.{Subscribe, Unsubscribe}
 
 import scala.concurrent.ExecutionContext
 import scala.math.BigDecimal.RoundingMode
@@ -38,10 +40,12 @@ class MarketSocketService(marketName: String, out: ActorRef, database: DBService
 
   override def preStart() = {
     eventBus.subscribe(self, PoloniexEventBus.Updates + s"/$marketName")
+    eventBus.publish(MarketEvent(PoloniexEventBus.OrderBookSubscribers, Subscribe(marketName)))
   }
 
   override def postStop() = {
     eventBus.unsubscribe(self, PoloniexEventBus.Updates + s"/$marketName")
+    eventBus.publish(MarketEvent(PoloniexEventBus.OrderBookSubscribers, Unsubscribe(marketName)))
   }
 
   def receive = {
