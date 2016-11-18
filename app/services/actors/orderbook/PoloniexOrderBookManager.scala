@@ -2,18 +2,15 @@ package services.actors.orderbook
 
 // external
 import akka.actor.{Actor, ActorLogging, ActorRef}
-import akka.actor.PoisonPill
 import javax.inject.Inject
-
 import play.api.Configuration
 import play.api.libs.ws.WSClient
-import services.actors.orderbook.PoloniexOrderBookSubscriber.DoShutdown
-
 import scala.concurrent.ExecutionContext
 import scala.language.postfixOps
 
 // internal
 import models.poloniex.PoloniexEventBus
+import services.actors.orderbook.PoloniexOrderBook.DoShutdown
 import services.DBService
 
 
@@ -55,7 +52,7 @@ class PoloniexOrderBookManager @Inject()(val database: DBService,
     case Subscribe(marketName) =>
       if (!markets.contains(marketName)) {
         // fire up a new actor for this market
-        markets += marketName -> context.actorOf(PoloniexOrderBookSubscriber.props(conf, marketName), marketName)
+        markets += marketName -> context.actorOf(PoloniexOrderBook.props(ws, conf, marketName), marketName)
         subscriberCounts += marketName -> 0
       }
 

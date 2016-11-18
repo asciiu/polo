@@ -1,16 +1,19 @@
 package services.actors.orderbook
 
 // external
-import java.time.{OffsetDateTime, ZoneId, ZonedDateTime}
-import java.time.format.DateTimeFormatter
-
 import akka.actor._
 import akka.io._
 import akka.wamp._
 import akka.wamp.client._
 import akka.wamp.messages._
-import models.market.MarketStructures.Trade
+import java.time.{OffsetDateTime, ZoneId, ZonedDateTime}
+import java.time.format.DateTimeFormatter
+
+import models.market.{MarketOrderBook, OrderBook, OrderLine}
 import play.api.Configuration
+import play.api.libs.json.{JsPath, JsSuccess, Reads}
+import play.api.libs.ws.{WSClient, WSRequest}
+import play.api.libs.functional.syntax._
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -18,22 +21,23 @@ import scala.language.postfixOps
 // internal
 import models.poloniex.{MarketEvent, PoloniexEventBus}
 import models.market.MarketStructures.{OrderBookModify, OrderBookRemove}
+import models.market.MarketStructures.Trade
 
 
 
-object PoloniexOrderBookSubscriber {
-  def props(conf: Configuration, marketName: String) =
-    Props(new PoloniexOrderBookSubscriber(conf, marketName))
+object PoloniexOrderBook {
+  def props(ws: WSClient, conf: Configuration, marketName: String) =
+    Props(new PoloniexOrderBook(ws, conf, marketName))
 
   case object DoConnect
   case object DoShutdown
 }
 
-class PoloniexOrderBookSubscriber (conf: Configuration, marketName: String)  extends Actor
+class PoloniexOrderBook(ws: WSClient, conf: Configuration, marketName: String)  extends Actor
   with ActorLogging
   with ClientContext {
 
-  import PoloniexOrderBookSubscriber._
+  import PoloniexOrderBook._
 
   val manager = IO(Wamp)
   val endpoint = conf.getString("poloniex.websocket").getOrElse("wss://api.poloniex.com")
@@ -42,7 +46,10 @@ class PoloniexOrderBookSubscriber (conf: Configuration, marketName: String)  ext
   val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.of("UTC"))
   var shutdown = false
 
+  val book = new MarketOrderBook(marketName)
+
   override def preStart(): Unit = {
+    retrieveOrderBook()
     self ! DoConnect
   }
 
@@ -60,7 +67,7 @@ class PoloniexOrderBookSubscriber (conf: Configuration, marketName: String)  ext
       scheduler.scheduleOnce(1 second, self, DoConnect)
 
     case signal @ Connected(transport) =>
-      log.info(s"Connected $transport")
+      log.info(s"Started order book $marketName")
       context become handleConnected(transport)
       transport ! Hello("realm1")
   }
@@ -121,8 +128,11 @@ class PoloniexOrderBookSubscriber (conf: Configuration, marketName: String)  ext
           val side = map("type")
           val rate = BigDecimal(map("rate"))
           val order = OrderBookRemove(marketName, side, rate)
-          println(order)
-          eventBus.publish(MarketEvent(PoloniexEventBus.Orders, order))
+
+          if (order.side == "bid") book.removeBids(rate)
+          else book.removeAsks(rate)
+
+          eventBus.publish(MarketEvent(s"${PoloniexEventBus.Orders}/$marketName", order))
 
         // [{data: {rate: '0.00300888', type: 'bid', amount: '3.32349029'},type: 'orderBookModify'}]
         case (Some(t), Some(d)) if (t == "orderBookModify") =>
@@ -131,7 +141,11 @@ class PoloniexOrderBookSubscriber (conf: Configuration, marketName: String)  ext
           val rate = BigDecimal(map("rate"))
           val amount = BigDecimal(map("amount"))
           val order = OrderBookModify(marketName, side, rate, amount)
-          eventBus.publish(MarketEvent(PoloniexEventBus.Orders, order))
+
+          if (order.side == "bid") book.updateBids(rate, amount)
+          else book.updateBids(rate, amount)
+
+          eventBus.publish(MarketEvent(s"${PoloniexEventBus.Orders}/$marketName", order))
 
         case (Some(t), Some(d)) if (t == "newTrade") =>
           val map = d.asInstanceOf[Map[String, String]]
@@ -142,8 +156,36 @@ class PoloniexOrderBookSubscriber (conf: Configuration, marketName: String)  ext
           val side = map("type")
           val date = ZonedDateTime.parse(map("date"), formatter)
           val trade = Trade(marketName, date.toOffsetDateTime, tradeID, side, rate, amount, total)
-          eventBus.publish(MarketEvent(PoloniexEventBus.Orders, trade))
+          eventBus.publish(MarketEvent(s"${PoloniexEventBus.Orders}/$marketName", trade))
 
+        case _ =>
+      }
+    }
+  }
+
+  private def retrieveOrderBook() = {
+
+    val orderRead = Reads[List[OrderLine]](js =>
+      js.validate[List[List[BigDecimal]]].map[List[OrderLine]] { entries =>
+        entries.map ( e => OrderLine(e.head, e.last))
+      })
+
+    implicit val orderBookReads: Reads[OrderBook] = (
+      (JsPath \ "asks").read[List[OrderLine]](orderRead) and
+        (JsPath \ "bids").read[List[OrderLine]](orderRead)
+      )(OrderBook.apply _)
+
+    val poloniexRequest: WSRequest = ws.url("https://poloniex.com/public?command=returnOrderBook")
+      .withHeaders("Accept" -> "application/json")
+      .withQueryString("currencyPair" -> marketName)
+      .withQueryString("depth" -> "50")
+      .withRequestTimeout(10000.millis)
+
+    poloniexRequest.get().map { polo =>
+      polo.json.validate[OrderBook] match {
+        case JsSuccess(orderBook, t) =>
+          book.asks(orderBook.asks)
+          book.bids(orderBook.bids)
         case _ =>
       }
     }

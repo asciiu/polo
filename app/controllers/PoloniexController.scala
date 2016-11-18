@@ -14,7 +14,6 @@ import play.api.mvc.{Controller, WebSocket}
 import play.api.libs.json._
 import play.api.libs.streams.ActorFlow
 import play.api.Configuration
-import services.actors.orderbook.PoloniexOrderBookManager.Subscribe
 
 import scala.language.postfixOps
 import scala.concurrent.{ExecutionContext, Future}
