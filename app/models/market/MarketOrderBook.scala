@@ -10,6 +10,14 @@ class MarketOrderBook(val marketName: String) {
 
   private val asks = scala.collection.mutable.Map[BigDecimal, BigDecimal]()
 
+  def allAsks: List[OrderLine] = {
+    asks.toList.map ( o => OrderLine(o._1, o._2))
+  }
+
+  def allBids: List[OrderLine] = {
+    bids.toList.map ( o => OrderLine(o._1, o._2))
+  }
+
   def bids(b: List[OrderLine]): Map[BigDecimal, BigDecimal] = {
     val e = b.map(o => o.rate -> o.amount).toMap
     bids ++= e

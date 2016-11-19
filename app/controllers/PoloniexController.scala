@@ -87,6 +87,7 @@ class PoloniexController @Inject()(val database: DBService,
   def market(marketName: String) = AsyncStack(AuthorityKey -> AccountRole.normal) { implicit request =>
     // TODO this will fail when the market service at that name is not there
     val marketRef = system.actorSelection(s"akka://application/user/poloniex-market/$marketName")
+    //val orderRef = system.actorSelection(s"akka://application/user/poloniex-orderbooks/$marketName")
 
     (marketRef ? ReturnLatestMessage).mapTo[Option[Msg]].map { msg =>
       msg match {

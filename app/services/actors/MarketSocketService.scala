@@ -1,6 +1,7 @@
 package services.actors
 
 import akka.actor.{Actor, ActorRef, Props}
+import models.market.{MarketOrderBook, OrderLine}
 import models.market.MarketStructures.{OrderBookModify, OrderBookRemove, Trade}
 import models.poloniex.MarketEvent
 import play.api.libs.json.Json
@@ -38,6 +39,7 @@ class MarketSocketService(marketName: String, out: ActorRef, database: DBService
   val eventBus = PoloniexEventBus()
 
   implicit val msgWrite = Json.writes[Msg]
+  implicit val orderWrites = Json.writes[OrderLine]
 
   override def preStart() = {
     eventBus.subscribe(self, s"${PoloniexEventBus.Updates}/$marketName")
@@ -64,9 +66,30 @@ class MarketSocketService(marketName: String, out: ActorRef, database: DBService
 
       out ! json
 
+    case book: MarketOrderBook =>
+      val json = Json.obj(
+        "type" -> "OrderBook",
+        "asks" -> book.allAsks.sortBy(_.rate).take(20),
+        "bids" -> book.allBids.sortWith( (a, b) => a.rate > b.rate).take(20)
+      ).toString
+      out ! json
+
     case OrderBookRemove(marketName, side, rate) =>
+      val json = Json.obj(
+        "type" -> "OrderBookRemove",
+        "side" -> side,
+        "rate" -> rate
+      ).toString
+      out ! json
 
     case OrderBookModify(marketName, side, rate, amount) =>
+      val json = Json.obj(
+        "type" -> "OrderBookModify",
+        "side" -> side,
+        "rate" -> rate,
+        "amount" -> amount
+      ).toString
+      out ! json
 
     case Trade(marketName, date, tradeID, side, rate, amount, total) =>
   }

@@ -89,6 +89,20 @@ $ ->
     })
 
 
+  populate = (side, orders) ->
+    addRow = (side, order) ->
+      rate = order.rate.toFixed(8)
+      amount = order.amount.toFixed(8)
+      btc = (order.rate * order.amount).toFixed(8)
+      $('#'+side+' tbody').append(
+        '<tr id='+side+'-'+rate+'><td>'+rate+'</td><td>'+amount+'</td><td>'+btc+'</td></tr>')
+
+    addRow side, order for order in orders
+
+    #for (i = 0; i < num; ++i)
+    #$('#'+side+' > tbody:last-child').append('<tr>...</tr><tr>...</tr>')
+
+
   #########################################################
   name = $('#market-name').html()
   last = $('#market-last').html()
@@ -134,5 +148,19 @@ $ ->
        setChartStats(high, low, last, percent, usd.toFixed(4))
 
        updateChartData(msg.candle)
+     when 'OrderBook'
+       populate('asks', msg.asks)
+     when 'OrderBookRemove'
+       side = msg.side
+       rate = msg.rate
+       $('tr#'+side+'-'+rate).remove()
+     when 'OrderBookModify'
+       side = msg.side
+       rate = msg.rate.toFixed(8)
+       amount = msg.amount.toFixed(8)
+       btc = (msg.amount * msg.rate).toFixed(8)
+       $('tr#'+side+'-'+rate).replaceWith(
+         '<tr id='+side+'-'+rate+'><td>'+rate+'</td><td>'+amount+'</td><td>'+btc+'</td></tr>')
+
 
     return

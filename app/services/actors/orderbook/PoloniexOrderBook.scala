@@ -186,6 +186,7 @@ class PoloniexOrderBook(ws: WSClient, conf: Configuration, marketName: String)  
         case JsSuccess(orderBook, t) =>
           book.asks(orderBook.asks)
           book.bids(orderBook.bids)
+          eventBus.publish(MarketEvent(s"${PoloniexEventBus.Orders}/$marketName", book))
         case _ =>
       }
     }

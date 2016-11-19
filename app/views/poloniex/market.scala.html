@@ -1,6 +1,10 @@
 @import models.market.MarketStructures.MarketMessage
+@import models.market.OrderLine
 
-@(account: Entity[Account], marketName: String, msg: MarketMessage)(implicit webJarAssets: WebJarAssets, messages: Messages)
+@(account: Entity[Account], marketName: String,
+msg: MarketMessage,
+asks: List[OrderLine] = List[OrderLine](),
+bids: List[OrderLine] = List[OrderLine]())(implicit webJarAssets: WebJarAssets, messages: Messages)
 
 @scripts = {
     <script type='text/javascript' src='@routes.Assets.at("javascripts/charts/candle.js")'></script>
@@ -17,5 +21,26 @@
         <div hidden id="market-high">@msg.high24hr</div>
         <div hidden id="market-low">@msg.low24hr</div>
         <div class="large-8 columns chart" id="candle-chart"></div>
+        <div class="large-4 columns markets">
+            <table id="asks">
+                <thead>
+                <tr>
+                    <th>Price</th>
+                    <th>Amount</th>
+                    <th>BTC</th>
+                </tr>
+                </thead>
+
+                <tbody>
+                @for(ask <- asks) {
+                  <tr>
+                    <td>@ask.rate</td>
+                    <td>@ask.amount</td>
+                    <td>@ask.amount*ask.rate</td>
+                  </tr>
+                }
+                </tbody>
+            </table>
+        </div>
     </div>
 }
